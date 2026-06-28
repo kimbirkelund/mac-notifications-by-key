@@ -1,0 +1,13 @@
+# SwiftPM
+.build/
+.swiftpm/
+Package.resolved
+
+# Node (acceptance harness)
+node_modules/
+
+# macOS
+.DS_Store
+
+# logs / scratch
+*.log

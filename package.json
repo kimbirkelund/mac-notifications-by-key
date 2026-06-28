@@ -1,0 +1,13 @@
+{
+  "name": "mac-notifications-by-key-acceptance",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "description": "cucumber-js acceptance harness for the nbk CLI (black-box)",
+  "scripts": {
+    "acceptance": "cucumber-js"
+  },
+  "devDependencies": {
+    "@cucumber/cucumber": "^11.0.0"
+  }
+}
