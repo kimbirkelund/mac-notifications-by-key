@@ -1,0 +1,61 @@
+name: Release
+
+# Build a universal macOS binary and publish it to a GitHub Release. Triggered by
+# pushing a release tag like `releases/v1.2.3`; the version is the part after
+# `releases/v`. The published tarball + SHA256 are what the Homebrew formula
+# consumes (see packaging/homebrew/nbk.rb).
+on:
+  push:
+    tags:
+      - 'releases/v*'
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    name: release
+    runs-on: macos-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: maxim-lobanov/setup-xcode@v1
+        with:
+          xcode-version: latest-stable
+
+      - name: Derive version from tag
+        id: v
+        run: echo "version=${GITHUB_REF_NAME#releases/v}" >> "$GITHUB_OUTPUT"
+
+      # Gate the release on the unit tier (the AX/acceptance tiers can't run on a
+      # hosted runner — no Accessibility trust).
+      - name: Unit tests
+        shell: pwsh
+        run: ./build.ps1 -DoTest -Kinds Unit
+
+      - name: Package universal binary
+        shell: pwsh
+        run: ./build.ps1 -DoPackage -Version "${{ steps.v.outputs.version }}"
+
+      - name: Read SHA256
+        id: sha
+        run: |
+          file="dist/nbk-${{ steps.v.outputs.version }}-macos-universal.tar.gz.sha256"
+          echo "sha256=$(cut -d' ' -f1 "$file")" >> "$GITHUB_OUTPUT"
+
+      - name: Publish GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          files: |
+            dist/nbk-*-macos-universal.tar.gz
+            dist/nbk-*-macos-universal.tar.gz.sha256
+          body: |
+            Universal (arm64 + x86_64) macOS build of `nbk`.
+
+            Homebrew formula values for this release:
+
+            ```
+            url     https://github.com/${{ github.repository }}/releases/download/${{ github.ref_name }}/nbk-${{ steps.v.outputs.version }}-macos-universal.tar.gz
+            sha256  ${{ steps.sha.outputs.sha256 }}
+            version ${{ steps.v.outputs.version }}
+            ```

@@ -9,3 +9,5 @@ Package.resolved
 *.ps1
 # Gherkin has no prettier parser.
 *.feature
+# Ruby (Homebrew formula) has no prettier parser.
+*.rb

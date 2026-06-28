@@ -14,6 +14,7 @@ let usage = """
       action <index> <name>     perform a named action (e.g. "Show")
       press <index>             default activation (open)
       doctor                    report Accessibility trust, NC pid, macOS version
+      --version                 print the version
     """
 
 let args = Array(CommandLine.arguments.dropFirst())
@@ -56,6 +57,9 @@ do {
         print("notification_center_pid: \(pid.map(String.init) ?? "not found")")
         print("macos: \(ProcessInfo.processInfo.operatingSystemVersionString)")
         if !trusted { die(NbkError.notTrusted.message, code: NbkError.notTrusted.exitCode) }
+
+    case "--version", "version":
+        print(nbkVersion)
 
     case "-h", "--help", "help":
         print(usage)

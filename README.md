@@ -67,6 +67,33 @@ Use [`build.ps1`](build.ps1) (PowerShell) as the entry point.
 The AX-integration and acceptance tiers need Accessibility trust for the host; `build.ps1`
 preflights it (`nbk doctor`) and skips those tiers with a clear message when it is absent.
 
+## CI / release
+
+- **CI** ([`.github/workflows/ci.yml`](.github/workflows/ci.yml)) runs on macOS (the only supported
+  platform, C-5): a **lint** job (`build.ps1 -DoLint` + actionlint), a **build** job (universal
+  release binary), and a **test** job (`-Kinds Unit`). The AX-integration and acceptance tiers can't
+  run on hosted runners — they need Accessibility trust and a real on-screen Notification Center —
+  so they stay local.
+- **Release** ([`.github/workflows/release.yml`](.github/workflows/release.yml)) is triggered by
+  pushing a `releases/v<version>` tag. It runs the unit gate, builds a universal (arm64 + x86_64)
+  binary via `build.ps1 -DoPackage -Version <v>`, and publishes
+  `nbk-<version>-macos-universal.tar.gz` + a `.sha256` to a GitHub Release. The release notes
+  include the `url`/`sha256`/`version` to drop into the formula.
+
+### Homebrew (planned)
+
+Distribution is a personal tap with a prebuilt-binary formula. The template lives at
+[`packaging/homebrew/nbk.rb`](packaging/homebrew/nbk.rb); to ship, create a `homebrew-tap` repo,
+copy it to `Formula/nbk.rb`, and bump `version`/`sha256` per release (the Release notes print both).
+Install becomes:
+
+```sh
+brew install kimbirkelund/tap/nbk
+```
+
+The binary is unsigned; Homebrew strips the download quarantine on install. After install, grant
+Accessibility permission to whatever runs `nbk` (see `nbk doctor`).
+
 ## Project layout
 
 ```

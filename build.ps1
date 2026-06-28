@@ -16,11 +16,17 @@
     Docs   prettier (markdown, JSON, YAML incl. .github workflows, JS harness)
   Add -Fix to auto-format in place instead of only checking.
 
+  Package (-DoPackage) builds a universal (arm64 + x86_64) release binary and
+  produces dist/nbk-<version>-macos-universal.tar.gz plus a .sha256 sidecar - the
+  artifacts the Homebrew formula consumes. Pass -Version to stamp the version into
+  the binary (nbk --version); defaults to the committed "dev".
+
 .EXAMPLE
   ./build.ps1 -DoBuild
   ./build.ps1 -DoTest -Kinds Unit
   ./build.ps1 -DoLint            # check only (fails on violations)
   ./build.ps1 -DoLint -Fix       # auto-format Swift + docs in place
+  ./build.ps1 -DoPackage -Version 1.2.3
   ./build.ps1 -DoRun -RunArgs list,--wait,5
 #>
 [CmdletBinding()]
@@ -30,12 +36,15 @@ param(
   [switch]$DoTest,
   [switch]$DoLint,
   [switch]$Fix,
+  [switch]$DoPackage,
   [switch]$DoRun,
   [string[]]$RunArgs = @(),
   [ValidateSet('All', 'Unit', 'Integration', 'Acceptance')]
   [string[]]$Kinds = @('All'),
   [ValidateSet('debug', 'release')]
   [string]$Configuration = 'debug',
+  [switch]$Universal,
+  [string]$Version,
   [switch]$SkipBuild,
   [switch]$Quiet
 )
@@ -51,7 +60,18 @@ function Invoke-Checked($file, [string[]]$argv)
   if ($LASTEXITCODE -ne 0) { throw "$file $($argv -join ' ') exited $LASTEXITCODE" }
 }
 
-$binPath = ".build/$Configuration/nbk"
+# Packaging always means a universal release build.
+if ($DoPackage)
+{
+  $Universal = $true
+  $Configuration = 'release'
+}
+
+$binPath = if ($Universal)
+{
+  ".build/apple/Products/$((Get-Culture).TextInfo.ToTitleCase($Configuration))/nbk"
+}
+else { ".build/$Configuration/nbk" }
 
 # Resolve which tiers to run.
 $selected = if ($Kinds -contains 'All') { @('Unit', 'Integration', 'Acceptance') } else { $Kinds }
@@ -72,11 +92,36 @@ if ($DoInstall)
   Invoke-Checked 'npm' @('install')
 }
 
-$needBuild = $DoBuild -or ($DoTest -and -not $SkipBuild) -or ($DoRun -and -not $SkipBuild)
+$needBuild = $DoBuild -or $DoPackage -or ($DoTest -and -not $SkipBuild) -or ($DoRun -and -not $SkipBuild)
 if ($needBuild)
 {
-  Write-Step "swift build (-c $Configuration)"
-  Invoke-Checked 'swift' @('build', '-c', $Configuration)
+  # Stamp the version into the binary (nbk --version) for this build, then restore
+  # the working tree so the committed "dev" default is left untouched locally.
+  $versionFile = Join-Path $PSScriptRoot 'Sources/nbk/Version.swift'
+  $versionOriginal = $null
+  if ($Version)
+  {
+    $versionOriginal = Get-Content -Raw -LiteralPath $versionFile
+    [System.IO.File]::WriteAllText(
+      $versionFile, "// Stamped by build.ps1 -Version.`nlet nbkVersion = `"$Version`"`n")
+  }
+  try
+  {
+    if ($Universal)
+    {
+      Write-Step "swift build (-c $Configuration, universal arm64+x86_64)"
+      Invoke-Checked 'swift' @('build', '-c', $Configuration, '--arch', 'arm64', '--arch', 'x86_64')
+    }
+    else
+    {
+      Write-Step "swift build (-c $Configuration)"
+      Invoke-Checked 'swift' @('build', '-c', $Configuration)
+    }
+  }
+  finally
+  {
+    if ($null -ne $versionOriginal) { [System.IO.File]::WriteAllText($versionFile, $versionOriginal) }
+  }
 }
 
 if ($DoTest)
@@ -116,6 +161,21 @@ if ($DoTest)
     }
     else { Write-Skip 'Acceptance tier (no Accessibility trust)' }
   }
+}
+
+if ($DoPackage)
+{
+  $pkgVersion = if ($Version) { $Version } else { 'dev' }
+  $dist = Join-Path $PSScriptRoot 'dist'
+  New-Item -ItemType Directory -Force -Path $dist | Out-Null
+  $tarName = "nbk-$pkgVersion-macos-universal.tar.gz"
+  $tarPath = Join-Path $dist $tarName
+  Write-Step "Packaging $tarName"
+  Invoke-Checked 'tar' @('-czf', $tarPath, '-C', (Split-Path $binPath -Parent), 'nbk')
+  $hash = (Get-FileHash -Algorithm SHA256 -LiteralPath $tarPath).Hash.ToLower()
+  Set-Content -LiteralPath "$tarPath.sha256" -Value "$hash  $tarName"
+  Write-Host "  sha256:   $hash"
+  Write-Host "  artifact: $tarPath"
 }
 
 if ($DoLint)
@@ -171,7 +231,7 @@ if ($DoRun)
   Invoke-Checked $binPath $RunArgs
 }
 
-if (-not ($DoInstall -or $DoBuild -or $DoTest -or $DoLint -or $DoRun))
+if (-not ($DoInstall -or $DoBuild -or $DoTest -or $DoLint -or $DoPackage -or $DoRun))
 {
-  Write-Host 'Nothing to do. Pass -DoInstall, -DoBuild, -DoTest, -DoLint, or -DoRun. See -? for help.' -ForegroundColor Yellow
+  Write-Host 'Nothing to do. Pass -DoInstall, -DoBuild, -DoTest, -DoLint, -DoPackage, or -DoRun. See -? for help.' -ForegroundColor Yellow
 }

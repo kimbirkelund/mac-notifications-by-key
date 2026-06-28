@@ -47,6 +47,22 @@ jobs:
         with:
           fail_level: error
 
+  build:
+    name: build (release, universal)
+    runs-on: macos-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: maxim-lobanov/setup-xcode@v1
+        with:
+          xcode-version: latest-stable
+
+      # Compiles the universal (arm64 + x86_64) release binary the Release workflow
+      # ships — catches release-config and cross-arch breakage on every push/PR.
+      - name: Build universal release binary
+        shell: pwsh
+        run: ./build.ps1 -DoBuild -Universal -Configuration release
+
   test:
     name: test (unit)
     runs-on: macos-latest
