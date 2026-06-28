@@ -41,7 +41,13 @@ jobs:
         shell: pwsh
         run: ./build.ps1 -DoLint
 
-      # Lint the workflow files themselves.
+  # actionlint ships as a Docker container action (Linux-only), so it runs in its
+  # own ubuntu job rather than alongside the macOS-bound swift-format lint.
+  actionlint:
+    name: actionlint
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
       - name: Lint GitHub workflows (actionlint)
         uses: reviewdog/action-actionlint@v1
         with:
