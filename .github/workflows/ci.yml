@@ -1,0 +1,65 @@
+name: CI
+
+# macOS-only project (constraint C-5): the tool drives the macOS Notification
+# Center via the Accessibility API, so every job runs on a macOS runner.
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  lint:
+    name: lint
+    runs-on: macos-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      # swift-format ships with the Swift toolchain; pin a recent Xcode so it and
+      # swift-testing are available.
+      - uses: maxim-lobanov/setup-xcode@v1
+        with:
+          xcode-version: latest-stable
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      # Installs the pinned prettier (build.ps1 -DoLint prefers node_modules/.bin).
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Install PSScriptAnalyzer
+        shell: pwsh
+        run: |
+          if (-not (Get-Module -ListAvailable PSScriptAnalyzer)) {
+            Install-Module PSScriptAnalyzer -Force -Scope CurrentUser
+          }
+
+      # swift-format + prettier (markdown/JSON/YAML) + PSScriptAnalyzer.
+      - name: Lint
+        shell: pwsh
+        run: ./build.ps1 -DoLint
+
+      # Lint the workflow files themselves.
+      - name: Lint GitHub workflows (actionlint)
+        uses: reviewdog/action-actionlint@v1
+        with:
+          fail_level: error
+
+  test:
+    name: test (unit)
+    runs-on: macos-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: maxim-lobanov/setup-xcode@v1
+        with:
+          xcode-version: latest-stable
+
+      # Unit tier only. The AX-integration and acceptance tiers require
+      # Accessibility trust and a real, on-screen Notification Center, which
+      # hosted runners cannot provide — they run locally (see docs/testing.md).
+      - name: Build and test (unit)
+        shell: pwsh
+        run: ./build.ps1 -DoTest -Kinds Unit

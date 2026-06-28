@@ -121,6 +121,9 @@ if ($DoTest)
 if ($DoLint)
 {
   $swiftPaths = @('Package.swift', 'Sources', 'Tests')
+  # Prefer the pinned local prettier (reproducible in CI); fall back to a global one.
+  $localPrettier = Join-Path $PSScriptRoot 'node_modules/.bin/prettier'
+  $prettier = if (Test-Path $localPrettier) { $localPrettier } else { 'prettier' }
   $psSettings = Join-Path $PSScriptRoot 'PSScriptAnalyzerSettings.psd1'
   $psFiles = Get-ChildItem -Path $PSScriptRoot -Recurse -File -Filter *.ps1 |
     Where-Object { $_.FullName -notmatch '[\\/](\.build|node_modules)[\\/]' }
@@ -130,7 +133,7 @@ if ($DoLint)
     Write-Step 'swift-format (format in place)'
     Invoke-Checked 'swift' (@('format', 'format', '--in-place', '--recursive') + $swiftPaths)
     Write-Step 'prettier (format docs in place)'
-    Invoke-Checked 'prettier' @('--write', '--log-level', 'warn', '.')
+    Invoke-Checked $prettier @('--write', '--log-level', 'warn', '.')
     Write-Step 'PSScriptAnalyzer (format in place)'
     $settings = Import-PowerShellDataFile -Path $psSettings
     foreach ($file in $psFiles)
@@ -148,7 +151,7 @@ if ($DoLint)
     Write-Step 'swift-format (lint)'
     Invoke-Checked 'swift' (@('format', 'lint', '--strict', '--recursive') + $swiftPaths)
     Write-Step 'prettier (check docs)'
-    Invoke-Checked 'prettier' @('--check', '.')
+    Invoke-Checked $prettier @('--check', '.')
     Write-Step 'PSScriptAnalyzer (lint)'
     $findings = $psFiles | ForEach-Object { Invoke-ScriptAnalyzer -Path $_.FullName -Settings $psSettings }
     if ($findings)

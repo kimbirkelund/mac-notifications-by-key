@@ -54,7 +54,8 @@ public enum NotificationAX {
     public static var isTrusted: Bool { AXIsProcessTrusted() }
 
     public static func notificationCenterPID() -> pid_t? {
-        if let pid = NSRunningApplication
+        if let pid =
+            NSRunningApplication
             .runningApplications(withBundleIdentifier: "com.apple.notificationcenterui")
             .first?
             .processIdentifier
