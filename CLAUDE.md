@@ -28,6 +28,8 @@ poll-for-render-delay.
 
 ## Committing & Pushing
 
+- Before committing, run `./build.ps1 -DoLint` and `./build.ps1 -DoTest` (builds, then runs all test
+  tiers) and fix any failures. Never commit code that does not build, lint clean, and pass tests.
 - Only commit if explicitly allowed by the human.
 - Only push if explicitly allowed by the human.
 - Use single-line commit messages.
