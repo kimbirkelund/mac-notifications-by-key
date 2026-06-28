@@ -12,7 +12,7 @@ jobs:
     name: lint
     runs-on: macos-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
 
       # swift-format ships with the Swift toolchain; pin a recent Xcode so it and
       # swift-testing are available.
@@ -47,7 +47,7 @@ jobs:
     name: actionlint
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
       - name: Lint GitHub workflows (actionlint)
         uses: reviewdog/action-actionlint@v1
         with:
@@ -57,7 +57,7 @@ jobs:
     name: build (release, universal)
     runs-on: macos-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
 
       - uses: maxim-lobanov/setup-xcode@v1
         with:
@@ -73,7 +73,7 @@ jobs:
     name: test (unit)
     runs-on: macos-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
 
       - uses: maxim-lobanov/setup-xcode@v1
         with:
@@ -85,3 +85,20 @@ jobs:
       - name: Build and test (unit)
         shell: pwsh
         run: ./build.ps1 -DoTest -Kinds Unit
+
+  # Single aggregate gate: this is the only check the branch ruleset requires, so
+  # every job above is gated and new jobs added to `needs` are covered without
+  # touching the ruleset. (GitHub's native "require workflow" rule is org-only.)
+  ci-success:
+    name: ci-success
+    needs: [lint, actionlint, build, test]
+    if: always()
+    runs-on: ubuntu-latest
+    steps:
+      - name: Verify all required jobs succeeded
+        run: |
+          echo "results: lint=${{ needs.lint.result }} actionlint=${{ needs.actionlint.result }} build=${{ needs.build.result }} test=${{ needs.test.result }}"
+          if ${{ contains(needs.*.result, 'failure') || contains(needs.*.result, 'cancelled') }}; then
+            echo "::error::One or more required jobs did not succeed."
+            exit 1
+          fi
