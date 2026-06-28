@@ -1,0 +1,20 @@
+name: Auto-approve Renovate
+
+# Renovate cannot approve its own PRs, and the branch ruleset requires one
+# approval. Auto-approve only Renovate's maintenance PRs (labeled "automerge")
+# so they can merge once CI passes. Human PRs and major-update PRs stay gated.
+on:
+  pull_request:
+    types: [opened, reopened, synchronize, labeled]
+
+permissions:
+  pull-requests: write
+
+jobs:
+  approve:
+    if: >-
+      github.event.pull_request.user.login == 'renovate[bot]' &&
+      contains(github.event.pull_request.labels.*.name, 'automerge')
+    runs-on: ubuntu-latest
+    steps:
+      - uses: hmarr/auto-approve-action@v4
