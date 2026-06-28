@@ -1,5 +1,8 @@
 # mac-notifications-by-key
 
+[![CI](https://github.com/kimbirkelund/mac-notifications-by-key/actions/workflows/ci.yml/badge.svg)](https://github.com/kimbirkelund/mac-notifications-by-key/actions/workflows/ci.yml)
+[![Release](https://github.com/kimbirkelund/mac-notifications-by-key/actions/workflows/release.yml/badge.svg)](https://github.com/kimbirkelund/mac-notifications-by-key/actions/workflows/release.yml)
+
 A keyboard-driven tool for interacting with macOS notifications. It reads the notifications macOS is
 currently presenting and acts on a designated one — dismiss, trigger a named action, or activate —
 exposed as a non-interactive CLI (`nbk`) suitable for binding to a hotkey daemon (skhd). It replaces
