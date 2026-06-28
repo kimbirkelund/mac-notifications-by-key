@@ -32,10 +32,12 @@ Then('the command fails', function () {
   assert.notEqual(this.lastResult.code, 0, 'expected a non-zero exit')
 })
 
-Then('the JSON output contains a notification with title {string}', function (title) {
-  const items = JSON.parse(this.lastResult.stdout)
+Then('the JSON output contains a notification with title {string}', async function (title) {
+  // Poll rather than trust the single captured `list`: a banner can take a moment
+  // to render, and `--wait` can return early on an unrelated notification.
+  const found = await this.waitForTitle(title)
   assert.ok(
-    Array.isArray(items) && items.some((n) => n.title === title),
-    `expected a notification titled "${title}" in: ${this.lastResult.stdout}`
+    found,
+    `expected a notification titled "${title}"; last list: ${this.lastResult?.stdout}`
   )
 })
