@@ -9,7 +9,7 @@ observable output and exit status.
 | Scenario                                       | Validates    | Status                                              |
 | ---------------------------------------------- | ------------ | --------------------------------------------------- |
 | Listing includes a delivered notification      | RNA-1, RNA-3 | ✅ Executable (walking skeleton: `nbk list --wait`) |
-| Listing is empty when nothing is presented     | RNA-2        | 🚧 `@wip` — until `list` empty-path is built        |
+| Listing is empty when nothing is presented     | RNA-2        | ✅ Executable (`nbk list` emits `[]`)               |
 | Dismissing the newest notification removes it  | RNA-4        | 🚧 `@wip` — until `dismiss` is built                |
 | Triggering a named action                      | RNA-5        | 🚧 `@wip`                                           |
 | Designating an out-of-range index fails safely | RNA-7        | 🚧 `@wip`                                           |

@@ -40,6 +40,10 @@ import Testing
 }
 
 @Suite struct OutputTests {
+    @Test func emptyListRendersAsEmptyJSONArray() throws {
+        #expect(try Output.json([]) == "[]")
+    }
+
     @Test func jsonRoundTrips() throws {
         let items = [
             NotificationItem(
