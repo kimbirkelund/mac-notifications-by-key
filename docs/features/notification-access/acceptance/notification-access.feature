@@ -11,11 +11,11 @@ Feature: Notification access
     Then the command succeeds
     And the JSON output contains a notification with title "AcceptanceProbe"
 
-  # The scenarios below are the agreed specification for the rest of the feature
-  # (RNA-2,4,5,7,9). They are @wip and excluded until the corresponding subcommands
-  # exist; their step wording will be refined against the real CLI.
+  # The @wip scenarios below are the agreed specification for the rest of the feature
+  # (RNA-4,5,7,9). They are excluded until the corresponding subcommands exist; their
+  # step wording will be refined against the real CLI.
 
-  @wip
+  # Validates RNA-2: with nothing presented, `list` emits an empty array, exit 0.
   Scenario: Listing is empty when nothing is presented
     # RNA-2
     Given no notifications are presented

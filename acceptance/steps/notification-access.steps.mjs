@@ -14,6 +14,10 @@ Given('a notification is delivered with title {string}', async function (title) 
   await this.deliver(title)
 })
 
+Given('no notifications are presented', async function () {
+  await this.clearTestNotifications()
+})
+
 // Keyword-agnostic in cucumber: this also matches `And I run "..."` used as a
 // precondition in a Given block.
 When('I run {string}', async function (command) {
@@ -30,6 +34,17 @@ Then('the command succeeds', function () {
 
 Then('the command fails', function () {
   assert.notEqual(this.lastResult.code, 0, 'expected a non-zero exit')
+})
+
+Then('the JSON output is an empty array', function () {
+  let parsed
+  try {
+    parsed = JSON.parse(this.lastResult.stdout)
+  } catch (err) {
+    assert.fail(`stdout is not valid JSON: ${err.message}; got: ${this.lastResult.stdout}`)
+  }
+  assert.ok(Array.isArray(parsed), `expected a JSON array, got: ${this.lastResult.stdout}`)
+  assert.equal(parsed.length, 0, `expected an empty array, got: ${this.lastResult.stdout}`)
 })
 
 Then('the JSON output contains a notification with title {string}', async function (title) {
