@@ -18,6 +18,11 @@ Test at the lowest tier that can prove the behavior; push logic into `Notificati
 unit-test it test-first (TDD) whenever practical. Run with `./build.ps1 -DoTest`
 (`-Kinds Unit|Integration|Acceptance|All`).
 
+CI runs the **unit tier only** — AX-integration and acceptance need Accessibility trust and a real
+Notification Center, which hosted runners can't provide. A green CI therefore does **not** exercise
+the acceptance harness, so verify dependency bumps that touch it (e.g. cucumber-js) locally with
+`./build.ps1 -DoTest -Kinds Acceptance`.
+
 ## Mechanism
 
 Interaction with notifications is **Accessibility-API only** ([C-1](docs/constraints.md)) — no
