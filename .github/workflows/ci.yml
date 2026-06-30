@@ -22,7 +22,7 @@ jobs:
 
       - uses: actions/setup-node@v6
         with:
-          node-version: 22
+          node-version: 24
           cache: npm
 
       # Installs the pinned prettier (build.ps1 -DoLint prefers node_modules/.bin).
