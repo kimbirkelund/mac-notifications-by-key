@@ -31,6 +31,13 @@ Notification Center is version-sensitive ([C-3](docs/constraints.md)); locate el
 never by hardcoded pid/index. Two known quirks live in the AX adapter: focus-before-close, and
 poll-for-render-delay.
 
+## Code style
+
+Default to no comments. Reserve them for the genuinely non-obvious, and keep them minimal — a clear
+name or structure beats a comment. Don't add comments that restate what the code/test already says.
+Don't reference requirement IDs (`RNA-*`) in production code comments; citing the req a test
+validates is fine in test comments.
+
 ## Committing & Pushing
 
 - Before committing, run `./build.ps1 -DoLint` and `./build.ps1 -DoTest` (builds, then runs all test
