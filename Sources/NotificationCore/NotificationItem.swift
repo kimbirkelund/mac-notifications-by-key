@@ -30,6 +30,7 @@ public struct NotificationItem: Codable, Equatable, Sendable {
 /// JSON rendering of the notification list (X-2: machine-readable output).
 public enum Output {
     public static func json(_ items: [NotificationItem]) throws -> String {
+        if items.isEmpty { return "[]" }
         let encoder = JSONEncoder()
         encoder.outputFormatting = [.prettyPrinted, .sortedKeys, .withoutEscapingSlashes]
         let data = try encoder.encode(items)
