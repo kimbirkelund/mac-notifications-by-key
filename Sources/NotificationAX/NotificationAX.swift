@@ -85,7 +85,8 @@ public enum NotificationAX {
             guard pid > 0 else { continue }
             let length = proc_pidpath(pid, &pathBuffer, UInt32(pathInfoMaxSize))
             guard length > 0 else { continue }
-            if String(cString: pathBuffer).contains(needle) { return pid }
+            let bytes = pathBuffer[..<Int(length)].map { UInt8(bitPattern: $0) }
+            if String(decoding: bytes, as: UTF8.self).contains(needle) { return pid }
         }
         return nil
     }
