@@ -20,10 +20,6 @@ Feature: Notification access
     Then the command succeeds
     And the JSON output includes a notification with title "SlowProbe"
 
-  # The @wip scenarios below are the agreed specification for the rest of the feature
-  # (RNA-4,5,7,9). They are excluded until the corresponding subcommands exist; their
-  # step wording will be refined against the real CLI.
-
   # Validates RNA-2: with nothing presented, `list` emits an empty array, exit 0.
   Scenario: Listing is empty when nothing is presented
     # RNA-2
@@ -32,14 +28,20 @@ Feature: Notification access
     Then the command succeeds
     And the JSON output is an empty array
 
-  @wip
+  # Validates RNA-4: dismiss the notification at index 0 (the newest), exit 0,
+  # and it is no longer presented.
   Scenario: Dismissing the newest notification removes it
     # RNA-4
     Given a notification is delivered with title "DismissMe"
     And I run "nbk list --wait 5"
     When I run "nbk dismiss 0"
     Then the command succeeds
-    And "nbk list" does not contain a notification with title "DismissMe"
+    And I run "nbk list"
+    And the JSON output does not include a notification with title "DismissMe"
+
+  # The @wip scenarios below are the agreed specification for the rest of the feature
+  # (RNA-5,7,9). They are excluded until the corresponding subcommands exist; their
+  # step wording will be refined against the real CLI.
 
   @wip
   Scenario: Triggering a named action on a notification

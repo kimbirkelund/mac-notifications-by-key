@@ -111,6 +111,16 @@ public enum NotificationAX {
         AXUIElementSetAttributeValue(element, kAXFocusedAttribute as CFString, kCFBooleanTrue)
         Thread.sleep(forTimeInterval: 0.3)
         try perform(displayName: "Close", on: element)
+        // Close is asynchronous in Notification Center: it returns before the banner
+        // leaves the tree. Wait (bounded) until it's gone so a subsequent `list`
+        // reflects the dismissal.
+        let pid = try requirePID()
+        let deadline = Date().addingTimeInterval(2)
+        while Date() < deadline,
+            notificationElements(pid).contains(where: { CFEqual($0, element) })
+        {
+            Thread.sleep(forTimeInterval: 0.1)
+        }
     }
 
     public static func press(index n: Int) throws {

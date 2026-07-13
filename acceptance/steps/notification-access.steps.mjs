@@ -69,6 +69,21 @@ Then('the JSON output includes a notification with title {string}', function (ti
   )
 })
 
+// Asserts against the captured `list` output directly (RNA-4: dismissed → absent).
+Then('the JSON output does not include a notification with title {string}', function (title) {
+  let parsed
+  try {
+    parsed = JSON.parse(this.lastResult.stdout)
+  } catch (err) {
+    assert.fail(`stdout is not valid JSON: ${err.message}; got: ${this.lastResult.stdout}`)
+  }
+  assert.ok(Array.isArray(parsed), `expected a JSON array, got: ${this.lastResult.stdout}`)
+  assert.ok(
+    !parsed.some((n) => n.title === title),
+    `expected no notification titled "${title}"; got: ${this.lastResult.stdout}`
+  )
+})
+
 Then('the JSON output contains a notification with title {string}', async function (title) {
   // Poll rather than trust the single captured `list`: a banner can take a moment
   // to render, and `--wait` can return early on an unrelated notification.
