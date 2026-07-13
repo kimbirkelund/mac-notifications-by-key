@@ -29,10 +29,7 @@ func intArg(_ tokens: [String], _ position: Int) -> Int? {
 do {
     switch command {
     case "list":
-        var wait: TimeInterval = 0
-        if let i = rest.firstIndex(of: "--wait"), let v = intArg(rest, i + 1).map(Double.init) {
-            wait = v
-        }
+        let wait = try WaitOption.parse(rest)
         let items = try NotificationAX.read(wait: wait)
         print(try Output.json(items))
 
@@ -67,6 +64,8 @@ do {
     default:
         die("unknown command: \(command)\n\(usage)", code: 64)
     }
+} catch let error as ArgumentError {
+    die(error.message, code: error.exitCode)
 } catch let error as NbkError {
     die(error.message, code: error.exitCode)
 } catch {

@@ -18,6 +18,12 @@ Given('no notifications are presented', async function () {
   await this.clearTestNotifications()
 })
 
+// Schedule (do not await) a delivery so it fires while a later `list --wait`
+// step is already polling. Proves --wait catches post-invocation deliveries.
+When('a notification with title {string} is delivered after {int} seconds', function (title, secs) {
+  this.scheduleDelivery(title, secs * 1000)
+})
+
 // Keyword-agnostic in cucumber: this also matches `And I run "..."` used as a
 // precondition in a Given block.
 When('I run {string}', async function (command) {
@@ -45,6 +51,22 @@ Then('the JSON output is an empty array', function () {
   }
   assert.ok(Array.isArray(parsed), `expected a JSON array, got: ${this.lastResult.stdout}`)
   assert.equal(parsed.length, 0, `expected an empty array, got: ${this.lastResult.stdout}`)
+})
+
+// Asserts against the captured `list --wait` output directly (no re-poll), so a
+// broken --wait can't be masked by a later list.
+Then('the JSON output includes a notification with title {string}', function (title) {
+  let parsed
+  try {
+    parsed = JSON.parse(this.lastResult.stdout)
+  } catch (err) {
+    assert.fail(`stdout is not valid JSON: ${err.message}; got: ${this.lastResult.stdout}`)
+  }
+  assert.ok(Array.isArray(parsed), `expected a JSON array, got: ${this.lastResult.stdout}`)
+  assert.ok(
+    parsed.some((n) => n.title === title),
+    `expected a notification titled "${title}"; got: ${this.lastResult.stdout}`
+  )
 })
 
 Then('the JSON output contains a notification with title {string}', async function (title) {

@@ -22,8 +22,21 @@ const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms))
 class NbkWorld extends World {
   lastResult = null
 
+  pendingDeliveries = []
+
   async deliver(title, body = 'acceptance body') {
     await run('osascript', ['-e', `display notification "${body}" with title "${title}"`])
+  }
+
+  // Fire-and-forget a delivery `delayMs` from now, tracked so the After hook can
+  // await it before clearing (avoids a late banner leaking into the next scenario).
+  scheduleDelivery(title, delayMs) {
+    this.pendingDeliveries.push(sleep(delayMs).then(() => this.deliver(title)))
+  }
+
+  async settleDeliveries() {
+    await Promise.allSettled(this.pendingDeliveries)
+    this.pendingDeliveries = []
   }
 
   // Run nbk without touching lastResult (used by the housekeeping helpers).

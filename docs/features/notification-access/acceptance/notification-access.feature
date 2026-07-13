@@ -11,6 +11,15 @@ Feature: Notification access
     Then the command succeeds
     And the JSON output contains a notification with title "AcceptanceProbe"
 
+  # Validates RNA-3: --wait polls past delivery/render delay, catching a
+  # notification that only arrives after the command has already started.
+  Scenario: Waiting catches a notification delivered after the command starts
+    Given no notifications are presented
+    When a notification with title "SlowProbe" is delivered after 2 seconds
+    And I run "nbk list --wait 8"
+    Then the command succeeds
+    And the JSON output includes a notification with title "SlowProbe"
+
   # The @wip scenarios below are the agreed specification for the rest of the feature
   # (RNA-4,5,7,9). They are excluded until the corresponding subcommands exist; their
   # step wording will be refined against the real CLI.
