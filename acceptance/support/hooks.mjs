@@ -11,3 +11,12 @@ After(async function () {
   await this.settleDeliveries()
   await this.clearTestNotifications()
 })
+
+// Restore what the @operator scenario revoked. Runs before the generic After
+// (cucumber runs After hooks in reverse definition order), so trust is back
+// before the cleanup that relies on it.
+// timeout: -1 — blocks on human input to restore trust; cucumber's 5s cap must not apply.
+After({ tags: '@operator', timeout: -1 }, async function () {
+  // Restore trust so subsequent runs work; loops until doctor confirms.
+  await this.operatorSetTrust(true)
+})

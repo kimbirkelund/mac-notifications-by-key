@@ -1,5 +1,6 @@
 import { setWorldConstructor, World } from '@cucumber/cucumber'
 import { execFile } from 'node:child_process'
+import fs from 'node:fs'
 import { promisify } from 'node:util'
 
 const run = promisify(execFile)
@@ -37,6 +38,66 @@ class NbkWorld extends World {
   async settleDeliveries() {
     await Promise.allSettled(this.pendingDeliveries)
     this.pendingDeliveries = []
+  }
+
+  // Substitute for an action with no programmatic API (RNA-9: revoke/grant AX
+  // trust). Blocks until the operator presses Enter. Reads the controlling
+  // terminal (/dev/tty) with a synchronous read rather than process.stdin, which
+  // cucumber detaches — so the wait is real, not skipped. No tty (CI) → throws,
+  // which is why the scenario is @operator and never runs unattended.
+  async promptOperator(message) {
+    let fd
+    try {
+      fd = fs.openSync('/dev/tty', 'r')
+    } catch {
+      throw new Error(
+        'operator step requires an interactive terminal (/dev/tty); run: npx cucumber-js -p operator'
+      )
+    }
+    process.stdout.write(`\n[operator] ${message}\n[operator] Press Enter when done... `)
+    const buf = Buffer.alloc(1)
+    try {
+      for (;;) {
+        let n
+        try {
+          n = fs.readSync(fd, buf, 0, 1, null)
+        } catch (err) {
+          if (err.code === 'EAGAIN') continue
+          throw err
+        }
+        if (n === 0 || buf[0] === 0x0a) break
+      }
+    } finally {
+      fs.closeSync(fd)
+    }
+  }
+
+  // Ground truth for AX trust: `nbk doctor` exits 0 iff trusted (build.ps1 uses
+  // the same preflight).
+  async isTrusted() {
+    return (await this.exec(['doctor'])).code === 0
+  }
+
+  // Drive the operator until nbk's trust state matches `wantTrusted`, using
+  // `nbk doctor` as ground truth. We deliberately don't name the app that holds
+  // the grant: with a terminal multiplexer / process reparenting it can't be
+  // detected reliably (TERM_PROGRAM goes stale, the ppid chain breaks). Instead
+  // the loop re-checks after each prompt and nags until doctor agrees, so a wrong
+  // toggle can't silently pass.
+  async operatorSetTrust(wantTrusted) {
+    const verb = wantTrusted ? 'Grant' : 'Revoke'
+    const where = 'System Settings -> Privacy & Security -> Accessibility'
+    let attempt = 0
+    while ((await this.isTrusted()) !== wantTrusted) {
+      const message =
+        attempt === 0
+          ? `${verb} Accessibility trust for the terminal application hosting this test run — ` +
+            `the entry under ${where} that governs it — then return here.`
+          : `nbk still reports ${wantTrusted ? 'untrusted' : 'trusted'}: the wrong entry was ` +
+            `toggled, or the change has not applied yet. Adjust the correct entry and return here.`
+      await this.promptOperator(message)
+      attempt++
+    }
   }
 
   // Run nbk without touching lastResult (used by the housekeeping helpers).
