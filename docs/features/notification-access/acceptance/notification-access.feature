@@ -39,17 +39,18 @@ Feature: Notification access
     And I run "nbk list"
     And the JSON output does not include a notification with title "DismissMe"
 
-  # The @wip scenarios below are the agreed specification for the rest of the feature
-  # (RNA-5,7,9). They are excluded until the corresponding subcommands exist; their
-  # step wording will be refined against the real CLI.
-
-  @wip
+  # Validates RNA-5: perform a named action the notification exposes, exit 0.
+  # A Script Editor notification exposes "Show Details", "Show", "Close".
   Scenario: Triggering a named action on a notification
     # RNA-5
     Given a notification is delivered with title "ActOnMe"
     And I run "nbk list --wait 5"
     When I run "nbk action 0 \"Show\""
     Then the command succeeds
+
+  # The @wip scenarios below are the agreed specification for the rest of the feature
+  # (RNA-7,9). They are excluded until the corresponding subcommands exist; their
+  # step wording will be refined against the real CLI.
 
   @wip
   Scenario: Designating an out-of-range index fails safely
