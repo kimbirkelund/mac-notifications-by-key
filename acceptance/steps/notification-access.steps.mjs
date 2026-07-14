@@ -22,8 +22,8 @@ Given('no notifications are presented', async function () {
 // them, then confirm the substitute precondition actually holds before proceeding.
 Given('the operator has revoked Accessibility trust for the test runner', async function () {
   await this.promptOperator(
-    'Revoke Accessibility trust for the process running these tests ' +
-      '(System Settings -> Privacy & Security -> Accessibility), then return here.'
+    `Revoke Accessibility trust for ${this.runnerProcessHint}. Toggle it off (or remove it), ` +
+      'then return here.'
   )
   assert.equal(
     await this.isTrusted(),
