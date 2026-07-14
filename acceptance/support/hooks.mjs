@@ -11,3 +11,12 @@ After(async function () {
   await this.settleDeliveries()
   await this.clearTestNotifications()
 })
+
+// Restore what the @operator scenario revoked. Runs before the generic After
+// (cucumber runs After hooks in reverse definition order), so trust is back
+// before the cleanup that relies on it.
+After({ tags: '@operator' }, async function () {
+  await this.promptOperator(
+    'Re-grant Accessibility trust for the test runner so other tests work, then return here.'
+  )
+})

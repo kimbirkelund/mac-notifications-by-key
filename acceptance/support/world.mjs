@@ -1,5 +1,6 @@
 import { setWorldConstructor, World } from '@cucumber/cucumber'
 import { execFile } from 'node:child_process'
+import readline from 'node:readline'
 import { promisify } from 'node:util'
 
 const run = promisify(execFile)
@@ -37,6 +38,31 @@ class NbkWorld extends World {
   async settleDeliveries() {
     await Promise.allSettled(this.pendingDeliveries)
     this.pendingDeliveries = []
+  }
+
+  // Substitute for an action with no programmatic API (RNA-9: revoke/grant AX
+  // trust). Prompts the human and blocks on Enter. Requires an interactive TTY,
+  // so it only runs in the attended `@operator` profile, never in CI.
+  async promptOperator(message) {
+    if (!process.stdin.isTTY) {
+      throw new Error(
+        'operator step requires an interactive terminal; run: npx cucumber-js -p operator'
+      )
+    }
+    const rl = readline.createInterface({ input: process.stdin, output: process.stdout })
+    try {
+      await new Promise((resolve) =>
+        rl.question(`\n[operator] ${message}\n[operator] Press Enter when done... `, resolve)
+      )
+    } finally {
+      rl.close()
+    }
+  }
+
+  // Ground truth for AX trust: `nbk doctor` exits 0 iff trusted (build.ps1 uses
+  // the same preflight).
+  async isTrusted() {
+    return (await this.exec(['doctor'])).code === 0
   }
 
   // Run nbk without touching lastResult (used by the housekeeping helpers).

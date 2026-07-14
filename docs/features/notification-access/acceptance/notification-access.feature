@@ -48,11 +48,16 @@ Feature: Notification access
     When I run "nbk action 0 \"Show\""
     Then the command succeeds
 
-  # The @wip scenarios below are the agreed specification for the rest of the feature
-  # (RNA-7,9). They are excluded until the corresponding subcommands exist; their
-  # step wording will be refined against the real CLI.
+  # Validates RNA-6: default activation (AXPress) on a notification, exit 0.
+  Scenario: Activating a notification with press
+    # RNA-6
+    Given a notification is delivered with title "PressMe"
+    And I run "nbk list --wait 5"
+    When I run "nbk press 0"
+    Then the command succeeds
 
-  @wip
+  # Validates RNA-7: designating an index with no notification present is a safe
+  # failure — no action, non-zero exit, error names the bad index.
   Scenario: Designating an out-of-range index fails safely
     # RNA-7 — no action, non-zero exit, nothing else dismissed
     Given no notifications are presented
@@ -60,10 +65,33 @@ Feature: Notification access
     Then the command fails
     And the error output mentions an out-of-range index
 
-  @wip
+  # Validates RNA-8: performing an action the notification does not expose fails,
+  # naming the available actions, and performs nothing.
+  Scenario: Triggering an unknown action fails and lists what is available
+    # RNA-8
+    Given a notification is delivered with title "UnknownActionMe"
+    And I run "nbk list --wait 5"
+    When I run "nbk action 0 \"NoSuchAction\""
+    Then the command fails
+    And the error output lists the available actions
+
+  # Validates RNA-10: doctor reports trust, the resolved Notification Center
+  # process, and the running macOS version.
+  Scenario: Doctor reports the environment
+    # RNA-10
+    When I run "nbk doctor"
+    Then the command succeeds
+    And the doctor output reports trust, the Notification Center process, and the macOS version
+
+  # RNA-9 — there is no programmatic API to revoke Accessibility trust, so this
+  # scenario substitutes a human operator for that step. It is @operator (excluded
+  # from the default/CI run) and attended: run it on demand with
+  #   npx cucumber-js -p operator
+  # The operator revokes trust when prompted; the run restores it afterwards.
+  @operator
   Scenario: Missing Accessibility trust is reported
     # RNA-9 — run in a host without AX trust
-    Given the host lacks Accessibility trust
+    Given the operator has revoked Accessibility trust for the test runner
     When I run "nbk list"
     Then the command fails
     And the error output explains how to grant Accessibility permission
