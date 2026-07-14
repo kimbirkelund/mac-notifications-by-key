@@ -32,6 +32,26 @@ trust** for the test host ([C-2](constraints.md)), and they **deliver real notif
 the `--wait` behavior). These tiers are therefore environment-dependent: `build.ps1` preflights AX
 trust and skips them with a clear message when it is absent, rather than reporting false failures.
 
+## Attended (@operator) scenarios
+
+**Last resort only, and only after checking with the human.** An attended scenario trades away
+unattended/CI execution, so first exhaust the alternatives: push the logic to a tier with an API
+(unit/AX-integration), find a programmatic substitute, or leave the requirement uncovered with a
+note. Propose an `@operator` scenario to the human and get agreement before writing one.
+
+When a scenario genuinely needs a step with no programmatic API (e.g. revoking Accessibility trust),
+substitute a human operator rather than dropping the requirement. Conventions:
+
+- Tag `@operator`; exclude from the default/CI run. cucumber-js ANDs config `tags` with CLI
+  `--tags`, so expose a named profile instead of a tag flag: run with `npx cucumber-js -p operator`.
+- Block for real: read `/dev/tty` synchronously, not `process.stdin` (cucumber detaches it).
+- Set `timeout: -1` on the attended step/hook — the human wait exceeds the 5s cap.
+- Verify the substituted precondition by ground truth (`nbk doctor`), looping until it agrees. Do
+  not guess the environment (`TERM_PROGRAM` / ppid are unreliable under multiplexers and
+  reparenting).
+- Always restore what you changed in an `@operator`-scoped `After` (also verify-looped), so a
+  timed-out or failed run can't leave the machine altered.
+
 ## TDD
 
 Unit-tier logic is developed **test-first (red → green → refactor) whenever practical** — write the

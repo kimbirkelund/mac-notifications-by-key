@@ -47,3 +47,7 @@ validates is fine in test comments.
 - Use [Conventional Commits](https://www.conventionalcommits.org) (`type: subject`, e.g. `feat:`,
   `fix:`, `docs:`, `test:`, `refactor:`, `chore:`, `ci:`, `build:`), single-line.
 - Never include yourself as co-author.
+- `main` is protected by a repo ruleset (required status checks, strict up-to-date). Land work by
+  rebasing onto `origin/main`, pushing, then arming squash auto-merge
+  (`gh pr merge --squash --auto`) — it merges once checks go green. Never `--admin`-bypass the
+  ruleset without an explicit instruction.
