@@ -8,5 +8,6 @@ Before(async function () {
 })
 
 After(async function () {
+  await this.settleDeliveries()
   await this.clearTestNotifications()
 })

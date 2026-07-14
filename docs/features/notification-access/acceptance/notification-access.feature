@@ -11,9 +11,14 @@ Feature: Notification access
     Then the command succeeds
     And the JSON output contains a notification with title "AcceptanceProbe"
 
-  # The @wip scenarios below are the agreed specification for the rest of the feature
-  # (RNA-4,5,7,9). They are excluded until the corresponding subcommands exist; their
-  # step wording will be refined against the real CLI.
+  # Validates RNA-3: --wait polls past delivery/render delay, catching a
+  # notification that only arrives after the command has already started.
+  Scenario: Waiting catches a notification delivered after the command starts
+    Given no notifications are presented
+    When a notification with title "SlowProbe" is delivered after 2 seconds
+    And I run "nbk list --wait 8"
+    Then the command succeeds
+    And the JSON output includes a notification with title "SlowProbe"
 
   # Validates RNA-2: with nothing presented, `list` emits an empty array, exit 0.
   Scenario: Listing is empty when nothing is presented
@@ -23,14 +28,20 @@ Feature: Notification access
     Then the command succeeds
     And the JSON output is an empty array
 
-  @wip
+  # Validates RNA-4: dismiss the notification at index 0 (the newest), exit 0,
+  # and it is no longer presented.
   Scenario: Dismissing the newest notification removes it
     # RNA-4
     Given a notification is delivered with title "DismissMe"
     And I run "nbk list --wait 5"
     When I run "nbk dismiss 0"
     Then the command succeeds
-    And "nbk list" does not contain a notification with title "DismissMe"
+    And I run "nbk list"
+    And the JSON output does not include a notification with title "DismissMe"
+
+  # The @wip scenarios below are the agreed specification for the rest of the feature
+  # (RNA-5,7,9). They are excluded until the corresponding subcommands exist; their
+  # step wording will be refined against the real CLI.
 
   @wip
   Scenario: Triggering a named action on a notification

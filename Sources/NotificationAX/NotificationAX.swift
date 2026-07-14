@@ -85,7 +85,8 @@ public enum NotificationAX {
             guard pid > 0 else { continue }
             let length = proc_pidpath(pid, &pathBuffer, UInt32(pathInfoMaxSize))
             guard length > 0 else { continue }
-            if String(cString: pathBuffer).contains(needle) { return pid }
+            let bytes = pathBuffer[..<Int(length)].map { UInt8(bitPattern: $0) }
+            if String(decoding: bytes, as: UTF8.self).contains(needle) { return pid }
         }
         return nil
     }
@@ -111,6 +112,16 @@ public enum NotificationAX {
         AXUIElementSetAttributeValue(element, kAXFocusedAttribute as CFString, kCFBooleanTrue)
         Thread.sleep(forTimeInterval: 0.3)
         try perform(displayName: "Close", on: element)
+        // Close is asynchronous in Notification Center: it returns before the banner
+        // leaves the tree. Wait (bounded) until it's gone so a subsequent `list`
+        // reflects the dismissal.
+        let pid = try requirePID()
+        let deadline = Date().addingTimeInterval(2)
+        while Date() < deadline,
+            notificationElements(pid).contains(where: { CFEqual($0, element) })
+        {
+            Thread.sleep(forTimeInterval: 0.1)
+        }
     }
 
     public static func press(index n: Int) throws {

@@ -38,6 +38,42 @@ public enum Output {
     }
 }
 
+/// CLI argument errors, mapped to a usage exit code in `nbk`.
+public enum ArgumentError: Error, Equatable, Sendable {
+    case missingValue(flag: String)
+    case invalidValue(flag: String, value: String)
+    case negativeValue(flag: String, value: String)
+
+    public var message: String {
+        switch self {
+        case .missingValue(let flag):
+            return "\(flag) requires a value (seconds)."
+        case .invalidValue(let flag, let value):
+            return "\(flag) expects a number of seconds, got \"\(value)\"."
+        case .negativeValue(let flag, let value):
+            return "\(flag) must not be negative, got \"\(value)\"."
+        }
+    }
+
+    /// 64 = EX_USAGE, matching the other argument-usage failures in `nbk`.
+    public var exitCode: Int32 { 64 }
+}
+
+/// Parses the `--wait <seconds>` option (RNA-3). Absent → 0; present requires a
+/// non-negative number. Kept pure so validation is unit-tested without the AX layer.
+public enum WaitOption {
+    public static func parse(_ tokens: [String]) throws -> TimeInterval {
+        guard let i = tokens.firstIndex(of: "--wait") else { return 0 }
+        guard i + 1 < tokens.count else { throw ArgumentError.missingValue(flag: "--wait") }
+        let raw = tokens[i + 1]
+        guard let seconds = Double(raw) else {
+            throw ArgumentError.invalidValue(flag: "--wait", value: raw)
+        }
+        guard seconds >= 0 else { throw ArgumentError.negativeValue(flag: "--wait", value: raw) }
+        return seconds
+    }
+}
+
 /// Index selection (RNA-7: out-of-range is nil, never the wrong target).
 public enum Selection {
     public static func at(_ items: [NotificationItem], _ n: Int) -> NotificationItem? {
