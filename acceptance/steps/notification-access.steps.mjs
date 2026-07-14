@@ -20,10 +20,15 @@ Given('no notifications are presented', async function () {
 
 // RNA-9: no API revokes Accessibility trust, so a human operator stands in. Prompt
 // them, then confirm the substitute precondition actually holds before proceeding.
-Given('the operator has revoked Accessibility trust for the test runner', async function () {
-  // Returns only once `nbk doctor` confirms trust is actually gone.
-  await this.operatorSetTrust(false)
-})
+// timeout: -1 — this step blocks on human input, so cucumber's 5s cap must not apply.
+Given(
+  'the operator has revoked Accessibility trust for the test runner',
+  { timeout: -1 },
+  async function () {
+    // Returns only once `nbk doctor` confirms trust is actually gone.
+    await this.operatorSetTrust(false)
+  }
+)
 
 // Schedule (do not await) a delivery so it fires while a later `list --wait`
 // step is already polling. Proves --wait catches post-invocation deliveries.
