@@ -21,15 +21,8 @@ Given('no notifications are presented', async function () {
 // RNA-9: no API revokes Accessibility trust, so a human operator stands in. Prompt
 // them, then confirm the substitute precondition actually holds before proceeding.
 Given('the operator has revoked Accessibility trust for the test runner', async function () {
-  await this.promptOperator(
-    `Revoke Accessibility trust for ${this.runnerProcessHint}. Toggle it off (or remove it), ` +
-      'then return here.'
-  )
-  assert.equal(
-    await this.isTrusted(),
-    false,
-    'expected Accessibility trust to be revoked, but nbk still reports trusted'
-  )
+  // Returns only once `nbk doctor` confirms trust is actually gone.
+  await this.operatorSetTrust(false)
 })
 
 // Schedule (do not await) a delivery so it fires while a later `list --wait`

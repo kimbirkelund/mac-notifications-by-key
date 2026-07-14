@@ -16,8 +16,6 @@ After(async function () {
 // (cucumber runs After hooks in reverse definition order), so trust is back
 // before the cleanup that relies on it.
 After({ tags: '@operator' }, async function () {
-  await this.promptOperator(
-    `Re-grant Accessibility trust for ${this.runnerProcessHint}. Toggle it back on so other ` +
-      'tests work, then return here.'
-  )
+  // Restore trust so subsequent runs work; loops until doctor confirms.
+  await this.operatorSetTrust(true)
 })

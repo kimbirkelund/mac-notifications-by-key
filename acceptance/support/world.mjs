@@ -78,18 +78,26 @@ class NbkWorld extends World {
     return (await this.exec(['doctor'])).code === 0
   }
 
-  // Names the process whose Accessibility grant nbk inherits, so the operator
-  // toggles the right System Settings entry. TCC attributes trust to the terminal
-  // application that hosts the run (nbk is a child of node is a child of the
-  // terminal), surfaced here via TERM_PROGRAM.
-  get runnerProcessHint() {
-    const term = process.env.TERM_PROGRAM
+  // Drive the operator until nbk's trust state matches `wantTrusted`, using
+  // `nbk doctor` as ground truth. We deliberately don't name the app that holds
+  // the grant: with a terminal multiplexer / process reparenting it can't be
+  // detected reliably (TERM_PROGRAM goes stale, the ppid chain breaks). Instead
+  // the loop re-checks after each prompt and nags until doctor agrees, so a wrong
+  // toggle can't silently pass.
+  async operatorSetTrust(wantTrusted) {
+    const verb = wantTrusted ? 'Grant' : 'Revoke'
     const where = 'System Settings -> Privacy & Security -> Accessibility'
-    return term
-      ? `the terminal application you launched these tests from — TERM_PROGRAM="${term}" — ` +
-          `its entry (not "nbk") is the one under ${where}`
-      : `the terminal application you launched these tests from — its entry (not "nbk") ` +
-          `is the one under ${where}`
+    let attempt = 0
+    while ((await this.isTrusted()) !== wantTrusted) {
+      const message =
+        attempt === 0
+          ? `${verb} Accessibility trust for the terminal application hosting this test run — ` +
+            `the entry under ${where} that governs it — then return here.`
+          : `nbk still reports ${wantTrusted ? 'untrusted' : 'trusted'}: the wrong entry was ` +
+            `toggled, or the change has not applied yet. Adjust the correct entry and return here.`
+      await this.promptOperator(message)
+      attempt++
+    }
   }
 
   // Run nbk without touching lastResult (used by the housekeeping helpers).
