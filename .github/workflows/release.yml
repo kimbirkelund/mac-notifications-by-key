@@ -1,13 +1,14 @@
 name: Release
 
 # Build a universal macOS binary and publish it to a GitHub Release. Triggered by
-# pushing a release tag like `releases/v1.2.3`; the version is the part after
-# `releases/v`. The published tarball + SHA256 are what the Homebrew formula
-# consumes (see packaging/homebrew/nbk.rb).
+# pushing a release tag like `release/v1.2.3`; the version itself is computed by
+# nbgv from git state (version.json + git height), not parsed from the tag name.
+# The published tarball + SHA256 are what the Homebrew formula consumes (see
+# packaging/homebrew/nbk.rb).
 on:
   push:
     tags:
-      - 'releases/v*'
+      - 'release/v*'
 
 permissions:
   contents: write
@@ -18,14 +19,24 @@ jobs:
     runs-on: macos-latest
     steps:
       - uses: actions/checkout@v7.0.0
+        with:
+          # nbgv derives the version from git height, so it needs full history.
+          fetch-depth: 0
 
       - uses: maxim-lobanov/setup-xcode@v1.7.0
         with:
           xcode-version: latest-stable
 
-      - name: Derive version from tag
+      # nbgv runs as a .NET tool; hosted macOS runners don't guarantee a runtime.
+      - uses: actions/setup-dotnet@v6.0.0
+        with:
+          dotnet-version: 10.0.x
+
+      # Deterministic version from git state (version.json + git height) rather than
+      # the tag name. Exposes fields like NpmPackageVersion as step outputs.
+      - name: Compute version (nbgv)
         id: v
-        run: echo "version=${GITHUB_REF_NAME#releases/v}" >> "$GITHUB_OUTPUT"
+        uses: dotnet/nbgv@v0.5.2
 
       # Gate the release on the unit tier (the AX/acceptance tiers can't run on a
       # hosted runner — no Accessibility trust).
@@ -35,12 +46,12 @@ jobs:
 
       - name: Package universal binary
         shell: pwsh
-        run: ./build.ps1 -DoPackage -Version "${{ steps.v.outputs.version }}"
+        run: ./build.ps1 -DoPackage -Version "${{ steps.v.outputs.NpmPackageVersion }}"
 
       - name: Read SHA256
         id: sha
         run: |
-          file="dist/nbk-${{ steps.v.outputs.version }}-macos-universal.tar.gz.sha256"
+          file="dist/nbk-${{ steps.v.outputs.NpmPackageVersion }}-macos-universal.tar.gz.sha256"
           echo "sha256=$(cut -d' ' -f1 "$file")" >> "$GITHUB_OUTPUT"
 
       - name: Publish GitHub Release
@@ -55,7 +66,7 @@ jobs:
             Homebrew formula values for this release:
 
             ```
-            url     https://github.com/${{ github.repository }}/releases/download/${{ github.ref_name }}/nbk-${{ steps.v.outputs.version }}-macos-universal.tar.gz
+            url     https://github.com/${{ github.repository }}/releases/download/${{ github.ref_name }}/nbk-${{ steps.v.outputs.NpmPackageVersion }}-macos-universal.tar.gz
             sha256  ${{ steps.sha.outputs.sha256 }}
-            version ${{ steps.v.outputs.version }}
+            version ${{ steps.v.outputs.NpmPackageVersion }}
             ```
