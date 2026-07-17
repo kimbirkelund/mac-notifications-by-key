@@ -1,13 +1,16 @@
 name: Release
 
 # Build a universal macOS binary and publish it to a GitHub Release. Triggered by
-# pushing a release tag like `releases/v1.2.3`; the version is the part after
-# `releases/v`. The published tarball + SHA256 are what the Homebrew formula
-# consumes (see packaging/homebrew/nbk.rb).
+# pushing a release tag like `release/v1.2.3` (final release) or pushing an `rc/*`
+# branch (prerelease). The version is computed by nbgv from git state (version.json
+# + git height), not parsed from the ref. The published tarball + SHA256 are what
+# the Homebrew formula consumes (see packaging/homebrew/nbk.rb).
 on:
   push:
     tags:
-      - 'releases/v*'
+      - 'release/v*'
+    branches:
+      - 'rc/**'
 
 permissions:
   contents: write
@@ -18,14 +21,43 @@ jobs:
     runs-on: macos-latest
     steps:
       - uses: actions/checkout@v7.0.0
+        with:
+          # nbgv derives the version from git height, so it needs full history.
+          fetch-depth: 0
 
       - uses: maxim-lobanov/setup-xcode@v1.7.0
         with:
           xcode-version: latest-stable
 
-      - name: Derive version from tag
+      # nbgv runs as a .NET tool; hosted macOS runners don't guarantee a runtime.
+      - uses: actions/setup-dotnet@v6.0.0
+        with:
+          dotnet-version: 10.0.x
+
+      # Deterministic version from git state (version.json + git height) rather than
+      # the tag name. Exposes fields like NpmPackageVersion as step outputs.
+      - name: Compute version (nbgv)
         id: v
-        run: echo "version=${GITHUB_REF_NAME#releases/v}" >> "$GITHUB_OUTPUT"
+        uses: dotnet/nbgv@v0.5.2
+
+      # A tag push is a final release; an rc/* branch push is a prerelease. A branch
+      # event has no tag, so synthesize release/v<version> for action-gh-release.
+      - name: Determine release metadata
+        id: meta
+        env:
+          VERSION: ${{ steps.v.outputs.NpmPackageVersion }}
+        run: |
+          if [ "$GITHUB_REF_TYPE" = "tag" ]; then
+            tag="$GITHUB_REF_NAME"
+            prerelease=false
+          else
+            tag="release/v$VERSION"
+            prerelease=true
+          fi
+          {
+            echo "tag=$tag"
+            echo "prerelease=$prerelease"
+          } >> "$GITHUB_OUTPUT"
 
       # Gate the release on the unit tier (the AX/acceptance tiers can't run on a
       # hosted runner — no Accessibility trust).
@@ -35,27 +67,60 @@ jobs:
 
       - name: Package universal binary
         shell: pwsh
-        run: ./build.ps1 -DoPackage -Version "${{ steps.v.outputs.version }}"
+        run: ./build.ps1 -DoPackage -Version "${{ steps.v.outputs.NpmPackageVersion }}"
 
       - name: Read SHA256
         id: sha
         run: |
-          file="dist/nbk-${{ steps.v.outputs.version }}-macos-universal.tar.gz.sha256"
+          file="dist/nbk-${{ steps.v.outputs.NpmPackageVersion }}-macos-universal.tar.gz.sha256"
           echo "sha256=$(cut -d' ' -f1 "$file")" >> "$GITHUB_OUTPUT"
+
+      # Build the release body: Homebrew values + a PR-based changelog. For a FINAL
+      # release we diff against the latest NON-prerelease tag (skipping the rc betas),
+      # which action-gh-release's generate_release_notes flag can't do — so we call the
+      # generate-notes API directly with previous_tag_name. The API honors
+      # .github/release.yml (categories/excludes).
+      - name: Compose release notes
+        id: notes
+        env:
+          GH_TOKEN: ${{ github.token }}
+          TAG: ${{ steps.meta.outputs.tag }}
+          VERSION: ${{ steps.v.outputs.NpmPackageVersion }}
+          SHA256: ${{ steps.sha.outputs.sha256 }}
+          PRERELEASE: ${{ steps.meta.outputs.prerelease }}
+        run: |
+          args=(-f tag_name="$TAG" -f target_commitish="$GITHUB_SHA")
+          if [ "$PRERELEASE" = "false" ]; then
+            # latest final tag (release/vX.Y.Z, no prerelease), excluding this one
+            prev=$(git tag --list 'release/v*' | grep -E '^release/v[0-9]+\.[0-9]+\.[0-9]+$' | grep -vFx "$TAG" | sort -V | tail -n1)
+            [ -n "$prev" ] && args+=(-f previous_tag_name="$prev")
+          fi
+          changelog=$(gh api "repos/$GITHUB_REPOSITORY/releases/generate-notes" "${args[@]}" --jq .body)
+          notes="$RUNNER_TEMP/notes.md"
+          {
+            echo "Universal (arm64 + x86_64) macOS build of \`nbk\`."
+            echo
+            echo "Homebrew formula values for this release:"
+            echo
+            echo '```'
+            echo "url     https://github.com/$GITHUB_REPOSITORY/releases/download/$TAG/nbk-$VERSION-macos-universal.tar.gz"
+            echo "sha256  $SHA256"
+            echo "version $VERSION"
+            echo '```'
+            echo
+            echo "$changelog"
+          } > "$notes"
+          echo "path=$notes" >> "$GITHUB_OUTPUT"
 
       - name: Publish GitHub Release
         uses: softprops/action-gh-release@v3.0.2
         with:
+          tag_name: ${{ steps.meta.outputs.tag }}
+          # For an rc push the tag doesn't exist yet; without this the API creates it
+          # on the default branch (main). Pin it to the commit that triggered the run.
+          target_commitish: ${{ github.sha }}
+          prerelease: ${{ steps.meta.outputs.prerelease }}
+          body_path: ${{ steps.notes.outputs.path }}
           files: |
             dist/nbk-*-macos-universal.tar.gz
             dist/nbk-*-macos-universal.tar.gz.sha256
-          body: |
-            Universal (arm64 + x86_64) macOS build of `nbk`.
-
-            Homebrew formula values for this release:
-
-            ```
-            url     https://github.com/${{ github.repository }}/releases/download/${{ github.ref_name }}/nbk-${{ steps.v.outputs.version }}-macos-universal.tar.gz
-            sha256  ${{ steps.sha.outputs.sha256 }}
-            version ${{ steps.v.outputs.version }}
-            ```

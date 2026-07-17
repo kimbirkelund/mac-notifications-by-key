@@ -11,3 +11,5 @@ Package.resolved
 *.feature
 # Ruby (Homebrew formula) has no prettier parser.
 *.rb
+# version.json is written and formatted by nbgv, not us.
+version.json
