@@ -1,0 +1,109 @@
+name: Tag release candidate
+
+# Manually-triggered from an rc/* branch (pick the branch in the "Run workflow"
+# dropdown). Finalizes the release: stabilizes the version (strips the -beta
+# prerelease), tags it, pushes the tag to fire the Release workflow, merges the
+# stabilization back into main (keeping main's version), then deletes the RC branch.
+#
+# NOTE: pushing the tag / opening the merge PR with the default GITHUB_TOKEN does
+# NOT trigger downstream workflows. Provide a PAT_RELEASE secret (PAT/App token);
+# it falls back to github.token only when unset.
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: write
+  pull-requests: write
+
+jobs:
+  tag-rc:
+    name: tag-rc
+    runs-on: ubuntu-latest
+    steps:
+      - name: Guard against non-RC branches
+        run: |
+          case "$GITHUB_REF_NAME" in
+            rc/*) ;;
+            *) echo "This workflow must be dispatched from an rc/* branch (got '$GITHUB_REF_NAME')." >&2; exit 1 ;;
+          esac
+
+      - uses: actions/checkout@v7.0.0
+        with:
+          # nbgv needs full history; the configured token is reused for pushes.
+          fetch-depth: 0
+          token: ${{ secrets.PAT_RELEASE || github.token }}
+
+      - uses: actions/setup-dotnet@v6.0.0
+        with:
+          dotnet-version: 10.0.x
+
+      - name: Install nbgv
+        run: |
+          dotnet tool install --global nbgv
+          echo "$HOME/.dotnet/tools" >> "$GITHUB_PATH"
+
+      - name: Configure git identity
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+
+      # Strip the -beta prerelease so the tagged version is a clean final release.
+      - name: Stabilize version
+        run: |
+          base=$(nbgv get-version -v MajorMinorVersion)
+          nbgv set-version "$base"
+          git commit -am "chore: stabilize v$base"
+
+      # nbgv tag names the tag per release.tagName (release/v{version}); capture the
+      # tag it actually created rather than reconstruct the version string.
+      - name: Tag with nbgv
+        id: tag
+        run: |
+          nbgv tag
+          tag=$(git tag --points-at HEAD --list 'release/v*' | tail -n1)
+          if [ -z "$tag" ]; then
+            echo "nbgv tag did not create a release/v* tag on HEAD." >&2
+            exit 1
+          fi
+          {
+            echo "tag=$tag"
+            echo "rc_commit=$(git rev-parse HEAD)"
+          } >> "$GITHUB_OUTPUT"
+
+      - name: Push tag
+        env:
+          TAG: ${{ steps.tag.outputs.tag }}
+        run: git push origin "refs/tags/$TAG"
+
+      # Merge the stabilization back into main, keeping main's in-flight version.json
+      # (its -alpha), not the stabilized release version. main is protected, so this
+      # lands via an auto-merge PR.
+      - name: Merge back into main
+        env:
+          GH_TOKEN: ${{ secrets.PAT_RELEASE || github.token }}
+          TAG: ${{ steps.tag.outputs.tag }}
+          RC_COMMIT: ${{ steps.tag.outputs.rc_commit }}
+        run: |
+          merge_branch="merge/${TAG}-into-main"
+          git fetch origin main
+          git switch -c "$merge_branch" origin/main
+          git merge --no-ff --no-commit "$RC_COMMIT" || true
+          git checkout --ours version.json
+          git add version.json
+          if [ -n "$(git diff --name-only --diff-filter=U)" ]; then
+            echo "Unexpected merge conflicts beyond version.json:" >&2
+            git diff --name-only --diff-filter=U >&2
+            exit 1
+          fi
+          git commit --no-edit
+          git push origin "$merge_branch"
+          gh pr create \
+            --base main \
+            --head "$merge_branch" \
+            --label ignore \
+            --title "chore: merge $TAG back into main" \
+            --body "Merges the release stabilization for \`$TAG\` back into main, keeping main's in-flight version.json."
+          gh pr merge "$merge_branch" --squash --auto
+
+      - name: Delete RC branch
+        run: git push origin --delete "$GITHUB_REF_NAME"
