@@ -1,0 +1,89 @@
+name: Prepare release candidate
+
+# Manually-triggered. Cuts a release-candidate branch off the latest main:
+#   1. nbgv prepare-release beta -> creates the RC branch (rc/v<version>) at
+#      version <base>-beta, and bumps main to the next <base>-alpha (merging the
+#      RC branch back into main to pre-resolve version.json).
+#   2. The RC branch is pushed directly.
+#   3. The main version bump lands via an auto-merge PR (main is protected).
+#
+# NOTE: enabling PR auto-merge requires "Allow auto-merge" in repo settings, and
+# the bump PR must be opened with a token that triggers CI. The default
+# GITHUB_TOKEN does NOT trigger workflows on the PRs/branches it creates, so
+# required status checks would never run and auto-merge would hang. Provide a
+# PAT_RELEASE secret (a PAT or GitHub App token with repo + PR scope); it falls
+# back to github.token only when unset (auto-merge then won't complete on its own).
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: write
+  pull-requests: write
+
+jobs:
+  prepare-rc:
+    name: prepare-rc
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7.0.0
+        with:
+          ref: main
+          # nbgv needs full history; the configured token is reused for pushes.
+          fetch-depth: 0
+          token: ${{ secrets.PAT_RELEASE || github.token }}
+
+      - uses: actions/setup-dotnet@v6.0.0
+        with:
+          dotnet-version: 10.0.x
+
+      - name: Install nbgv
+        run: |
+          dotnet tool install --global nbgv
+          echo "$HOME/.dotnet/tools" >> "$GITHUB_PATH"
+
+      - name: Configure git identity
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+
+      # Creates the RC branch (-beta) and the main bump commit locally.
+      - name: Prepare release (nbgv)
+        id: prep
+        run: |
+          json=$(nbgv prepare-release beta --format json)
+          echo "$json"
+          {
+            echo "rc_branch=$(echo "$json" | jq -r '.NewBranch.Name')"
+            echo "rc_version=$(echo "$json" | jq -r '.NewBranch.Version')"
+            echo "dev_version=$(echo "$json" | jq -r '.CurrentBranch.Version')"
+          } >> "$GITHUB_OUTPUT"
+
+      - name: Push RC branch
+        env:
+          RC_BRANCH: ${{ steps.prep.outputs.rc_branch }}
+        run: git push origin "refs/heads/$RC_BRANCH"
+
+      # main is protected -> its version bump (current HEAD) goes via a PR branch.
+      - name: Push version-bump branch
+        id: bump
+        env:
+          DEV_VERSION: ${{ steps.prep.outputs.dev_version }}
+        run: |
+          bump_branch="chore/version-bump-$DEV_VERSION"
+          git push origin "HEAD:refs/heads/$bump_branch"
+          echo "bump_branch=$bump_branch" >> "$GITHUB_OUTPUT"
+
+      - name: Open bump PR and enable auto-merge
+        env:
+          GH_TOKEN: ${{ secrets.PAT_RELEASE || github.token }}
+          BUMP_BRANCH: ${{ steps.bump.outputs.bump_branch }}
+          RC_BRANCH: ${{ steps.prep.outputs.rc_branch }}
+          RC_VERSION: ${{ steps.prep.outputs.rc_version }}
+          DEV_VERSION: ${{ steps.prep.outputs.dev_version }}
+        run: |
+          gh pr create \
+            --base main \
+            --head "$BUMP_BRANCH" \
+            --title "chore: bump main to $DEV_VERSION" \
+            --body "Automated version bump after cutting release candidate \`$RC_BRANCH\` (\`$RC_VERSION\`)."
+          gh pr merge "$BUMP_BRANCH" --squash --auto
