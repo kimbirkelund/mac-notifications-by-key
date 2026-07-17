@@ -58,6 +58,32 @@ jobs:
             echo "dev_version=$(echo "$json" | jq -r '.CurrentBranch.Version')"
           } >> "$GITHUB_OUTPUT"
 
+      # nbgv writes version.json in its own style; re-format it with the repo's
+      # prettier so it passes the lint gate, amending each nbgv commit in place.
+      - uses: actions/setup-node@v7.0.0
+        with:
+          node-version: 24.18.0
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Normalize version.json formatting
+        env:
+          RC_BRANCH: ${{ steps.prep.outputs.rc_branch }}
+        run: |
+          format_and_amend() {
+            ./node_modules/.bin/prettier --write version.json
+            if ! git diff --quiet version.json; then
+              git add version.json
+              git commit --amend --no-edit
+            fi
+          }
+          format_and_amend
+          git checkout "$RC_BRANCH"
+          format_and_amend
+          git checkout main
+
       - name: Push RC branch
         env:
           RC_BRANCH: ${{ steps.prep.outputs.rc_branch }}
