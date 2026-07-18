@@ -1,0 +1,15 @@
+# Configures GitHub's auto-generated release notes (the changelog appended when a
+# release is published with generate_release_notes: true). Categories group merged
+# PRs by label; empty categories are omitted. PRs are not consistently labelled yet
+# (only Renovate adds `automerge`), so most land in "Other Changes" until labelling
+# starts — the mapped categories then populate automatically.
+changelog:
+  categories:
+    - title: Features
+      labels: [enhancement]
+    - title: Fixes
+      labels: [bug]
+    - title: Documentation
+      labels: [documentation]
+    - title: Other Changes
+      labels: ['*']
