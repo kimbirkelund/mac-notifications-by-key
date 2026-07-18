@@ -15,6 +15,11 @@ name: Prepare release candidate
 # back to github.token only when unset (auto-merge then won't complete on its own).
 on:
   workflow_dispatch:
+    inputs:
+      major:
+        description: Bump major instead of minor
+        type: boolean
+        default: false
 
 permissions:
   contents: write
@@ -46,11 +51,16 @@ jobs:
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
 
-      # Creates the RC branch (-beta) and the main bump commit locally.
+      # Creates the RC branch (-beta) and the main bump commit locally. The main
+      # bump is minor by default, or major when the workflow input is set.
       - name: Prepare release (nbgv)
         id: prep
+        env:
+          MAJOR: ${{ inputs.major }}
         run: |
-          json=$(nbgv prepare-release beta --format json)
+          inc=minor
+          if [ "$MAJOR" = "true" ]; then inc=major; fi
+          json=$(nbgv prepare-release beta --versionIncrement "$inc" --format json)
           echo "$json"
           {
             echo "rc_branch=$(echo "$json" | jq -r '.NewBranch.Name')"
