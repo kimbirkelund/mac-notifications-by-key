@@ -80,6 +80,9 @@ jobs:
         with:
           tag_name: ${{ steps.meta.outputs.tag }}
           prerelease: ${{ steps.meta.outputs.prerelease }}
+          # Append a PR-based changelog (categorized via .github/release.yml) after
+          # the body below.
+          generate_release_notes: true
           files: |
             dist/nbk-*-macos-universal.tar.gz
             dist/nbk-*-macos-universal.tar.gz.sha256
