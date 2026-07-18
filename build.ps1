@@ -190,8 +190,13 @@ if ($DoLint)
 
   if ($Fix)
   {
-    Write-Step 'swift-format (format in place)'
-    Invoke-Checked 'swift' (@('format', 'format', '--in-place', '--recursive') + $swiftPaths)
+    # swift-format ships with the Swift toolchain, only expected on macOS (C-5).
+    if ($IsMacOS)
+    {
+      Write-Step 'swift-format (format in place)'
+      Invoke-Checked 'swift' (@('format', 'format', '--in-place', '--recursive') + $swiftPaths)
+    }
+    else { Write-Skip 'swift-format (macOS only)' }
     Write-Step 'prettier (format docs in place)'
     Invoke-Checked $prettier @('--write', '--log-level', 'warn', '.')
     Write-Step 'PSScriptAnalyzer (format in place)'
@@ -208,8 +213,13 @@ if ($DoLint)
   }
   else
   {
-    Write-Step 'swift-format (lint)'
-    Invoke-Checked 'swift' (@('format', 'lint', '--strict', '--recursive') + $swiftPaths)
+    # swift-format ships with the Swift toolchain, only expected on macOS (C-5).
+    if ($IsMacOS)
+    {
+      Write-Step 'swift-format (lint)'
+      Invoke-Checked 'swift' (@('format', 'lint', '--strict', '--recursive') + $swiftPaths)
+    }
+    else { Write-Skip 'swift-format (macOS only)' }
     Write-Step 'prettier (check docs)'
     Invoke-Checked $prettier @('--check', '.')
     Write-Step 'PSScriptAnalyzer (lint)'

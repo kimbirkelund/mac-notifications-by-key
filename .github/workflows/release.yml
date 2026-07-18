@@ -1,14 +1,16 @@
 name: Release
 
 # Build a universal macOS binary and publish it to a GitHub Release. Triggered by
-# pushing a release tag like `release/v1.2.3`; the version itself is computed by
-# nbgv from git state (version.json + git height), not parsed from the tag name.
-# The published tarball + SHA256 are what the Homebrew formula consumes (see
-# packaging/homebrew/nbk.rb).
+# pushing a release tag like `release/v1.2.3` (final release) or pushing an `rc/*`
+# branch (prerelease). The version is computed by nbgv from git state (version.json
+# + git height), not parsed from the ref. The published tarball + SHA256 are what
+# the Homebrew formula consumes (see packaging/homebrew/nbk.rb).
 on:
   push:
     tags:
       - 'release/v*'
+    branches:
+      - 'rc/**'
 
 permissions:
   contents: write
@@ -38,6 +40,25 @@ jobs:
         id: v
         uses: dotnet/nbgv@v0.5.2
 
+      # A tag push is a final release; an rc/* branch push is a prerelease. A branch
+      # event has no tag, so synthesize release/v<version> for action-gh-release.
+      - name: Determine release metadata
+        id: meta
+        env:
+          VERSION: ${{ steps.v.outputs.NpmPackageVersion }}
+        run: |
+          if [ "$GITHUB_REF_TYPE" = "tag" ]; then
+            tag="$GITHUB_REF_NAME"
+            prerelease=false
+          else
+            tag="release/v$VERSION"
+            prerelease=true
+          fi
+          {
+            echo "tag=$tag"
+            echo "prerelease=$prerelease"
+          } >> "$GITHUB_OUTPUT"
+
       # Gate the release on the unit tier (the AX/acceptance tiers can't run on a
       # hosted runner — no Accessibility trust).
       - name: Unit tests
@@ -57,6 +78,8 @@ jobs:
       - name: Publish GitHub Release
         uses: softprops/action-gh-release@v3.0.2
         with:
+          tag_name: ${{ steps.meta.outputs.tag }}
+          prerelease: ${{ steps.meta.outputs.prerelease }}
           files: |
             dist/nbk-*-macos-universal.tar.gz
             dist/nbk-*-macos-universal.tar.gz.sha256
@@ -66,7 +89,7 @@ jobs:
             Homebrew formula values for this release:
 
             ```
-            url     https://github.com/${{ github.repository }}/releases/download/${{ github.ref_name }}/nbk-${{ steps.v.outputs.NpmPackageVersion }}-macos-universal.tar.gz
+            url     https://github.com/${{ github.repository }}/releases/download/${{ steps.meta.outputs.tag }}/nbk-${{ steps.v.outputs.NpmPackageVersion }}-macos-universal.tar.gz
             sha256  ${{ steps.sha.outputs.sha256 }}
             version ${{ steps.v.outputs.NpmPackageVersion }}
             ```
