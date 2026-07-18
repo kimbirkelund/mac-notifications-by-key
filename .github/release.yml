@@ -1,9 +1,9 @@
 # Configures GitHub's auto-generated release notes (the changelog appended when a
 # release is published with generate_release_notes: true). Categories group merged
-# PRs by label; empty categories are omitted. PRs are not consistently labelled yet
-# (only Renovate adds `automerge`), so most land in "Other Changes" until labelling
-# starts — the mapped categories then populate automatically.
+# PRs by label; empty categories are omitted. PRs labelled `ignore` are excluded.
 changelog:
+  exclude:
+    labels: [ignore]
   categories:
     - title: Features
       labels: [enhancement]
@@ -11,7 +11,7 @@ changelog:
       labels: [bug]
     - title: Documentation
       labels: [documentation]
-    - title: Dependencies
-      labels: [dependencies]
+    - title: Chore
+      labels: [chore, dependencies]
     - title: Other Changes
       labels: ['*']
