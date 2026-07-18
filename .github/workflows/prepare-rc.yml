@@ -58,6 +58,42 @@ jobs:
             echo "dev_version=$(echo "$json" | jq -r '.CurrentBranch.Version')"
           } >> "$GITHUB_OUTPUT"
 
+      # nbgv writes version.json in its own style; re-format it via the build
+      # script (single entry point) so it passes the lint gate. On this ubuntu
+      # runner build.ps1 -DoLint -Fix skips swift-format (macOS only) and runs
+      # prettier + PSScriptAnalyzer, which is why both are installed here.
+      - uses: actions/setup-node@v7.0.0
+        with:
+          node-version: 24.18.0
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Install PSScriptAnalyzer
+        shell: pwsh
+        run: |
+          if (-not (Get-Module -ListAvailable PSScriptAnalyzer)) {
+            Install-Module PSScriptAnalyzer -Force -Scope CurrentUser
+          }
+
+      - name: Normalize version.json formatting
+        shell: pwsh
+        env:
+          RC_BRANCH: ${{ steps.prep.outputs.rc_branch }}
+        run: |
+          function Format-And-Amend {
+            ./build.ps1 -DoLint -Fix
+            if (git status --porcelain) {
+              git add version.json
+              git commit --amend --no-edit
+            }
+          }
+          Format-And-Amend
+          git checkout $env:RC_BRANCH
+          Format-And-Amend
+          git checkout main
+
       - name: Push RC branch
         env:
           RC_BRANCH: ${{ steps.prep.outputs.rc_branch }}
