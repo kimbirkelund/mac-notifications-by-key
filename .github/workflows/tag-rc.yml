@@ -6,8 +6,9 @@ name: Tag release candidate
 # stabilization back into main (keeping main's version), then deletes the RC branch.
 #
 # NOTE: pushing the tag / opening the merge PR with the default GITHUB_TOKEN does
-# NOT trigger downstream workflows. Provide a PAT_RELEASE secret (PAT/App token);
-# it falls back to github.token only when unset.
+# NOT trigger downstream workflows, so the pushed tag would never fire the Release
+# workflow. A PAT_RELEASE secret (PAT/App token) is required; the job fails fast if
+# it is unset rather than silently producing a tag that triggers nothing.
 on:
   workflow_dispatch:
 
@@ -27,11 +28,22 @@ jobs:
             *) echo "This workflow must be dispatched from an rc/* branch (got '$GITHUB_REF_NAME')." >&2; exit 1 ;;
           esac
 
+      # Fail fast: the pushed tag must fire the Release workflow, which only happens
+      # when the push uses PAT_RELEASE (the default GITHUB_TOKEN doesn't trigger it).
+      - name: Require PAT_RELEASE
+        env:
+          PAT_RELEASE: ${{ secrets.PAT_RELEASE }}
+        run: |
+          if [ -z "$PAT_RELEASE" ]; then
+            echo "::error::PAT_RELEASE secret is not set; it is required so the pushed tag fires the Release workflow." >&2
+            exit 1
+          fi
+
       - uses: actions/checkout@v7.0.0
         with:
           # nbgv needs full history; the configured token is reused for pushes.
           fetch-depth: 0
-          token: ${{ secrets.PAT_RELEASE || github.token }}
+          token: ${{ secrets.PAT_RELEASE }}
 
       - uses: actions/setup-dotnet@v6.0.0
         with:
@@ -80,7 +92,7 @@ jobs:
       # lands via an auto-merge PR.
       - name: Merge back into main
         env:
-          GH_TOKEN: ${{ secrets.PAT_RELEASE || github.token }}
+          GH_TOKEN: ${{ secrets.PAT_RELEASE }}
           TAG: ${{ steps.tag.outputs.tag }}
           RC_COMMIT: ${{ steps.tag.outputs.rc_commit }}
         run: |

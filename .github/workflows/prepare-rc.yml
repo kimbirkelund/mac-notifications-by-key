@@ -10,9 +10,10 @@ name: Prepare release candidate
 # NOTE: enabling PR auto-merge requires "Allow auto-merge" in repo settings, and
 # the bump PR must be opened with a token that triggers CI. The default
 # GITHUB_TOKEN does NOT trigger workflows on the PRs/branches it creates, so
-# required status checks would never run and auto-merge would hang. Provide a
-# PAT_RELEASE secret (a PAT or GitHub App token with repo + PR scope); it falls
-# back to github.token only when unset (auto-merge then won't complete on its own).
+# required status checks would never run and auto-merge would hang. A PAT_RELEASE
+# secret (a PAT or GitHub App token with repo + PR scope) is required; the job
+# fails fast if it is unset rather than opening a PR whose auto-merge never
+# completes.
 on:
   workflow_dispatch:
     inputs:
@@ -30,12 +31,23 @@ jobs:
     name: prepare-rc
     runs-on: ubuntu-latest
     steps:
+      # Fail fast: the RC branch push and bump PR must trigger CI, which only happens
+      # when they use PAT_RELEASE (the default GITHUB_TOKEN doesn't trigger workflows).
+      - name: Require PAT_RELEASE
+        env:
+          PAT_RELEASE: ${{ secrets.PAT_RELEASE }}
+        run: |
+          if [ -z "$PAT_RELEASE" ]; then
+            echo "::error::PAT_RELEASE secret is not set; it is required so the RC branch push and bump PR trigger CI." >&2
+            exit 1
+          fi
+
       - uses: actions/checkout@v7.0.0
         with:
           ref: main
           # nbgv needs full history; the configured token is reused for pushes.
           fetch-depth: 0
-          token: ${{ secrets.PAT_RELEASE || github.token }}
+          token: ${{ secrets.PAT_RELEASE }}
 
       - uses: actions/setup-dotnet@v6.0.0
         with:
@@ -86,7 +98,7 @@ jobs:
 
       - name: Open bump PR and enable auto-merge
         env:
-          GH_TOKEN: ${{ secrets.PAT_RELEASE || github.token }}
+          GH_TOKEN: ${{ secrets.PAT_RELEASE }}
           BUMP_BRANCH: ${{ steps.bump.outputs.bump_branch }}
           RC_BRANCH: ${{ steps.prep.outputs.rc_branch }}
           RC_VERSION: ${{ steps.prep.outputs.rc_version }}
