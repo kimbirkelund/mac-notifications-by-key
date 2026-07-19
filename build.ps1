@@ -21,6 +21,14 @@
   artifacts the Homebrew formula consumes. Pass -Version to stamp the version into
   the binary (nbk --version); defaults to the committed "dev".
 
+  Release orchestration drives the GitHub workflows via gh and watches them (plus
+  the runs they trigger) to completion. Both preflight that the working tree is
+  clean and the current branch is in sync with its upstream:
+    -DoPrepareRelease   dispatches prepare-rc.yml on main (add -Major to bump the
+                        major version instead of the minor).
+    -DoFinalizeRelease  finds the single outstanding rc/* branch (fails unless
+                        exactly one) and dispatches tag-rc.yml on it.
+
 .EXAMPLE
   ./build.ps1 -DoBuild
   ./build.ps1 -DoTest -Kinds Unit
@@ -28,6 +36,9 @@
   ./build.ps1 -DoLint -Fix       # auto-format Swift + docs in place
   ./build.ps1 -DoPackage -Version 1.2.3
   ./build.ps1 -DoRun -RunArgs list,--wait,5
+  ./build.ps1 -DoPrepareRelease            # cut a release candidate (minor bump)
+  ./build.ps1 -DoPrepareRelease -Major     # cut a release candidate (major bump)
+  ./build.ps1 -DoFinalizeRelease           # finalize the outstanding rc/* branch
 #>
 [CmdletBinding()]
 param(
@@ -38,6 +49,9 @@ param(
   [switch]$Fix,
   [switch]$DoPackage,
   [switch]$DoRun,
+  [switch]$DoPrepareRelease,
+  [switch]$DoFinalizeRelease,
+  [switch]$Major,
   [string[]]$RunArgs = @(),
   [ValidateSet('All', 'Unit', 'Integration', 'Acceptance')]
   [string[]]$Kinds = @('All'),
@@ -58,6 +72,88 @@ function Invoke-Checked($file, [string[]]$argv)
 {
   & $file @argv
   if ($LASTEXITCODE -ne 0) { throw "$file $($argv -join ' ') exited $LASTEXITCODE" }
+}
+
+# --- release orchestration helpers (-DoPrepareRelease / -DoFinalizeRelease) ---
+
+function Confirm-GhReady
+{
+  if (-not (Get-Command gh -ErrorAction SilentlyContinue)) { throw 'GitHub CLI (gh) not found on PATH.' }
+  gh auth status *> $null
+  if ($LASTEXITCODE -ne 0) { throw 'gh is not authenticated - run: gh auth login' }
+}
+
+# Guard against operating on a dirty or out-of-sync tree, so a dispatched release
+# never silently omits (or is surprised by) local/remote changes.
+function Confirm-CleanAndSynced
+{
+  $status = git status --porcelain
+  if ($LASTEXITCODE -ne 0) { throw 'git status failed (not a git repository?)' }
+  if ($status) { throw "Working tree is not clean; commit or stash first:`n$status" }
+
+  Write-Step 'Fetching origin'
+  Invoke-Checked 'git' @('fetch', '--quiet', 'origin')
+
+  $upstream = git rev-parse --abbrev-ref --symbolic-full-name '@{u}' 2>$null
+  if ($LASTEXITCODE -ne 0 -or -not $upstream) { throw 'Current branch has no upstream; push and track it first.' }
+  $counts = (git rev-list --left-right --count '@{u}...HEAD').Trim() -split '\s+'
+  $behind = [int]$counts[0]
+  $ahead = [int]$counts[1]
+  if ($behind -ne 0) { throw "Current branch is behind $upstream by $behind commit(s); pull first." }
+  if ($ahead -ne 0) { throw "Current branch is ahead of $upstream by $ahead commit(s); push first." }
+}
+
+# Find and watch the run a dispatch created (on $ref, at/after the ISO $since).
+function Wait-DispatchedRun([string]$workflow, [string]$ref, [string]$since)
+{
+  $id = $null
+  for ($i = 0; $i -lt 30 -and -not $id; $i++)
+  {
+    Start-Sleep 2
+    $runs = gh run list --workflow $workflow --branch $ref --limit 10 --json databaseId, createdAt | ConvertFrom-Json
+    $match = $runs | Where-Object { $_.createdAt -ge $since } | Sort-Object createdAt | Select-Object -First 1
+    $id = $match.databaseId
+  }
+  if (-not $id) { throw "Timed out finding the dispatched $workflow run." }
+  Write-Step "Watching $workflow run $id"
+  gh run watch $id --exit-status
+  if ($LASTEXITCODE -ne 0) { throw "$workflow run $id failed." }
+}
+
+# Watch every run created at/after $since (release.yml on the tag/branch push, PR CI,
+# etc.) until they settle - i.e. two consecutive polls with no active and no new runs,
+# so late-appearing triggered runs are still caught.
+function Wait-TriggeredRun([string]$since)
+{
+  $seen = @{}
+  $idle = 0
+  for ($pass = 0; $pass -lt 240; $pass++)
+  {
+    $runs = gh run list --limit 50 --json databaseId, workflowName, status, createdAt |
+      ConvertFrom-Json | Where-Object { $_.createdAt -ge $since }
+    $active = @($runs | Where-Object { $_.status -in @('queued', 'in_progress', 'requested', 'waiting', 'pending') })
+    $new = @($runs | Where-Object { -not $seen.ContainsKey([string]$_.databaseId) })
+    foreach ($r in $runs) { $seen[[string]$r.databaseId] = $true }
+
+    if ($active.Count -gt 0)
+    {
+      $idle = 0
+      foreach ($r in $active)
+      {
+        Write-Step "Watching triggered run: $($r.workflowName) [$($r.databaseId)]"
+        gh run watch $r.databaseId --exit-status
+        if ($LASTEXITCODE -ne 0) { throw "Triggered run $($r.databaseId) ($($r.workflowName)) failed." }
+      }
+    }
+    elseif ($new.Count -gt 0) { $idle = 0 }
+    else
+    {
+      $idle++
+      if ($idle -ge 2) { return }
+    }
+    Start-Sleep 5
+  }
+  throw 'Timed out waiting for triggered runs to settle.'
 }
 
 # Packaging always means a universal release build.
@@ -241,7 +337,44 @@ if ($DoRun)
   Invoke-Checked $binPath $RunArgs
 }
 
-if (-not ($DoInstall -or $DoBuild -or $DoTest -or $DoLint -or $DoPackage -or $DoRun))
+# Cut a release candidate: dispatch prepare-rc.yml on main and watch it plus every
+# run it triggers (the rc-branch prerelease, the bump PR CI) through to completion.
+if ($DoPrepareRelease)
 {
-  Write-Host 'Nothing to do. Pass -DoInstall, -DoBuild, -DoTest, -DoLint, -DoPackage, or -DoRun. See -? for help.' -ForegroundColor Yellow
+  Confirm-GhReady
+  Confirm-CleanAndSynced
+  $since = (Get-Date).ToUniversalTime().ToString('o')
+  Write-Step "Dispatching prepare-rc.yml on main (major=$([bool]$Major))"
+  $wfArgs = @('workflow', 'run', 'prepare-rc.yml', '--ref', 'main')
+  if ($Major) { $wfArgs += @('-f', 'major=true') }
+  Invoke-Checked 'gh' $wfArgs
+  Wait-DispatchedRun -workflow 'prepare-rc.yml' -ref 'main' -since $since
+  Wait-TriggeredRun $since
+  Write-Step 'Prepare release complete.'
+}
+
+# Finalize the single outstanding rc/* branch: dispatch tag-rc.yml on it and watch it
+# plus every run it triggers (the final release, the merge-back PR CI) to completion.
+if ($DoFinalizeRelease)
+{
+  Confirm-GhReady
+  Confirm-CleanAndSynced
+  $rcBranches = @(git ls-remote --heads origin 'refs/heads/rc/*' |
+      ForEach-Object { ($_ -split '\s+')[1] -replace '^refs/heads/', '' })
+  if ($rcBranches.Count -ne 1)
+  {
+    throw "Expected exactly one rc/* branch, found $($rcBranches.Count): $($rcBranches -join ', ')"
+  }
+  $rc = $rcBranches[0]
+  $since = (Get-Date).ToUniversalTime().ToString('o')
+  Write-Step "Dispatching tag-rc.yml on $rc"
+  Invoke-Checked 'gh' @('workflow', 'run', 'tag-rc.yml', '--ref', $rc)
+  Wait-DispatchedRun -workflow 'tag-rc.yml' -ref $rc -since $since
+  Wait-TriggeredRun $since
+  Write-Step 'Finalize release complete.'
+}
+
+if (-not ($DoInstall -or $DoBuild -or $DoTest -or $DoLint -or $DoPackage -or $DoRun -or $DoPrepareRelease -or $DoFinalizeRelease))
+{
+  Write-Host 'Nothing to do. Pass -DoInstall, -DoBuild, -DoTest, -DoLint, -DoPackage, -DoRun, -DoPrepareRelease, or -DoFinalizeRelease. See -? for help.' -ForegroundColor Yellow
 }
