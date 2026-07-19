@@ -75,6 +75,43 @@ jobs:
           file="dist/nbk-${{ steps.v.outputs.NpmPackageVersion }}-macos-universal.tar.gz.sha256"
           echo "sha256=$(cut -d' ' -f1 "$file")" >> "$GITHUB_OUTPUT"
 
+      # Build the release body: Homebrew values + a PR-based changelog. For a FINAL
+      # release we diff against the latest NON-prerelease tag (skipping the rc betas),
+      # which action-gh-release's generate_release_notes flag can't do — so we call the
+      # generate-notes API directly with previous_tag_name. The API honors
+      # .github/release.yml (categories/excludes).
+      - name: Compose release notes
+        id: notes
+        env:
+          GH_TOKEN: ${{ github.token }}
+          TAG: ${{ steps.meta.outputs.tag }}
+          VERSION: ${{ steps.v.outputs.NpmPackageVersion }}
+          SHA256: ${{ steps.sha.outputs.sha256 }}
+          PRERELEASE: ${{ steps.meta.outputs.prerelease }}
+        run: |
+          args=(-f tag_name="$TAG" -f target_commitish="$GITHUB_SHA")
+          if [ "$PRERELEASE" = "false" ]; then
+            # latest final tag (release/vX.Y.Z, no prerelease), excluding this one
+            prev=$(git tag --list 'release/v*' | grep -E '^release/v[0-9]+\.[0-9]+\.[0-9]+$' | grep -vFx "$TAG" | sort -V | tail -n1)
+            [ -n "$prev" ] && args+=(-f previous_tag_name="$prev")
+          fi
+          changelog=$(gh api "repos/$GITHUB_REPOSITORY/releases/generate-notes" "${args[@]}" --jq .body)
+          notes="$RUNNER_TEMP/notes.md"
+          {
+            echo "Universal (arm64 + x86_64) macOS build of \`nbk\`."
+            echo
+            echo "Homebrew formula values for this release:"
+            echo
+            echo '```'
+            echo "url     https://github.com/$GITHUB_REPOSITORY/releases/download/$TAG/nbk-$VERSION-macos-universal.tar.gz"
+            echo "sha256  $SHA256"
+            echo "version $VERSION"
+            echo '```'
+            echo
+            echo "$changelog"
+          } > "$notes"
+          echo "path=$notes" >> "$GITHUB_OUTPUT"
+
       - name: Publish GitHub Release
         uses: softprops/action-gh-release@v3.0.2
         with:
@@ -83,19 +120,7 @@ jobs:
           # on the default branch (main). Pin it to the commit that triggered the run.
           target_commitish: ${{ github.sha }}
           prerelease: ${{ steps.meta.outputs.prerelease }}
-          # Append a PR-based changelog (categorized via .github/release.yml) after
-          # the body below.
-          generate_release_notes: true
+          body_path: ${{ steps.notes.outputs.path }}
           files: |
             dist/nbk-*-macos-universal.tar.gz
             dist/nbk-*-macos-universal.tar.gz.sha256
-          body: |
-            Universal (arm64 + x86_64) macOS build of `nbk`.
-
-            Homebrew formula values for this release:
-
-            ```
-            url     https://github.com/${{ github.repository }}/releases/download/${{ steps.meta.outputs.tag }}/nbk-${{ steps.v.outputs.NpmPackageVersion }}-macos-universal.tar.gz
-            sha256  ${{ steps.sha.outputs.sha256 }}
-            version ${{ steps.v.outputs.NpmPackageVersion }}
-            ```
