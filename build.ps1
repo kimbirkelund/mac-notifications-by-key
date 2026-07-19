@@ -12,8 +12,10 @@
   Integration/Acceptance are skipped (not failed) when Accessibility trust is absent.
 
   Lint (-DoLint) covers both code and docs:
-    Swift  swift-format (.swift-format config)
-    Docs   prettier (markdown, JSON, YAML incl. .github workflows, JS harness)
+    Swift      swift-format (.swift-format config)
+    Docs       prettier (markdown, JSON, YAML incl. .github workflows, JS harness)
+    PowerShell PSScriptAnalyzer
+    Workflows  actionlint (check-only; skipped if not installed)
   Add -Fix to auto-format in place instead of only checking.
 
   Package (-DoPackage) builds a universal (arm64 + x86_64) release binary and
@@ -353,6 +355,19 @@ if ($DoLint)
         Out-String |
         Write-Host
       throw "PSScriptAnalyzer reported $(@($findings).Count) issue(s)."
+    }
+
+    # Workflow linting; CI runs actionlint as its own job, so mirror it here (prettier
+    # only checks YAML formatting, not Actions semantics). No autofix, so check-only.
+    $workflowFiles = @(Get-ChildItem -Path (Join-Path $PSScriptRoot '.github/workflows') -Filter *.yml -File -ErrorAction SilentlyContinue)
+    if ($workflowFiles)
+    {
+      if (Get-Command actionlint -ErrorAction SilentlyContinue)
+      {
+        Write-Step 'actionlint (workflows)'
+        Invoke-Checked 'actionlint' $workflowFiles.FullName
+      }
+      else { Write-Skip 'actionlint (not installed - brew install actionlint)' }
     }
   }
 }
