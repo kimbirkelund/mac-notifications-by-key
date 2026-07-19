@@ -19,6 +19,10 @@ jobs:
   release:
     name: release
     runs-on: macos-latest
+    # Hoisted to job env so the Homebrew-tap steps can gate on it: the `secrets`
+    # context isn't allowed in a step-level `if`, but `env` is.
+    env:
+      PAT_RELEASE: ${{ secrets.PAT_RELEASE }}
     steps:
       - uses: actions/checkout@v7.0.0
         with:
@@ -131,15 +135,15 @@ jobs:
       # GITHUB_TOKEN is scoped to this repo only and can't push cross-repo, so the
       # step is skipped when the secret is absent.
       - name: Checkout Homebrew tap
-        if: ${{ secrets.PAT_RELEASE != '' }}
+        if: ${{ env.PAT_RELEASE != '' }}
         uses: actions/checkout@v7.0.0
         with:
           repository: kimbirkelund/homebrew-tap
-          token: ${{ secrets.PAT_RELEASE }}
+          token: ${{ env.PAT_RELEASE }}
           path: tap
 
       - name: Bump Homebrew formula
-        if: ${{ secrets.PAT_RELEASE != '' }}
+        if: ${{ env.PAT_RELEASE != '' }}
         env:
           VERSION: ${{ steps.v.outputs.NpmPackageVersion }}
           SHA256: ${{ steps.sha.outputs.sha256 }}
