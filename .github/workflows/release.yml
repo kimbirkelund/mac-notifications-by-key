@@ -19,6 +19,10 @@ jobs:
   release:
     name: release
     runs-on: macos-latest
+    # Hoisted to job env so the Homebrew-tap steps can gate on it: the `secrets`
+    # context isn't allowed in a step-level `if`, but `env` is.
+    env:
+      PAT_RELEASE: ${{ secrets.PAT_RELEASE }}
     steps:
       - uses: actions/checkout@v7.0.0
         with:
@@ -124,3 +128,43 @@ jobs:
           files: |
             dist/nbk-*-macos-universal.tar.gz
             dist/nbk-*-macos-universal.tar.gz.sha256
+
+      # Push the new version/sha into the Homebrew tap. A final release bumps the
+      # stable formula (nbk); an rc prerelease bumps the beta formula (nbk-beta).
+      # Needs PAT_RELEASE with write access to the tap repo — the default
+      # GITHUB_TOKEN is scoped to this repo only and can't push cross-repo, so the
+      # step is skipped when the secret is absent.
+      - name: Checkout Homebrew tap
+        if: ${{ env.PAT_RELEASE != '' }}
+        uses: actions/checkout@v7.0.0
+        with:
+          repository: kimbirkelund/homebrew-tap
+          token: ${{ env.PAT_RELEASE }}
+          path: tap
+
+      - name: Bump Homebrew formula
+        if: ${{ env.PAT_RELEASE != '' }}
+        env:
+          VERSION: ${{ steps.v.outputs.NpmPackageVersion }}
+          SHA256: ${{ steps.sha.outputs.sha256 }}
+          PRERELEASE: ${{ steps.meta.outputs.prerelease }}
+        run: |
+          if [ "$PRERELEASE" = "true" ]; then name=nbk-beta; else name=nbk; fi
+          src="packaging/homebrew/$name.rb"
+          dst="tap/Formula/$name.rb"
+          mkdir -p tap/Formula
+          # url interpolates #{version}, so only version + sha256 need rewriting.
+          sed -E \
+            -e "s|^  version \".*\"|  version \"$VERSION\"|" \
+            -e "s|^  sha256 \".*\"|  sha256 \"$SHA256\"|" \
+            "$src" > "$dst"
+          cd tap
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add "Formula/$name.rb"
+          if git diff --cached --quiet; then
+            echo "Formula $name already at $VERSION; nothing to push."
+            exit 0
+          fi
+          git commit -m "chore: $name $VERSION"
+          git push
