@@ -377,6 +377,8 @@ if ($DoPrepareRelease)
   Invoke-Checked 'gh' $wfArgs
   Wait-DispatchedRun -workflow 'prepare-rc.yml' -ref 'main' -baseline $baseline
   Wait-TriggeredRun -baseline $baseline
+  Write-Step 'Pulling main (version bump landed remotely)'
+  Invoke-Checked 'git' @('pull', '--ff-only', 'origin', 'main')
   Write-Step 'Prepare release complete.'
 }
 
@@ -399,6 +401,8 @@ if ($DoFinalizeRelease)
   Invoke-Checked 'gh' @('workflow', 'run', 'tag-rc.yml', '--ref', $rc)
   Wait-DispatchedRun -workflow 'tag-rc.yml' -ref $rc -baseline $baseline
   Wait-TriggeredRun -baseline $baseline
+  Write-Step 'Pulling main (merge-back landed remotely)'
+  Invoke-Checked 'git' @('pull', '--ff-only', 'origin', 'main')
   Write-Step 'Finalize release complete.'
 }
 
