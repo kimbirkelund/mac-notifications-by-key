@@ -52,7 +52,7 @@ jobs:
         run: |
           base=$(nbgv get-version -v MajorMinorVersion)
           nbgv set-version "$base"
-          git commit -am "release: stabilize v$base"
+          git commit -am "chore: stabilize v$base"
 
       # nbgv tag names the tag per release.tagName (release/v{version}); capture the
       # tag it actually created rather than reconstruct the version string.
