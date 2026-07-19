@@ -122,6 +122,20 @@ function Get-RunIdSet
   return $set
 }
 
+# Watch a run to completion, then fail only on a genuine failure conclusion. Runs that
+# conclude 'skipped' or 'neutral' (e.g. path-filtered or non-applicable triggered
+# workflows like Auto-approve Renovate) are not failures. --exit-status can't be used:
+# it treats skipped/neutral as failures too.
+function Confirm-RunSucceeded([string]$id, [string]$name)
+{
+  gh run watch $id
+  $conclusion = gh run view $id --json conclusion --jq '.conclusion'
+  if ($conclusion -in @('failure', 'timed_out', 'startup_failure', 'cancelled', 'action_required'))
+  {
+    throw "Run $id ($name) concluded '$conclusion'."
+  }
+}
+
 # Find and watch the run a dispatch created (a run id on $ref not in $baseline).
 function Wait-DispatchedRun([string]$workflow, [string]$ref, [hashtable]$baseline)
 {
@@ -134,8 +148,7 @@ function Wait-DispatchedRun([string]$workflow, [string]$ref, [hashtable]$baselin
   }
   if (-not $id) { throw "Timed out finding the dispatched $workflow run." }
   Write-Step "Watching $workflow run $id"
-  gh run watch $id --exit-status
-  if ($LASTEXITCODE -ne 0) { throw "$workflow run $id failed." }
+  Confirm-RunSucceeded -id $id -name $workflow
 }
 
 # Watch every run not in $baseline (release.yml on the tag/branch push, PR CI, etc.)
@@ -156,8 +169,7 @@ function Wait-TriggeredRun([hashtable]$baseline)
       foreach ($r in $active)
       {
         Write-Step "Watching triggered run: $($r.workflowName) [$($r.databaseId)]"
-        gh run watch $r.databaseId --exit-status
-        if ($LASTEXITCODE -ne 0) { throw "Triggered run $($r.databaseId) ($($r.workflowName)) failed." }
+        Confirm-RunSucceeded -id $r.databaseId -name $r.workflowName
       }
     }
     else
