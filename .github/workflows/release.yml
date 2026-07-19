@@ -79,6 +79,9 @@ jobs:
         uses: softprops/action-gh-release@v3.0.2
         with:
           tag_name: ${{ steps.meta.outputs.tag }}
+          # For an rc push the tag doesn't exist yet; without this the API creates it
+          # on the default branch (main). Pin it to the commit that triggered the run.
+          target_commitish: ${{ github.sha }}
           prerelease: ${{ steps.meta.outputs.prerelease }}
           # Append a PR-based changelog (categorized via .github/release.yml) after
           # the body below.
