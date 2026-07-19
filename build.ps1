@@ -112,16 +112,25 @@ function Confirm-CleanAndSynced
   if ($ahead -ne 0) { throw "Current branch is ahead of $upstream by $ahead commit(s); push first." }
 }
 
-# Find and watch the run a dispatch created (on $ref, at/after the ISO $since).
-function Wait-DispatchedRun([string]$workflow, [string]$ref, [string]$since)
+# Snapshot the ids of recent runs, so a dispatch's run (and the runs it triggers) can
+# be identified as ids not present before it - avoids any wall-clock/timezone math.
+function Get-RunIdSet
+{
+  $set = @{}
+  gh run list --limit 100 --json databaseId --jq '.[].databaseId' |
+    ForEach-Object { $set[[string]$_] = $true }
+  return $set
+}
+
+# Find and watch the run a dispatch created (a run id on $ref not in $baseline).
+function Wait-DispatchedRun([string]$workflow, [string]$ref, [hashtable]$baseline)
 {
   $id = $null
   for ($i = 0; $i -lt 30 -and -not $id; $i++)
   {
     Start-Sleep 2
-    $runs = gh run list --workflow $workflow --branch $ref --limit 10 --json 'databaseId,createdAt' | ConvertFrom-Json
-    $match = $runs | Where-Object { $_.createdAt -ge $since } | Sort-Object createdAt | Select-Object -First 1
-    $id = $match.databaseId
+    $ids = gh run list --workflow $workflow --branch $ref --limit 10 --json databaseId --jq '.[].databaseId'
+    $id = $ids | Where-Object { -not $baseline.ContainsKey([string]$_) } | Select-Object -First 1
   }
   if (-not $id) { throw "Timed out finding the dispatched $workflow run." }
   Write-Step "Watching $workflow run $id"
@@ -129,21 +138,18 @@ function Wait-DispatchedRun([string]$workflow, [string]$ref, [string]$since)
   if ($LASTEXITCODE -ne 0) { throw "$workflow run $id failed." }
 }
 
-# Watch every run created at/after $since (release.yml on the tag/branch push, PR CI,
-# etc.) until they settle - i.e. two consecutive polls with no active and no new runs,
-# so late-appearing triggered runs are still caught.
-function Wait-TriggeredRun([string]$since)
+# Watch every run not in $baseline (release.yml on the tag/branch push, PR CI, etc.)
+# until they settle - three consecutive polls with no active run - so late-appearing
+# triggered runs are still caught.
+function Wait-TriggeredRun([hashtable]$baseline)
 {
-  $seen = @{}
   $idle = 0
   for ($pass = 0; $pass -lt 240; $pass++)
   {
-    $runs = gh run list --limit 50 --json 'databaseId,workflowName,status,createdAt' |
-      ConvertFrom-Json | Where-Object { $_.createdAt -ge $since }
-    $active = @($runs | Where-Object { $_.status -in @('queued', 'in_progress', 'requested', 'waiting', 'pending') })
-    $new = @($runs | Where-Object { -not $seen.ContainsKey([string]$_.databaseId) })
-    foreach ($r in $runs) { $seen[[string]$r.databaseId] = $true }
-
+    $runs = gh run list --limit 50 --json 'databaseId,workflowName,status' | ConvertFrom-Json
+    $active = @($runs |
+        Where-Object { -not $baseline.ContainsKey([string]$_.databaseId) } |
+        Where-Object { $_.status -in @('queued', 'in_progress', 'requested', 'waiting', 'pending') })
     if ($active.Count -gt 0)
     {
       $idle = 0
@@ -154,11 +160,10 @@ function Wait-TriggeredRun([string]$since)
         if ($LASTEXITCODE -ne 0) { throw "Triggered run $($r.databaseId) ($($r.workflowName)) failed." }
       }
     }
-    elseif ($new.Count -gt 0) { $idle = 0 }
     else
     {
       $idle++
-      if ($idle -ge 2) { return }
+      if ($idle -ge 3) { return }
     }
     Start-Sleep 5
   }
@@ -353,13 +358,13 @@ if ($DoPrepareRelease)
   Confirm-GhReady
   Confirm-OnMain
   Confirm-CleanAndSynced
-  $since = (Get-Date).ToUniversalTime().ToString('o')
+  $baseline = Get-RunIdSet
   Write-Step "Dispatching prepare-rc.yml on main (major=$([bool]$Major))"
   $wfArgs = @('workflow', 'run', 'prepare-rc.yml', '--ref', 'main')
   if ($Major) { $wfArgs += @('-f', 'major=true') }
   Invoke-Checked 'gh' $wfArgs
-  Wait-DispatchedRun -workflow 'prepare-rc.yml' -ref 'main' -since $since
-  Wait-TriggeredRun $since
+  Wait-DispatchedRun -workflow 'prepare-rc.yml' -ref 'main' -baseline $baseline
+  Wait-TriggeredRun -baseline $baseline
   Write-Step 'Prepare release complete.'
 }
 
@@ -377,11 +382,11 @@ if ($DoFinalizeRelease)
     throw "Expected exactly one rc/* branch, found $($rcBranches.Count): $($rcBranches -join ', ')"
   }
   $rc = $rcBranches[0]
-  $since = (Get-Date).ToUniversalTime().ToString('o')
+  $baseline = Get-RunIdSet
   Write-Step "Dispatching tag-rc.yml on $rc"
   Invoke-Checked 'gh' @('workflow', 'run', 'tag-rc.yml', '--ref', $rc)
-  Wait-DispatchedRun -workflow 'tag-rc.yml' -ref $rc -since $since
-  Wait-TriggeredRun $since
+  Wait-DispatchedRun -workflow 'tag-rc.yml' -ref $rc -baseline $baseline
+  Wait-TriggeredRun -baseline $baseline
   Write-Step 'Finalize release complete.'
 }
 
