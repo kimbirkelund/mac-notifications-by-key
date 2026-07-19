@@ -60,7 +60,8 @@ jobs:
         run: |
           inc=minor
           if [ "$MAJOR" = "true" ]; then inc=major; fi
-          json=$(nbgv prepare-release beta --versionIncrement "$inc" --format json)
+          json=$(nbgv prepare-release beta --versionIncrement "$inc" \
+            --commit-message-pattern "chore: set version to {0}" --format json)
           echo "$json"
           {
             echo "rc_branch=$(echo "$json" | jq -r '.NewBranch.Name')"
