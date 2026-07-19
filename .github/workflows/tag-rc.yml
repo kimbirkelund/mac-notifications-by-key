@@ -99,7 +99,18 @@ jobs:
           merge_branch="merge/${TAG}-into-main"
           git fetch origin main
           git switch -c "$merge_branch" origin/main
-          git merge --no-ff --no-commit "$RC_COMMIT" || true
+          # A conflict on version.json is expected (stabilized release version vs
+          # main's in-flight -alpha) and resolved below; git exits 1 for that. Any
+          # other exit code is a real merge failure and must abort.
+          if git merge --no-ff --no-commit "$RC_COMMIT"; then
+            :
+          else
+            status=$?
+            if [ "$status" -ne 1 ]; then
+              echo "::error::git merge failed (exit $status), not a resolvable conflict." >&2
+              exit 1
+            fi
+          fi
           git checkout --ours version.json
           git add version.json
           if [ -n "$(git diff --name-only --diff-filter=U)" ]; then
