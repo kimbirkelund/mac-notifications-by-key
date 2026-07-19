@@ -83,6 +83,15 @@ function Confirm-GhReady
   if ($LASTEXITCODE -ne 0) { throw 'gh is not authenticated - run: gh auth login' }
 }
 
+# Release operations dispatch against main; refuse to run from any other branch so
+# it's obvious what state is being released.
+function Confirm-OnMain
+{
+  $branch = git rev-parse --abbrev-ref HEAD
+  if ($LASTEXITCODE -ne 0) { throw 'git rev-parse failed (not a git repository?)' }
+  if ($branch -ne 'main') { throw "Release operations must run from 'main' (currently on '$branch')." }
+}
+
 # Guard against operating on a dirty or out-of-sync tree, so a dispatched release
 # never silently omits (or is surprised by) local/remote changes.
 function Confirm-CleanAndSynced
@@ -110,7 +119,7 @@ function Wait-DispatchedRun([string]$workflow, [string]$ref, [string]$since)
   for ($i = 0; $i -lt 30 -and -not $id; $i++)
   {
     Start-Sleep 2
-    $runs = gh run list --workflow $workflow --branch $ref --limit 10 --json databaseId, createdAt | ConvertFrom-Json
+    $runs = gh run list --workflow $workflow --branch $ref --limit 10 --json 'databaseId,createdAt' | ConvertFrom-Json
     $match = $runs | Where-Object { $_.createdAt -ge $since } | Sort-Object createdAt | Select-Object -First 1
     $id = $match.databaseId
   }
@@ -129,7 +138,7 @@ function Wait-TriggeredRun([string]$since)
   $idle = 0
   for ($pass = 0; $pass -lt 240; $pass++)
   {
-    $runs = gh run list --limit 50 --json databaseId, workflowName, status, createdAt |
+    $runs = gh run list --limit 50 --json 'databaseId,workflowName,status,createdAt' |
       ConvertFrom-Json | Where-Object { $_.createdAt -ge $since }
     $active = @($runs | Where-Object { $_.status -in @('queued', 'in_progress', 'requested', 'waiting', 'pending') })
     $new = @($runs | Where-Object { -not $seen.ContainsKey([string]$_.databaseId) })
@@ -342,6 +351,7 @@ if ($DoRun)
 if ($DoPrepareRelease)
 {
   Confirm-GhReady
+  Confirm-OnMain
   Confirm-CleanAndSynced
   $since = (Get-Date).ToUniversalTime().ToString('o')
   Write-Step "Dispatching prepare-rc.yml on main (major=$([bool]$Major))"
@@ -358,6 +368,7 @@ if ($DoPrepareRelease)
 if ($DoFinalizeRelease)
 {
   Confirm-GhReady
+  Confirm-OnMain
   Confirm-CleanAndSynced
   $rcBranches = @(git ls-remote --heads origin 'refs/heads/rc/*' |
       ForEach-Object { ($_ -split '\s+')[1] -replace '^refs/heads/', '' })
