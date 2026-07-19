@@ -78,21 +78,29 @@ preflights it (`nbk doctor`) and skips those tiers with a clear message when it 
   run on hosted runners — they need Accessibility trust and a real on-screen Notification Center —
   so they stay local.
 - **Release** ([`.github/workflows/release.yml`](.github/workflows/release.yml)) is triggered by
-  pushing a `releases/v<version>` tag. It runs the unit gate, builds a universal (arm64 + x86_64)
-  binary via `build.ps1 -DoPackage -Version <v>`, and publishes
-  `nbk-<version>-macos-universal.tar.gz` + a `.sha256` to a GitHub Release. The release notes
-  include the `url`/`sha256`/`version` to drop into the formula.
+  pushing a `release/v<version>` tag (final) or an `rc/*` branch (prerelease). It runs the unit
+  gate, builds a universal (arm64 + x86_64) binary via `build.ps1 -DoPackage -Version <v>`,
+  publishes `nbk-<version>-macos-universal.tar.gz` + a `.sha256` to a GitHub Release, and bumps the
+  Homebrew tap (see below).
 
-### Homebrew (planned)
+### Homebrew
 
-Distribution is a personal tap with a prebuilt-binary formula. The template lives at
-[`packaging/homebrew/nbk.rb`](packaging/homebrew/nbk.rb); to ship, create a `homebrew-tap` repo,
-copy it to `Formula/nbk.rb`, and bump `version`/`sha256` per release (the Release notes print both).
-Install becomes:
+Distribution is a personal tap
+([`kimbirkelund/homebrew-tap`](https://github.com/kimbirkelund/homebrew-tap)) with prebuilt-binary
+formulae. Two channels:
 
 ```sh
-brew install kimbirkelund/tap/nbk
+brew install kimbirkelund/tap/nbk        # stable — tracks final releases
+brew install kimbirkelund/tap/nbk-beta   # prerelease — tracks release candidates
 ```
+
+The two conflict (both install a `nbk` binary), so only one is installed at a time; switch with
+`brew uninstall nbk && brew install kimbirkelund/tap/nbk-beta` (or vice versa).
+
+The formulae are authored in [`packaging/homebrew/`](packaging/homebrew/) (source of truth); the
+Release workflow rewrites `version`/`sha256` and pushes the updated formula into the tap on every
+release — final releases bump `nbk`, `rc/*` prereleases bump `nbk-beta`. This requires a
+`PAT_RELEASE` secret with write access to the tap repo; without it the bump step is skipped.
 
 The binary is unsigned; Homebrew strips the download quarantine on install. After install, grant
 Accessibility permission to whatever runs `nbk` (see `nbk doctor`).
