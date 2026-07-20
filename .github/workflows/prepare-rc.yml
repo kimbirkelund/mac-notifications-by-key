@@ -42,7 +42,7 @@ jobs:
             exit 1
           fi
 
-      - uses: actions/checkout@v7.0.0
+      - uses: actions/checkout@v7.0.1
         with:
           ref: main
           # nbgv needs full history; the configured token is reused for pushes.
