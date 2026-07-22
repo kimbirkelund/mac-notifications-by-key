@@ -6,7 +6,7 @@
 .DESCRIPTION
   Wraps SwiftPM (the nbk CLI + libraries) and the cucumber-js acceptance harness.
   The three test tiers (see docs/testing.md) are selected with -Kinds:
-    Unit         swift test --filter NotificationCoreTests          (no AX)
+    Unit         swift test --filter NotificationCoreTests|NotificationAXUnitTests (no AX)
     Integration  swift test --filter NotificationAXIntegrationTests  (needs AX trust)
     Acceptance   cucumber-js driving the compiled nbk binary         (needs AX trust)
   Integration/Acceptance are skipped (not failed) when Accessibility trust is absent.
@@ -290,8 +290,8 @@ if ($DoTest)
 {
   if ($selected -contains 'Unit')
   {
-    Write-Step 'Unit tier (NotificationCoreTests)'
-    Invoke-Checked 'swift' @('test', '--filter', 'NotificationCoreTests')
+    Write-Step 'Unit tier (NotificationCoreTests, NotificationAXUnitTests)'
+    Invoke-Checked 'swift' @('test', '--filter', 'NotificationCoreTests', '--filter', 'NotificationAXUnitTests')
   }
 
   $needTrust = ($selected -contains 'Integration') -or ($selected -contains 'Acceptance')

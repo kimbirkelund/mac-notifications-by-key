@@ -13,8 +13,11 @@ import Testing
 /// coalescing would otherwise make them flaky. Each test also clears the Center
 /// first for a clean slate.
 @Suite(.serialized) struct NotificationAXIntegrationTests {
+    let nc = NotificationCenterAccessFactory.make()
+
     static var available: Bool {
-        NotificationAX.isTrusted && NotificationAX.notificationCenterPID() != nil
+        let nc = NotificationCenterAccessFactory.make()
+        return nc.isTrusted && nc.notificationCenterPID() != nil
     }
 
     @discardableResult
@@ -30,9 +33,9 @@ import Testing
     /// Dismiss everything currently presented, so a test starts from empty.
     func clearAll() {
         for _ in 0..<10 {
-            let items = (try? NotificationAX.read(wait: 0)) ?? []
+            let items = (try? nc.read(wait: 0)) ?? []
             if items.isEmpty { return }
-            try? NotificationAX.dismiss(index: 0)
+            try? nc.dismiss(index: 0)
             Thread.sleep(forTimeInterval: 0.3)
         }
     }
@@ -42,7 +45,7 @@ import Testing
         clearAll()
         let title = "AXIntegrationProbe"
         #expect(deliver(title: title))
-        let items = try NotificationAX.read(wait: 6)
+        let items = try nc.read(wait: 6)
         #expect(items.contains { $0.title == title })
         clearAll()
     }
@@ -52,14 +55,14 @@ import Testing
         clearAll()
         let title = "AXDismissProbe"
         #expect(deliver(title: title))
-        let before = try NotificationAX.read(wait: 6)
+        let before = try nc.read(wait: 6)
         guard let idx = before.firstIndex(where: { $0.title == title }) else {
             Issue.record("delivered notification did not appear")
             return
         }
-        try NotificationAX.dismiss(index: idx)
+        try nc.dismiss(index: idx)
         Thread.sleep(forTimeInterval: 0.8)
-        let after = try NotificationAX.read(wait: 0)
+        let after = try nc.read(wait: 0)
         #expect(!after.contains { $0.title == title })
     }
 }
