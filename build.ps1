@@ -42,26 +42,64 @@
   ./build.ps1 -DoPrepareRelease -Major     # cut a release candidate (major bump)
   ./build.ps1 -DoFinalizeRelease           # finalize the outstanding rc/* branch
 #>
-[CmdletBinding()]
+[CmdletBinding(DefaultParameterSetName = 'None')]
 param(
+  [Parameter(ParameterSetName = 'Install')]
   [switch]$DoInstall,
+
+  [Parameter(ParameterSetName = 'Build')]
   [switch]$DoBuild,
+
+  [Parameter(ParameterSetName = 'Test')]
   [switch]$DoTest,
+
+  [Parameter(ParameterSetName = 'Lint')]
   [switch]$DoLint,
-  [switch]$Fix,
+
+  [Parameter(ParameterSetName = 'Package')]
   [switch]$DoPackage,
+
+  [Parameter(ParameterSetName = 'Run')]
   [switch]$DoRun,
+
+  [Parameter(ParameterSetName = 'PrepareRelease')]
   [switch]$DoPrepareRelease,
+
+  [Parameter(ParameterSetName = 'FinalizeRelease')]
   [switch]$DoFinalizeRelease,
+
+  [Parameter(ParameterSetName = 'Lint')]
+  [switch]$Fix,
+
+  [Parameter(ParameterSetName = 'PrepareRelease')]
   [switch]$Major,
+
+  [Parameter(ParameterSetName = 'Run')]
   [string[]]$RunArgs = @(),
+
+  [Parameter(ParameterSetName = 'Test')]
   [ValidateSet('All', 'Unit', 'Integration', 'Acceptance')]
   [string[]]$Kinds = @('All'),
+
+  [Parameter(ParameterSetName = 'Build')]
+  [Parameter(ParameterSetName = 'Test')]
+  [Parameter(ParameterSetName = 'Run')]
   [ValidateSet('debug', 'release')]
   [string]$Configuration = 'debug',
+
+  [Parameter(ParameterSetName = 'Build')]
+  [Parameter(ParameterSetName = 'Test')]
+  [Parameter(ParameterSetName = 'Run')]
   [switch]$Universal,
+
+  [Parameter(ParameterSetName = 'Build')]
+  [Parameter(ParameterSetName = 'Package')]
   [string]$Version,
+
+  [Parameter(ParameterSetName = 'Test')]
+  [Parameter(ParameterSetName = 'Run')]
   [switch]$SkipBuild,
+
   [switch]$Quiet
 )
 
