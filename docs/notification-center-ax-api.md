@@ -1,16 +1,18 @@
 # Notification Center — Accessibility API reference
 
 A developer's guide to what the macOS Notification Center process (`com.apple.notificationcenterui`)
-exposes over the public Accessibility (AX) API, and how `nbk` reads and drives it. Written to
-support building richer integrations (custom UI, richer selection, stack handling) on top of the
+exposes over the public Accessibility (AX) API, and what `nbk` reads and drives through it. Written
+to support building richer integrations (custom UI, richer selection, stack handling) on top of the
 same surface.
 
-> **Grounding.** Every "we use this" claim is cited to
-> `Sources/NotificationAX/NotificationAX.swift`. Concrete shapes (roles, identifiers, action names)
-> are probe-verified on **macOS 26.5.1** (see [`constraints.md`](constraints.md) C-3) and are
-> **undocumented and version-sensitive** — Apple changed this tree across Big Sur, Sequoia, and
-> Tahoe. Anything marked _standard AX_ is a general capability of the Accessibility API that we do
-> **not** currently exercise here; treat it as "should work, not yet probed in this repo".
+> **Grounding.** Concrete shapes (roles, identifiers, action names) are probe-verified on **macOS
+> 26.5.1** and are **undocumented and version-sensitive** ([C-3](constraints.md)) — Apple changed
+> this tree across Big Sur, Sequoia, and Tahoe. Anything marked _standard AX_ is a general
+> capability of the Accessibility API that `nbk` does **not** currently exercise; treat it as
+> "should work, not yet probed here".
+
+This is a capability reference, not an implementation map. It describes the AX surface and which
+parts `nbk` relies on — for how `nbk` is put together, read the code.
 
 ---
 
@@ -20,30 +22,32 @@ same surface.
 
 Every AX read/act requires the **calling process** to hold Accessibility trust.
 
-- `AXIsProcessTrusted() -> Bool` — the whole gate. No trust ⇒ every `AXUIElementCopy*`/`Perform*`
-  returns failure/empty; there is no partial mode.
+- `AXIsProcessTrusted()` is the whole gate. Without trust every `AXUIElementCopy*` /
+  `*PerformAction` returns failure or empty; there is no partial mode.
 - Trust is per-_host_ (the terminal, `skhd`, etc.), not per-user.
 - There is **no** programmatic API to grant or revoke trust — only System Settings → Privacy &
   Security → Accessibility.
 
-`NotificationAX.isTrusted` (`NotificationAX.swift:54`) wraps it; `requirePID()` (`:140`) checks it
-before any operation.
+`nbk` checks trust before every operation and reports its absence actionably rather than returning
+empty results ([C-2](constraints.md)).
 
 ### Locating the process
 
-Notification Center is a normal running app; find its pid, then make an app-level AX element.
+Notification Center is a normal running app: resolve its pid, then make an application-level AX
+element with `AXUIElementCreateApplication(pid)` as the root handle for everything below. `nbk`
+resolves the pid by bundle identifier (`com.apple.notificationcenterui`), falling back to a scan of
+the process table for an executable under `CoreServices/NotificationCenter.app/` — the bundle-id
+lookup occasionally comes back empty in non-GUI process contexts.
 
-- Primary:
-  `NSRunningApplication.runningApplications(withBundleIdentifier: "com.apple.notificationcenterui")`
-  → `.processIdentifier` (`:56–64`).
-- Fallback: scan the BSD process table (`proc_listpids` / `proc_pidpath`) for an executable path
-  containing `CoreServices/NotificationCenter.app/` (`:71–92`). Needed because
-  `NSRunningApplication`'s snapshot is occasionally empty in non-GUI/test hosts.
-- `AXUIElementCreateApplication(pid) -> AXUIElement` is the root handle for everything below
-  (`:171`).
+> **Never hardcode the pid or a child index** ([C-3](constraints.md)). Resolve the pid every call
+> and locate elements structurally.
 
-> **Never hardcode the pid or a child index** (C-3). Resolve the pid every call; locate elements
-> structurally.
+### Where access lives in `nbk`
+
+Notification Center interaction sits behind the `NotificationCenterAccess` protocol, obtained from
+`NotificationCenterAccessFactory` ([C-6](constraints.md)). Callers depend only on the protocol; the
+factory selects the implementation, so a future macOS layout is an added implementation plus a
+factory branch, not a change rippling through callers. One implementation exists today.
 
 ---
 
@@ -66,60 +70,60 @@ Application (com.apple.notificationcenterui)
                └─ AXStaticText  identifier="body"      value=<body text>
 ```
 
-### How we find notifications
+### How notifications are found
 
-We do **not** rely on the exact depth above. Instead we walk every window depth-first and match a
-notification structurally (`notificationElements`, `:170–186`):
+The exact depth above is not relied on. Instead the walk descends every window depth-first and
+matches a notification **structurally**:
 
-> A notification element = **role is `AXGroup`** _and_ its action list **contains `AXPress`**.
+> A notification element = **role `AXGroup`** _and_ its action list **contains `AXPress`**.
 
-This is deliberately loose so it survives the tree reshuffling between OS versions. Order of the
-returned array is the tree's natural order, surfaced to the CLI as index `0..n` ("newest first").
+This is deliberately loose so it survives the tree being reshuffled between OS versions. Matches
+come back in the tree's natural order, surfaced to the CLI as index `0..n` ("newest first").
 
-### AX primitives we use (all of `NotificationAX.swift`)
+### AX primitives `nbk` uses
 
-| Call                                | Purpose                                            | Site           |
-| ----------------------------------- | -------------------------------------------------- | -------------- |
-| `AXUIElementCreateApplication(pid)` | root app element                                   | `:171`         |
-| `AXUIElementCopyAttributeValue`     | read any attribute (wrapped by `attr`)             | `:216–219`     |
-| `AXUIElementCopyActionNames`        | list an element's actions (wrapped by `axActions`) | `:222–226`     |
-| `AXUIElementPerformAction`          | fire an action (`AXPress`, `Close`, …)             | `:129`, `:163` |
-| `AXUIElementSetAttributeValue`      | set focus (see quirks)                             | `:112`         |
+| Call                            | Purpose                                      |
+| ------------------------------- | -------------------------------------------- |
+| `AXUIElementCreateApplication`  | root app element from the pid                |
+| `AXUIElementCopyAttributeValue` | read any attribute                           |
+| `AXUIElementCopyActionNames`    | list an element's actions                    |
+| `AXUIElementPerformAction`      | fire an action (`AXPress`, `Close`, …)       |
+| `AXUIElementSetAttributeValue`  | set focus (see the focus-before-close quirk) |
 
-### Attributes we read
+### Attributes read
 
-| Constant / literal        | On element         | Meaning                                                 | Site   |
-| ------------------------- | ------------------ | ------------------------------------------------------- | ------ |
-| `kAXWindowsAttribute`     | app                | top-level windows                                       | `:172` |
-| `kAXChildrenAttribute`    | any                | child elements                                          | `:229` |
-| `kAXRoleAttribute`        | any                | e.g. `AXGroup`, `AXStaticText`                          | `:233` |
-| `kAXIdentifierAttribute`  | static text        | `"title"` / `"subtitle"` / `"body"`                     | `:193` |
-| `kAXValueAttribute`       | static text        | the actual text content                                 | `:194` |
-| `kAXDescriptionAttribute` | notification group | `"App, Title, Subtitle, Body"` — first field = app name | `:203` |
-| `kAXFocusedAttribute`     | notification group | set to focus before Close                               | `:112` |
+| Attribute                 | On element         | Meaning                                                 |
+| ------------------------- | ------------------ | ------------------------------------------------------- |
+| `kAXWindowsAttribute`     | app                | top-level windows                                       |
+| `kAXChildrenAttribute`    | any                | child elements                                          |
+| `kAXRoleAttribute`        | any                | e.g. `AXGroup`, `AXStaticText`                          |
+| `kAXIdentifierAttribute`  | static text        | `"title"` / `"subtitle"` / `"body"`                     |
+| `kAXValueAttribute`       | static text        | the actual text content                                 |
+| `kAXDescriptionAttribute` | notification group | `"App, Title, Subtitle, Body"` — first field = app name |
+| `kAXFocusedAttribute`     | notification group | set to focus before Close                               |
 
-### Roles we match
+### Roles matched
 
-`kAXGroupRole` (`AXGroup`) — window subtree and the notification itself (`:178`, `:192`) ·
-`kAXStaticTextRole` (`AXStaticText`) — the text fields (`:192`).
+`kAXGroupRole` (`AXGroup`) — the window subtree and the notification itself; `kAXStaticTextRole`
+(`AXStaticText`) — the text fields.
 
 ---
 
 ## 3. Reading a notification
 
-`item(from:index:)` (`:188–212`) produces the CLI's
-[`NotificationItem`](../Sources/NotificationCore/NotificationItem.swift):
+Each notification maps to a value with `app`, `title`, `subtitle`, `body`, its available action
+names, and a 0-based index:
 
-- **title / subtitle / body** — iterate the group's `AXStaticText` children, key on
-  `kAXIdentifierAttribute`, take `kAXValueAttribute`.
-- **app** — first comma-field of the group's `kAXDescriptionAttribute`.
-- **actions** — action names minus `AXPress` (see §4).
+- **title / subtitle / body** — the group's `AXStaticText` children, keyed by
+  `kAXIdentifierAttribute`, value taken from `kAXValueAttribute`.
+- **app** — the first comma-field of the group's `kAXDescriptionAttribute`.
+- **actions** — the element's action names, minus `AXPress` (see §4).
 
 ### Banner render delay (quirk: poll-for-render)
 
-A delivered banner takes **~1 s** to appear in the tree. `read(wait:)` (`:96–105`) polls every **0.2
-s** until an element appears or the `--wait` deadline passes. Any integration reading right after
-delivery must poll — a single immediate read will miss fresh banners.
+A delivered banner takes **~1 s** to appear in the tree, so reads poll (short interval, bounded by a
+caller-supplied wait) until an element appears or the deadline passes. Any integration reading right
+after delivery must poll — a single immediate read will miss fresh banners.
 
 ---
 
@@ -131,11 +135,9 @@ Notification Center surfaces actions as **opaque descriptor strings**, not clean
 Name:Close\nTarget:0x0\nSelector:(null)
 ```
 
-[`ActionName`](../Sources/NotificationCore/NotificationItem.swift#L89) parses the display name out
-of `Name:...` and maps a display name back to the raw descriptor to perform it.
-
-- **List** an element's actions: `AXUIElementCopyActionNames` (`:222`).
-- **Perform**: resolve display→raw, then `AXUIElementPerformAction(element, raw)` (`:155–166`).
+The display name is parsed out of the `Name:` field, and mapped back to the raw descriptor to
+perform it. To act: enumerate an element's actions with `AXUIElementCopyActionNames`, resolve
+display → raw, then `AXUIElementPerformAction`.
 
 Verified actions on a notification group (macOS 26.5.1):
 
@@ -146,18 +148,18 @@ Verified actions on a notification group (macOS 26.5.1):
 | `Show`         | expand / reveal                                                                                                         |
 | `Show Details` | app-specific detail action (seen on e.g. Script Editor)                                                                 |
 
-App-defined custom action buttons (the ones you add to a `UNNotificationCategory`) also appear here
-as additional named actions — the set is per-notification, so always enumerate rather than assume.
+App-defined custom action buttons (the ones added to a `UNNotificationCategory`) also appear here as
+additional named actions — the set is per-notification, so always enumerate rather than assume.
 
 ### Focus-before-close (quirk)
 
-`Close` **silently no-ops** unless the element is focused first. `dismiss` (`:109–125`):
+`Close` **silently no-ops** unless the element is focused first. `dismiss` therefore:
 
-1. `AXUIElementSetAttributeValue(el, kAXFocusedAttribute, kCFBooleanTrue)`,
-2. sleep 0.3 s to settle,
-3. perform `Close`,
-4. poll (≤2 s) until the element leaves the tree — `Close` is async and returns before the banner
-   actually disappears.
+1. sets `kAXFocusedAttribute` true on the element,
+2. settles briefly,
+3. performs `Close`,
+4. polls (bounded) until the element leaves the tree — `Close` is async and returns before the
+   banner actually disappears.
 
 ---
 
@@ -166,16 +168,16 @@ as additional named actions — the set is per-notification, so always enumerate
 macOS groups multiple notifications from one app into a **stack** (a collapsed pile you click to
 expand). What this means for the AX surface:
 
-- **What `nbk` does today:** nothing stack-aware. `notificationElements` flattens the whole tree and
-  returns _every_ `AXGroup`-with-`AXPress` it finds, in tree order. When a stack is **expanded**
-  each member is a separate matched element and appears as its own index. When **collapsed**,
-  typically only the front notification is a live element in the tree — members behind it are not
-  addressable until expanded.
+- **What `nbk` does today:** nothing stack-aware. The tree is flattened, returning _every_
+  `AXGroup`-with-`AXPress` in tree order. When a stack is **expanded** each member is a separate
+  matched element with its own index. When **collapsed**, typically only the front notification is a
+  live element — members behind it are not addressable until expanded.
 - **The stack container itself** is a parent `AXGroup` wrapping the member groups. It is _not_
   matched as a notification unless it happens to expose `AXPress`. This is the natural place to hang
   stack-level operations, and is worth probing before building stack UI:
   - Enumerate its `kAXChildrenAttribute` to get members.
-  - Look for a `Show/Expand`-style action on the container (_standard AX_ — verify the exact name).
+  - Look for a `Show`/`Expand`-style action on the container (_standard AX_ — verify the exact
+    name).
   - `kAXDescriptionAttribute` on the container often carries a count / "App, N notifications"
     summary.
 - **"Clear All" / per-app clear** buttons appear when the panel is open — as `AXButton` elements
@@ -183,7 +185,7 @@ expand). What this means for the AX surface:
 
 > To build stack features: open the panel, dump the container subtree once, and pin down (a) the
 > container role, (b) its expand action name, (c) whether collapsed members are present-but-hidden
-> or absent. Do it behind the structural-matching discipline of C-3.
+> or absent. Do it behind the structural-matching discipline of [C-3](constraints.md).
 
 ---
 
@@ -205,9 +207,9 @@ probed before you depend on them.
 
 Discovery helpers worth using while probing:
 
-- `AXUIElementCopyAttributeNames(el, &names)` — **every** attribute an element actually exposes.
-  This is the single most useful call for reverse-engineering a new OS layout; `nbk` doesn't call it
-  but it's how you'd map an unfamiliar tree.
+- `AXUIElementCopyAttributeNames` — **every** attribute an element actually exposes. The single most
+  useful call for reverse-engineering a new OS layout; unused by `nbk`, but it's how you'd map an
+  unfamiliar tree.
 - `AXUIElementCopyParameterizedAttributeNames` — parameterized attributes, if any.
 
 ### Buttons in the tree
@@ -216,8 +218,9 @@ When the Notification Center **panel** (not just a banner) is open, interactive 
 `AXButton` elements — action buttons, `Close`, `Options`/chevrons, and panel-level `Clear`.
 Enumerate them structurally (role `AXButton`, disambiguate by `kAXSubroleAttribute` /
 `kAXTitleAttribute` / `kAXDescriptionAttribute`) rather than by index. Coordinates from
-`kAXPosition`/`kAXSize` let you correlate an AX element with a pixel region if you ever need to
-overlay custom UI — without resorting to OCR or blind clicks (which C-1 forbids anyway).
+`kAXPosition` / `kAXSize` let you correlate an AX element with a pixel region if you ever need to
+overlay custom UI — without resorting to OCR or blind clicks (which [C-1](constraints.md) forbids
+anyway).
 
 ---
 
@@ -242,13 +245,13 @@ foundation for any "custom UI that mirrors Notification Center live" work.
   treat empty as failure.
 - **Everything is version-sensitive.** Roles, identifiers, the `"App, Title, Subtitle, Body"`
   description format, and even action names can change between macOS releases. Match structurally;
-  degrade to "layout not recognized" rather than crashing (C-3).
+  degrade to "layout not recognized" rather than crashing ([C-3](constraints.md)).
 - **Actions are opaque descriptors**, not names — you must parse `Name:` out and keep the raw string
   to perform it. Don't build the descriptor yourself; enumerate and match.
-- **`AXPress` is always present** on a notification (it's our very definition of one) and is the
+- **`AXPress` is always present** on a notification (it's the very definition of one) and is the
   "default activation". It is deliberately hidden from the user-facing action list.
-- **Two behaviors need a settle/poll**, both timing-related and both fragile to tune: focus→0.3 s→
-  Close, and the ≤2 s post-Close disappearance wait.
+- **Two behaviors need a settle/poll**, both timing-related and both fragile to tune: focus → Close,
+  and the post-Close disappearance wait.
 - **Identifiers are the reliable text key**, not child order. Key title/subtitle/body off
   `kAXIdentifierAttribute`; positions of the static-text children are not guaranteed.
 
