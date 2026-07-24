@@ -45,8 +45,7 @@ nbk doctor                       # report Accessibility trust, NC pid, macOS ver
 
 Three tiers (full strategy: [`docs/testing.md`](docs/testing.md)):
 
-- **Unit** — swift-testing, pure logic in `NotificationCore` (no AX). Built test-first (TDD) when
-  practical.
+- **Unit** — swift-testing. Built test-first (TDD) when practical.
 - **AX-integration** — swift-testing against the real Notification Center, gated on Accessibility
   trust; delivers real notifications and reads/acts on them.
 - **Acceptance** — cucumber-js runs the `.feature` files under `docs/features/**/acceptance/`
@@ -109,9 +108,10 @@ Accessibility permission to whatever runs `nbk` (see `nbk doctor`).
 
 ```
 Sources/NotificationCore/   pure logic — models, JSON output, selection, action-name parsing (unit-tested)
-Sources/NotificationAX/     AX adapter — reads/acts on the live Notification Center tree
+Sources/NotificationAX/     AX adapter — NotificationCenterAccess seam (protocol + factory), reads/acts on the live tree
 Sources/nbk/                the CLI executable wiring Core + AX
-Tests/NotificationCoreTests/            unit tier (swift-testing)
+Tests/NotificationCoreTests/            unit tier — pure logic (swift-testing)
+Tests/NotificationAXUnitTests/          unit tier — AX seam/factory (no AX trust)
 Tests/NotificationAXIntegrationTests/   AX-integration tier (gated)
 docs/features/**/acceptance/*.feature   acceptance specs (executable via cucumber-js)
 acceptance/steps, acceptance/support    cucumber-js step definitions + world
