@@ -59,7 +59,7 @@ public struct DefaultNotificationCenterAX: NotificationCenterAccess {
 
     // MARK: Read
 
-    public func read(wait: TimeInterval = 0) throws -> [NotificationItem] {
+    public func read(wait: TimeInterval) throws -> [NotificationItem] {
         let pid = try requirePID()
         let deadline = Date().addingTimeInterval(max(0, wait))
         var elements = notificationElements(pid)
