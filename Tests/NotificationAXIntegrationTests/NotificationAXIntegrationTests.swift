@@ -67,8 +67,8 @@ import Testing
             Issue.record("delivered notification did not appear")
             return
         }
+        // dismiss polls (bounded) until the element leaves the tree, so it is gone on return.
         try nc.dismiss(index: idx)
-        Thread.sleep(forTimeInterval: 0.8)
         let after = try nc.read(wait: 0)
         #expect(!after.contains { $0.title == title })
     }
