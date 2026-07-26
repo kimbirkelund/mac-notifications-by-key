@@ -38,6 +38,7 @@ Each feature has a **2-character uppercase code**, unique across all features.
 | Feature             | Code |
 | ------------------- | ---- |
 | Notification access | `NA` |
+| Interactive mode    | `IM` |
 
 (The registry in `features/_index.md` is the source of truth; this table is illustrative.)
 

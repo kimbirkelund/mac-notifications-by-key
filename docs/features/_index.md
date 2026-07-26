@@ -6,9 +6,10 @@ Per-feature requirements and descriptions. Each feature lives in its own directo
 Each feature has a unique **2-character code** used to form its requirement IDs (`RF-N`); see
 [conventions](../conventions.md).
 
-| Feature                                              | Code | Status      | Description                                                                                                        |
-| ---------------------------------------------------- | ---- | ----------- | ------------------------------------------------------------------------------------------------------------------ |
-| [Notification access](notification-access/_index.md) | `NA` | In progress | Read the currently-presented notifications and act on one (dismiss, trigger a named action, activate) via the CLI. |
+| Feature                                              | Code | Status      | Description                                                                                                                             |
+| ---------------------------------------------------- | ---- | ----------- | --------------------------------------------------------------------------------------------------------------------------------------- |
+| [Notification access](notification-access/_index.md) | `NA` | In progress | Read the currently-presented notifications and act on one (dismiss, trigger a named action, activate) via the CLI.                      |
+| [Interactive mode](interactive-mode/_index.md)       | `IM` | Specifying  | A long-running mode that renders a graphical overlay alongside the Notification Center UI, for picking a notification and acting on it. |
 
 See the [foundations](../_index.md#foundations) for global constraints, cross-cutting requirements,
 and definitions that all features must honor.
