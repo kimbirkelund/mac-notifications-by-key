@@ -5,25 +5,13 @@
 
 A keyboard-driven tool for interacting with macOS notifications. It reads the notifications macOS is
 currently presenting and acts on a designated one — dismiss, trigger a named action, or activate —
-exposed as a non-interactive CLI (`nbk`) suitable for binding to a hotkey daemon (skhd). It replaces
-fragile open-Notification-Center-and-move-the-mouse setups.
-
-## Mechanism
+exposed as a non-interactive CLI (`nbk`) suitable for binding to a hotkey daemon (skhd).
 
 Notifications are reached **only through the public Accessibility (AX) API** against the
 Notification Center process (`com.apple.notificationcenterui`) — there is no public API to read or
 act on another app's notifications, and the AX surface exposes notifications as addressable elements
 with readable text and named actions. No screenshots/OCR, no fixed-coordinate mouse simulation, no
-private frameworks ([docs/constraints.md](docs/constraints.md): C-1). Requires Accessibility
-permission for the host process (C-2) and is macOS-only (C-5).
-
-Two probe-verified quirks shape the AX adapter (macOS 26.5.1):
-
-- **Focus-before-close** — performing `Close` without first focusing the element is a silent no-op;
-  the adapter focuses, settles, then closes.
-- **Render delay / transient window** — the AX window exposing notifications exists only while a
-  banner is on screen or the panel is open, and a banner takes a moment to render after delivery;
-  reads poll up to `--wait` seconds.
+private frameworks. Requires Accessibility permission for the host process and is macOS-only.
 
 ## Development flow
 
