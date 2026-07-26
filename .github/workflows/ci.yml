@@ -1,6 +1,6 @@
 name: CI
 
-# macOS-only project (constraint C-5): the tool drives the macOS Notification
+# macOS-only project (constraint C-4): the tool drives the macOS Notification
 # Center via the Accessibility API, so every job runs on a macOS runner.
 on:
   push:

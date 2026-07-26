@@ -60,7 +60,7 @@ preflights it (`nbk doctor`) and skips those tiers with a clear message when it 
 ## CI / release
 
 - **CI** ([`.github/workflows/ci.yml`](.github/workflows/ci.yml)) runs on macOS (the only supported
-  platform, C-5): a **lint** job (`build.ps1 -DoLint` + actionlint), a **build** job (universal
+  platform, C-4): a **lint** job (`build.ps1 -DoLint` + actionlint), a **build** job (universal
   release binary), and a **test** job (`-Kinds Unit`). The AX-integration and acceptance tiers can't
   run on hosted runners — they need Accessibility trust and a real on-screen Notification Center —
   so they stay local.

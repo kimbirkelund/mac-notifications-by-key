@@ -352,7 +352,7 @@ if ($DoLint)
 
   if ($Fix)
   {
-    # swift-format ships with the Swift toolchain, only expected on macOS (C-5).
+    # swift-format ships with the Swift toolchain, only expected on macOS (C-4).
     if ($IsMacOS)
     {
       Write-Step 'swift-format (format in place)'
@@ -375,7 +375,7 @@ if ($DoLint)
   }
   else
   {
-    # swift-format ships with the Swift toolchain, only expected on macOS (C-5).
+    # swift-format ships with the Swift toolchain, only expected on macOS (C-4).
     if ($IsMacOS)
     {
       Write-Step 'swift-format (lint)'
