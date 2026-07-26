@@ -13,6 +13,10 @@ let package = Package(
         .executableTarget(name: "nbk", dependencies: ["NotificationCore", "NotificationAX"]),
         // Unit tier.
         .testTarget(name: "NotificationCoreTests", dependencies: ["NotificationCore"]),
+        // Unit tier for the AX module's seam/factory logic (no Accessibility at runtime).
+        .testTarget(
+            name: "NotificationAXUnitTests",
+            dependencies: ["NotificationAX", "NotificationCore"]),
         // AX-integration tier (gated on Accessibility trust at runtime).
         .testTarget(
             name: "NotificationAXIntegrationTests",

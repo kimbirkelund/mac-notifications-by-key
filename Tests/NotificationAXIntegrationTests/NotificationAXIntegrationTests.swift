@@ -13,8 +13,18 @@ import Testing
 /// coalescing would otherwise make them flaky. Each test also clears the Center
 /// first for a clean slate.
 @Suite(.serialized) struct NotificationAXIntegrationTests {
+    /// Bounds `clearAll`'s dismiss loop so a Center that won't drain can't hang the suite.
+    static let maxClearAttempts = 10
+    /// Let a dismissal settle before the next `clearAll` read (Close is async).
+    static let clearSettleDelay: TimeInterval = 0.3
+    /// Poll past the ~1s banner render delay (docs/constraints.md C-3) when reading a delivery.
+    static let deliveryReadTimeout: TimeInterval = 6
+
+    let nc = NotificationCenterAccessFactory.make()
+
     static var available: Bool {
-        NotificationAX.isTrusted && NotificationAX.notificationCenterPID() != nil
+        let nc = NotificationCenterAccessFactory.make()
+        return nc.isTrusted && nc.notificationCenterPID() != nil
     }
 
     @discardableResult
@@ -29,11 +39,11 @@ import Testing
 
     /// Dismiss everything currently presented, so a test starts from empty.
     func clearAll() {
-        for _ in 0..<10 {
-            let items = (try? NotificationAX.read(wait: 0)) ?? []
+        for _ in 0..<Self.maxClearAttempts {
+            let items = (try? nc.read(wait: 0)) ?? []
             if items.isEmpty { return }
-            try? NotificationAX.dismiss(index: 0)
-            Thread.sleep(forTimeInterval: 0.3)
+            try? nc.dismiss(index: 0)
+            Thread.sleep(forTimeInterval: Self.clearSettleDelay)
         }
     }
 
@@ -42,9 +52,8 @@ import Testing
         clearAll()
         let title = "AXIntegrationProbe"
         #expect(deliver(title: title))
-        let items = try NotificationAX.read(wait: 6)
+        let items = try nc.read(wait: Self.deliveryReadTimeout)
         #expect(items.contains { $0.title == title })
-        clearAll()
     }
 
     @Test(.enabled(if: NotificationAXIntegrationTests.available))
@@ -52,14 +61,13 @@ import Testing
         clearAll()
         let title = "AXDismissProbe"
         #expect(deliver(title: title))
-        let before = try NotificationAX.read(wait: 6)
-        guard let idx = before.firstIndex(where: { $0.title == title }) else {
-            Issue.record("delivered notification did not appear")
-            return
-        }
-        try NotificationAX.dismiss(index: idx)
-        Thread.sleep(forTimeInterval: 0.8)
-        let after = try NotificationAX.read(wait: 0)
+        let before = try nc.read(wait: Self.deliveryReadTimeout)
+        let idx = try #require(
+            before.firstIndex(where: { $0.title == title }), "delivered notification did not appear"
+        )
+        // dismiss polls (bounded) until the element leaves the tree, so it is gone on return.
+        try nc.dismiss(index: idx)
+        let after = try nc.read(wait: 0)
         #expect(!after.contains { $0.title == title })
     }
 }

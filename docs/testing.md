@@ -7,11 +7,11 @@ unit-tested rather than only exercised end-to-end.
 
 ## The tiers
 
-| Tier               | Tool                                                    | Environment                                          | Owns                                                                                                | Lives in                                                                    |
-| ------------------ | ------------------------------------------------------- | ---------------------------------------------------- | --------------------------------------------------------------------------------------------------- | --------------------------------------------------------------------------- |
-| **Unit**           | [swift-testing](https://github.com/apple/swift-testing) | node-free, fast, no AX                               | Pure logic — argument parsing, notification-model decoding, selection/index rules, JSON output      | `Tests/NotificationCoreTests/` (tests the `NotificationCore` target)        |
-| **AX-integration** | swift-testing (gated)                                   | real Notification Center + AX trust                  | The AX adapter against real notifications: reading the live tree into the model, focus+close/action | `Tests/NotificationAXIntegrationTests/` (tests the `NotificationAX` target) |
-| **Acceptance**     | [cucumber-js](https://github.com/cucumber/cucumber-js)  | real macOS, the compiled `nbk` binary as a black box | End-to-end behavior: deliver a real notification, invoke the CLI, assert observable result          | `docs/features/**/acceptance/*.feature` + steps in `acceptance/steps/`      |
+| Tier               | Tool                                                    | Environment                                          | Owns                                                                                                                                                                             | Lives in                                                                                                                                |
+| ------------------ | ------------------------------------------------------- | ---------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------- |
+| **Unit**           | [swift-testing](https://github.com/apple/swift-testing) | node-free, fast, no AX                               | Pure logic — argument parsing, notification-model decoding, selection/index rules, JSON output; plus AX-module seam logic that makes no Accessibility calls (the access factory) | `Tests/NotificationCoreTests/` (the `NotificationCore` target) and `Tests/NotificationAXUnitTests/` (the `NotificationAX` factory/seam) |
+| **AX-integration** | swift-testing (gated)                                   | real Notification Center + AX trust                  | The AX adapter against real notifications: reading the live tree into the model, focus+close/action                                                                              | `Tests/NotificationAXIntegrationTests/` (tests the `NotificationAX` target)                                                             |
+| **Acceptance**     | [cucumber-js](https://github.com/cucumber/cucumber-js)  | real macOS, the compiled `nbk` binary as a black box | End-to-end behavior: deliver a real notification, invoke the CLI, assert observable result                                                                                       | `docs/features/**/acceptance/*.feature` + steps in `acceptance/steps/`                                                                  |
 
 ## The boundary, in one line
 
@@ -81,6 +81,6 @@ AX code thin.
 | `./build.ps1 -DoTest -Kinds Unit,Acceptance` | a subset (comma-separated)                   |
 
 `-Kinds` accepts `All` (default), `Unit`, `Integration`, `Acceptance`. The underlying commands are
-`swift test --filter NotificationCoreTests`, `swift test --filter NotificationAXIntegrationTests`,
-and `npx cucumber-js`. `@wip` scenarios are excluded from the acceptance run via `tags: 'not @wip'`
-in `cucumber.mjs`.
+`swift test --filter NotificationCoreTests --filter NotificationAXUnitTests`,
+`swift test --filter NotificationAXIntegrationTests`, and `npx cucumber-js`. `@wip` scenarios are
+excluded from the acceptance run via `tags: 'not @wip'` in `cucumber.mjs`.

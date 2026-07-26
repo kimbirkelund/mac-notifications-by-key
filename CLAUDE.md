@@ -11,12 +11,11 @@ code exists to make them pass.
 
 ## Testing
 
-Three tiers (see [`docs/testing.md`](docs/testing.md)): **unit** (swift-testing, pure logic in
-`NotificationCore`), **AX-integration** (swift-testing against real Notification Center, gated on
-Accessibility trust), **acceptance** (cucumber-js driving the compiled `nbk` binary as a black box).
-Test at the lowest tier that can prove the behavior; push logic into `NotificationCore` and
-unit-test it test-first (TDD) whenever practical. Run with `./build.ps1 -DoTest`
-(`-Kinds Unit|Integration|Acceptance|All`).
+Three tiers (see [`docs/testing.md`](docs/testing.md)): **unit** (swift-testing, no AX),
+**AX-integration** (swift-testing against real Notification Center, gated on Accessibility trust),
+**acceptance** (cucumber-js driving the compiled `nbk` binary as a black box). Test at the lowest
+tier that can prove the behavior; push logic into `NotificationCore` and unit-test it test-first
+(TDD) whenever practical. Run with `./build.ps1 -DoTest` (`-Kinds Unit|Integration|Acceptance|All`).
 
 CI runs the **unit tier only** — AX-integration and acceptance need Accessibility trust and a real
 Notification Center, which hosted runners can't provide. A green CI therefore does **not** exercise

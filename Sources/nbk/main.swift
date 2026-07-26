@@ -26,30 +26,32 @@ func intArg(_ tokens: [String], _ position: Int) -> Int? {
     return Int(tokens[position])
 }
 
+let nc = NotificationCenterAccessFactory.make()
+
 do {
     switch command {
     case "list":
         let wait = try WaitOption.parse(rest)
-        let items = try NotificationAX.read(wait: wait)
+        let items = try nc.read(wait: wait)
         print(try Output.json(items))
 
     case "dismiss":
         guard let n = intArg(rest, 0) else { die("usage: nbk dismiss <index>", code: 64) }
-        try NotificationAX.dismiss(index: n)
+        try nc.dismiss(index: n)
 
     case "press":
         guard let n = intArg(rest, 0) else { die("usage: nbk press <index>", code: 64) }
-        try NotificationAX.press(index: n)
+        try nc.press(index: n)
 
     case "action":
         guard let n = intArg(rest, 0), rest.count >= 2 else {
             die("usage: nbk action <index> <name>", code: 64)
         }
-        try NotificationAX.perform(action: rest[1], index: n)
+        try nc.perform(action: rest[1], index: n)
 
     case "doctor":
-        let trusted = NotificationAX.isTrusted
-        let pid = NotificationAX.notificationCenterPID()
+        let trusted = nc.isTrusted
+        let pid = nc.notificationCenterPID()
         print("accessibility_trust: \(trusted)")
         print("notification_center_pid: \(pid.map(String.init) ?? "not found")")
         print("macos: \(ProcessInfo.processInfo.operatingSystemVersionString)")
