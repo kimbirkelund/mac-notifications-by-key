@@ -52,9 +52,8 @@ import Testing
         clearAll()
         let title = "AXIntegrationProbe"
         #expect(deliver(title: title))
-        let items = try nc.read(wait: 6)
+        let items = try nc.read(wait: Self.deliveryReadTimeout)
         #expect(items.contains { $0.title == title })
-        clearAll()
     }
 
     @Test(.enabled(if: NotificationAXIntegrationTests.available))
@@ -63,10 +62,9 @@ import Testing
         let title = "AXDismissProbe"
         #expect(deliver(title: title))
         let before = try nc.read(wait: Self.deliveryReadTimeout)
-        guard let idx = before.firstIndex(where: { $0.title == title }) else {
-            Issue.record("delivered notification did not appear")
-            return
-        }
+        let idx = try #require(
+            before.firstIndex(where: { $0.title == title }), "delivered notification did not appear"
+        )
         // dismiss polls (bounded) until the element leaves the tree, so it is gone on return.
         try nc.dismiss(index: idx)
         let after = try nc.read(wait: 0)
