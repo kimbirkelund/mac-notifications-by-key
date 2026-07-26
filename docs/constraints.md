@@ -22,14 +22,10 @@ direct acceptance test.
   reporting "no notifications found / layout not recognized" — rather than crashing when the layout
   changes.
 
-- **C-4 — Non-interactive CLI, no GUI.** The system shall be a non-interactive command-line tool
-  with no graphical interface of its own. Each operation completes in a single invocation with no
-  interactive prompts, so it is bindable to a hotkey daemon (skhd).
-
-- **C-5 — macOS only.** The system targets macOS exclusively (it is inherently coupled to the macOS
+- **C-4 — macOS only.** The system targets macOS exclusively (it is inherently coupled to the macOS
   Notification Center and AX API). Cross-platform portability is explicitly a non-goal.
 
-- **C-6 — Version-selectable access behind a seam.** Notification Center interaction shall be
+- **C-5 — Version-selectable access behind a seam.** Notification Center interaction shall be
   defined by a protocol and obtained through a factory that selects the implementation, so that
   alternative layout implementations (per macOS release, C-3) can be added without changing callers.
   A single implementation is provided today; the factory is the sole selection point. Rationale: C-3

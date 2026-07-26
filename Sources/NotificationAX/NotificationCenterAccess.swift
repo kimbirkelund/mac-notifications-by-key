@@ -5,7 +5,7 @@ import NotificationCore
 /// how a given macOS release lays out the Notification Center accessibility tree.
 ///
 /// Callers depend on this protocol and obtain an implementation from
-/// `NotificationCenterAccessFactory` (docs/constraints.md C-6); a new OS layout is an
+/// `NotificationCenterAccessFactory` (docs/constraints.md C-5); a new OS layout is an
 /// added conformer plus a factory branch, never an edit to callers (C-3).
 public protocol NotificationCenterAccess {
     var isTrusted: Bool { get }

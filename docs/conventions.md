@@ -5,8 +5,7 @@ these.
 
 ## Requirement identifiers
 
-Every requirement and constraint has a **stable ID**. IDs are referenced from acceptance scenarios
-and never reused once retired.
+Every requirement and constraint has a **stable ID**. IDs are referenced from acceptance scenarios.
 
 | ID form | Scope       | Kind                                                      | Acceptance test? |
 | ------- | ----------- | --------------------------------------------------------- | ---------------- |

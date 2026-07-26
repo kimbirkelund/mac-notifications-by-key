@@ -45,7 +45,7 @@ lookup occasionally comes back empty in non-GUI process contexts.
 ### Where access lives in `nbk`
 
 Notification Center interaction sits behind the `NotificationCenterAccess` protocol, obtained from
-`NotificationCenterAccessFactory` ([C-6](constraints.md)). Callers depend only on the protocol; the
+`NotificationCenterAccessFactory` ([C-5](constraints.md)). Callers depend only on the protocol; the
 factory selects the implementation, so a future macOS layout is an added implementation plus a
 factory branch, not a change rippling through callers. One implementation exists today.
 

@@ -50,5 +50,5 @@ is currently presented.
 
 ## Conventions
 
-Honors AX-only (C-1), permission required (C-2), OS resilience (C-3), CLI-only (C-4), macOS-only
-(C-5), version-selectable access behind a seam (C-6), and all cross-cutting requirements (X-1..X-4).
+Honors AX-only (C-1), permission required (C-2), OS resilience (C-3), macOS-only (C-4),
+version-selectable access behind a seam (C-5), and all cross-cutting requirements (X-1..X-4).
