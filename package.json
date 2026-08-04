@@ -8,7 +8,7 @@
     "acceptance": "cucumber-js"
   },
   "devDependencies": {
-    "@cucumber/cucumber": "13.2.0",
+    "@cucumber/cucumber": "13.2.1",
     "prettier": "3.9.6"
   }
 }
