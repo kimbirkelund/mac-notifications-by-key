@@ -125,7 +125,7 @@ jobs:
           echo "path=$notes" >> "$GITHUB_OUTPUT"
 
       - name: Publish GitHub Release
-        uses: softprops/action-gh-release@v3.0.2
+        uses: softprops/action-gh-release@v3.0.3
         with:
           tag_name: ${{ steps.meta.outputs.tag }}
           # For an rc push the tag doesn't exist yet; without this the API creates it
