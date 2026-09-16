@@ -44,7 +44,7 @@ jobs:
       # nbgv runs as a .NET tool; hosted macOS runners don't guarantee a runtime.
       - uses: actions/setup-dotnet@v6.0.0
         with:
-          dotnet-version: 10.0.x
+          dotnet-version: 10.0.401
 
       # Deterministic version from git state (version.json + git height) rather than
       # the tag name. Exposes fields like NpmPackageVersion as step outputs.
