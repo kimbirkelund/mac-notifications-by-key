@@ -30,17 +30,18 @@ for `C-*`/`X-*`.
 ## Notification Center panel
 
 - **RIM-5 (event) — Open the panel on entering the mode.** When the user runs `interactive`, the
-  system shall open the Notification Center panel, so that the notification list and the panel-only
-  controls exist for the duration of the mode rather than depending on a banner happening to be on
-  screen. The panel shall be opened unconditionally, whatever was on screen beforehand.
+  system shall ensure the Notification Center panel is open — opening it if it is not already — so
+  that the notification list and the panel-only controls exist for the duration of the mode rather
+  than depending on a banner happening to be on screen.
 
 ## Ending the mode
 
 - **RIM-6 (event) — Terminate on signal.** When interactive mode receives `SIGINT` or `SIGTERM`, the
-  system shall remove the overlay from the screen, close the Notification Center panel, and exit
-  `0`, releasing keyboard and mouse input back to the rest of the system. The panel shall be closed
-  unconditionally — it is not dismissed by focus changes or by this process exiting, so leaving it
-  open would outlive the mode.
+  system shall remove the overlay from the screen, ensure the Notification Center panel is closed,
+  and exit `0`, releasing keyboard and mouse input back to the rest of the system. The panel shall
+  be closed even if it was already open before the mode was entered — the mode does not restore
+  prior panel state. Nothing else closes it: it survives focus changes and this process exiting, so
+  leaving it open would outlive the mode.
 
 - **RIM-7 (event) — Terminate on Escape.** When the user presses Escape while the overlay holds
   focus, the system shall end interactive mode with the same teardown as [RIM-6](#ending-the-mode) —

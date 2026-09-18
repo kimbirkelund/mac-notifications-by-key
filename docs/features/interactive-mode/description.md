@@ -79,8 +79,14 @@ and the probe evidence.
 
 Closing it is not optional. The panel is sticky — it survives focus moving elsewhere and it survives
 the process that opened it exiting. Whatever opens the panel therefore owns closing it, or the mode
-leaves the panel hanging on screen after it is gone. Both the open and the close are unconditional;
-the mode does not try to preserve whatever the panel's state happened to be beforehand.
+leaves the panel hanging on screen after it is gone.
+
+Both ends are stated as a resulting state rather than an action, because the only control available
+is a **toggle** (the menu bar clock). Pressing it blindly on entry would _close_ a panel the user
+had already opened, and pressing it blindly on exit would _open_ one that was already shut — leaving
+exactly the stranded panel the close exists to prevent. So the mode checks and then acts. What it
+does not do is restore prior state: the panel is closed on the way out even if the user had it open
+beforehand.
 
 Because the mode is long-running, covers the screen, and swallows input, **the way out is
 safety-critical, not a refinement**. A signal ends it, which is what a toggle hotkey sends — but a
