@@ -13,4 +13,4 @@ const common = {
 }
 
 export default { ...common, tags: 'not @wip and not @operator' }
-export const operator = { ...common, tags: '@operator' }
+export const operator = { ...common, tags: '@operator and not @wip' }

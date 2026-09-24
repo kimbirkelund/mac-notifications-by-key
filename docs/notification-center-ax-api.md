@@ -42,6 +42,41 @@ lookup occasionally comes back empty in non-GUI process contexts.
 > **Never hardcode the pid or a child index** ([C-3](constraints.md)). Resolve the pid every call
 > and locate elements structurally.
 
+### Opening the panel (ControlCenter's clock)
+
+The notification window only exists while a banner is up or the panel is open (§2) — but the panel
+can be **opened programmatically over AX**, so that state need not be waited for. The toggle is the
+menu bar clock, which belongs to **ControlCenter**, not to Notification Center:
+
+```
+Application (com.apple.controlcenter)
+└─ AXExtrasMenuBar                       ← NOTE: kAXMenuBarAttribute is absent on this app
+   └─ AXMenuBarItem  subrole=AXMenuExtra
+        identifier = "com.apple.menuextra.clock"
+        description = "Clock"
+        actions    = ["AXPress", "AXCancel"]
+```
+
+`AXPress` on that element opens the panel; pressing it again closes it. Probe-verified on **macOS
+26.5.2 (25F84)**:
+
+- **The window appears on demand.** `windows=0` before the press, `windows=1` after — as `AXWindow`
+  titled `"Notification Center"`, subrole `AXSystemDialog`. This is what makes the panel-only
+  surface (per-app clear, `Clear All`, the persistent list) reachable at all.
+- **Opening it does not steal focus.** The frontmost application is unchanged across the press.
+- **The panel is sticky.** It is _not_ dismissed by another application taking focus, nor by that
+  application quitting. Whatever opens it owns closing it.
+- **The panel window sits at window level 21.** Measured on the on-screen window list: an overlay at
+  level 25 or above (`statusBar`, `popUpMenu`, `screenSaver`) draws in front of the panel; at level
+  3 or 0 (`floating`, `normal`) the panel draws in front. Relevant to anything that wants to paint
+  over or under it. The menu bar and Control Centre's own windows are at level 25, i.e. above the
+  panel.
+- Sibling extras are addressable the same way (`com.apple.menuextra.battery`, `.bluetooth`, `.wifi`,
+  `.controlcenter`, `.now-playing`), several with an empty identifier and description.
+
+> The identifier is an undocumented Apple string like everything else here ([C-3](constraints.md)).
+> Match on it, but fall back to subrole `AXMenuExtra` plus description rather than failing hard.
+
 ### Where access lives in `nbk`
 
 Notification Center interaction sits behind the `NotificationCenterAccess` protocol, obtained from
@@ -54,7 +89,9 @@ factory branch, not a change rippling through callers. One implementation exists
 ## 2. The element tree
 
 The AX window only exists **while a banner is on screen or the panel is open**. With nothing
-presented there are no notification windows — a clean, non-error "empty" state.
+presented there are no notification windows — a clean, non-error "empty" state. The panel half of
+that condition is controllable: press ControlCenter's clock extra (§1) to bring the window into
+existence on demand.
 
 Verified shape (macOS 26.5.1):
 
@@ -241,8 +278,11 @@ foundation for any "custom UI that mirrors Notification Center live" work.
 
 ## 8. Gotchas & interesting notes
 
-- **The window is ephemeral.** No banner/panel ⇒ no window ⇒ empty result, _not_ an error. Don't
-  treat empty as failure.
+- **The window is ephemeral, but not out of reach.** No banner/panel ⇒ no window ⇒ empty result,
+  _not_ an error. Don't treat empty as failure — and where a window is actually needed, open the
+  panel via ControlCenter's clock extra (§1) instead of waiting for one.
+- **The panel outlives whoever opened it.** Focus changes don't close it and neither does the
+  opening process exiting. Anything that opens the panel must close it again.
 - **Everything is version-sensitive.** Roles, identifiers, the `"App, Title, Subtitle, Body"`
   description format, and even action names can change between macOS releases. Match structurally;
   degrade to "layout not recognized" rather than crashing ([C-3](constraints.md)).
@@ -268,4 +308,5 @@ foundation for any "custom UI that mirrors Notification Center live" work.
 **Available but unused (probe before relying):** `AXUIElementCopyAttributeNames`, `AXObserver*`
 (live events); attributes `Position`, `Size`, `Frame`, `Subrole`, `Enabled`, `Help`, `Parent`,
 `TopLevelUIElement`; role `AXButton`; stack-container children/expand action and panel-level
-`Clear All`.
+`Clear All`; ControlCenter's `AXExtrasMenuBar` clock extra for opening/closing the panel (§1 —
+probed, not yet used by `nbk`).
