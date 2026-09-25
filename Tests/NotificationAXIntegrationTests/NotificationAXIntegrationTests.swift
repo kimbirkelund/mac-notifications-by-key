@@ -1,3 +1,4 @@
+import ApplicationServices
 import Foundation
 import NotificationCore
 import Testing
@@ -69,5 +70,58 @@ import Testing
         try nc.dismiss(index: idx)
         let after = try nc.read(wait: 0)
         #expect(!after.contains { $0.title == title })
+    }
+
+    @Test(.enabled(if: NotificationAXIntegrationTests.available))
+    func setPanelOpenTogglesPanel() throws {
+        defer { try? nc.setPanelOpen(false) }
+        try nc.setPanelOpen(false)
+        #expect(!nc.isPanelOpen)
+        try nc.setPanelOpen(false)
+        #expect(!nc.isPanelOpen)
+        try nc.setPanelOpen(true)
+        #expect(nc.isPanelOpen)
+        try nc.setPanelOpen(true)
+        #expect(nc.isPanelOpen)
+        try nc.setPanelOpen(false)
+        #expect(!nc.isPanelOpen)
+    }
+
+    func notificationCenterWindowSubroles() -> [String] {
+        guard let pid = nc.notificationCenterPID() else { return [] }
+        var value: CFTypeRef?
+        guard
+            AXUIElementCopyAttributeValue(
+                AXUIElementCreateApplication(pid), kAXWindowsAttribute as CFString, &value)
+                == .success,
+            let windows = value as? [AXUIElement]
+        else { return [] }
+        return windows.compactMap { window in
+            var subrole: CFTypeRef?
+            AXUIElementCopyAttributeValue(window, kAXSubroleAttribute as CFString, &subrole)
+            return subrole as? String
+        }
+    }
+
+    /// A banner lives in the same `AXSystemDialog` window as the panel, so this guards
+    /// against a banner being mistaken for an open panel.
+    @Test(.enabled(if: NotificationAXIntegrationTests.available))
+    func bannerIsNotAnOpenPanel() throws {
+        defer {
+            try? nc.setPanelOpen(false)
+            clearAll()
+        }
+        try nc.setPanelOpen(false)
+        clearAll()
+        let title = "AXPanelDiscriminatorProbe"
+        #expect(deliver(title: title))
+        let items = try nc.read(wait: Self.deliveryReadTimeout)
+        try #require(items.contains { $0.title == title }, "delivered banner did not appear")
+        #expect(notificationCenterWindowSubroles().contains("AXSystemDialog"))
+        #expect(!nc.isPanelOpen)
+        try nc.setPanelOpen(true)
+        #expect(nc.isPanelOpen)
+        try nc.setPanelOpen(false)
+        #expect(!nc.isPanelOpen)
     }
 }
