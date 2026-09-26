@@ -8,6 +8,5 @@ it (default action). It is the foundation every later feature builds on.
 
 - [Description](description.md) — how it works (prose, mental model).
 - [Requirements](requirements.md) — behavioral requirements (`RNA-*`) and open seeds.
-- [Acceptance scenarios](acceptance/_index.md) — BDD scenarios. The walking-skeleton `list` scenario
-  is the first executable target; act/error scenarios are `@wip` until the corresponding CLI
-  subcommands exist.
+- [Acceptance scenarios](acceptance/_index.md) — BDD scenarios. All unattended scenarios run in the
+  default acceptance run; the missing-trust scenario is `@operator` and attended only.
