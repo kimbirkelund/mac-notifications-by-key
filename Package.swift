@@ -12,7 +12,8 @@ let package = Package(
         // The CLI executable.
         // Interactive mode: the overlay session (AppKit), kept out of the adapter and the CLI.
         .target(name: "InteractiveMode", dependencies: ["NotificationAX", "NotificationCore"]),
-        .executableTarget(name: "nbk", dependencies: ["NotificationCore", "NotificationAX"]),
+        .executableTarget(
+            name: "nbk", dependencies: ["NotificationCore", "NotificationAX", "InteractiveMode"]),
         .executableTarget(name: "windowlist"),
         // Unit tier.
         .testTarget(name: "NotificationCoreTests", dependencies: ["NotificationCore"]),
