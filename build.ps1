@@ -290,8 +290,8 @@ if ($DoTest)
 {
   if ($selected -contains 'Unit')
   {
-    Write-Step 'Unit tier (NotificationCoreTests, NotificationAXUnitTests)'
-    Invoke-Checked 'swift' @('test', '--filter', 'NotificationCoreTests', '--filter', 'NotificationAXUnitTests')
+    Write-Step 'Unit tier (NotificationCoreTests, NotificationAXUnitTests, InteractiveModeTests)'
+    Invoke-Checked 'swift' @('test', '--filter', 'NotificationCoreTests', '--filter', 'NotificationAXUnitTests', '--filter', 'InteractiveModeTests')
   }
 
   $needTrust = ($selected -contains 'Integration') -or ($selected -contains 'Acceptance')
