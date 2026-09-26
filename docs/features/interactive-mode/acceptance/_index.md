@@ -14,7 +14,7 @@ and runs only attended.
 | Re-invoking does not stack a second overlay         | RIM-4        | ✅                                     |
 | Terminating on a signal tears everything down       | RIM-6        | ✅                                     |
 | Pressing Escape leaves the mode                     | RIM-7        | ✅                                     |
-| The overlay sits above the panel without hiding it  | RIM-1, RIM-2 | ✅                                     |
+| The panel sits above the overlay, untinted          | RIM-1, RIM-2 | ✅                                     |
 | Missing Accessibility trust is refused              | RIM-9        | ⏳ `@operator` — attended, not yet run |
 
 ## What the harness adds
@@ -33,9 +33,9 @@ notification access uses. None needs a new framework.
   System Events reports a bundle-less accessory process as never frontmost, so the frontmost check
   asks the workspace for the active application instead.
 
-One scenario needs more: window **level** and **alpha** are not exposed through AX, so "above the
-panel" and "translucent" need a small helper that dumps `CGWindowListCopyWindowInfo` (owner, level,
-front-to-back order, alpha). No permission required — the probe recorded in the
+One scenario needs more: window **level** and **alpha** are not exposed through AX, so "panel above
+the overlay" and "translucent" need a small helper that dumps `CGWindowListCopyWindowInfo` (owner,
+level, front-to-back order, alpha). No permission required — the probe recorded in the
 [AX reference](../../../notification-center-ax-api.md) read exactly that. The helper is built
 alongside `nbk` but is not part of its CLI. Rows are matched by process, because owner names are
 localized. A banner produces the same Notification Center row as the panel, so the window list

@@ -86,6 +86,8 @@ verified on 26 only:
   i.e. above the panel.
 - Sibling extras are addressable the same way (`com.apple.menuextra.battery`, `.bluetooth`, `.wifi`,
   `.controlcenter`, `.now-playing`), several with an empty identifier and description.
+- nbk's interactive-mode overlay sits at window level 20, the dock window level and the highest
+  level that still draws beneath the panel's 21.
 
 > The identifier is an undocumented Apple string like everything else here ([C-3](constraints.md)).
 > Match on it, but fall back to subrole `AXMenuExtra` plus description rather than failing hard.

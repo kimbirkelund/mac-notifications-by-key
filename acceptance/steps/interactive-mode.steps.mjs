@@ -128,7 +128,7 @@ const PANEL_LAYER = 21
 // Window level and front-to-back order are not exposed through AX; the
 // window-list helper reads them from CGWindowList.
 Then(
-  'the overlay is above the Notification Center panel in the window order',
+  'the Notification Center panel is above the overlay in the window order',
   STEP,
   async function () {
     const pid = this.interactive.child.pid
@@ -142,10 +142,10 @@ Then(
       `no Notification Center window at layer ${PANEL_LAYER} in the window list: ${JSON.stringify(rows)}`
     )
     assert.ok(
-      overlayIdx < panelIdx && rows[overlayIdx].layer > rows[panelIdx].layer,
-      `expected the overlay above the panel; overlay ${JSON.stringify(
-        rows[overlayIdx]
-      )} at ${overlayIdx}, panel ${JSON.stringify(rows[panelIdx])} at ${panelIdx}`
+      panelIdx < overlayIdx && rows[panelIdx].layer > rows[overlayIdx].layer,
+      `expected the panel above the overlay; panel ${JSON.stringify(
+        rows[panelIdx]
+      )} at ${panelIdx}, overlay ${JSON.stringify(rows[overlayIdx])} at ${overlayIdx}`
     )
   }
 )

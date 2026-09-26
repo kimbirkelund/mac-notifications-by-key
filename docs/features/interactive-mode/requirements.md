@@ -8,15 +8,15 @@ for `C-*`/`X-*`.
 
 - **RIM-1 (event) — Overlay signals the active mode and owns input.** When the user runs
   `interactive`, the system shall display a screen-filling borderless window on every Space, above
-  all other windows — including the Notification Center panel — tinted and bearing a visible mode
-  label; shall become the active application and hold keyboard focus; and shall keep that overlay
-  visible and focused until interactive mode ends. Keyboard and mouse input shall be received by the
-  overlay and shall **not** reach the windows beneath it.
+  every window except the Notification Center panel — which stays on top of it and reachable —
+  tinted and bearing a visible mode label; shall become the active application and hold keyboard
+  focus; and shall keep that overlay visible until interactive mode ends, though focus may leave it
+  when the user interacts with the panel. Keyboard and mouse input shall be received by the overlay
+  and shall **not** reach the windows beneath it; the panel, being above it, is not covered by this.
 
-- **RIM-2 (state) — Notifications stay legible through the overlay.** While interactive mode is
-  active, the overlay shall be translucent rather than opaque, so the notifications and the panel it
-  covers remain readable through it. The overlay is a tint over the real notifications, never a
-  replacement for them.
+- **RIM-2 (state) — The overlay is a translucent tint.** While interactive mode is active, the
+  overlay shall be translucent rather than opaque, keeping the desktop visible underneath it so the
+  mode reads as a tint over the screen rather than a blackout.
 
 - **RIM-3 (state) — No application presence.** While interactive mode is active, the system shall
   present no Dock icon, no menu bar, and no entry in the window cycler — it holds focus without
@@ -62,10 +62,9 @@ for `C-*`/`X-*`.
 
 ## Open seeds (not yet specified)
 
-- **Reaching notifications while the mode is active.** [RIM-1](#mode-signal) stops clicks from
-  reaching the notifications beneath the overlay, so until the overlay offers its own selection and
-  action controls the notifications cannot be acted on by mouse at all. The overlay's own controls
-  are what close this gap; until they exist the mode is signal-only.
+- **Reaching notifications while the mode is active.** The panel is mouse-reachable, so a click on a
+  notification there already dismisses or opens it through the panel's own UI. What the overlay does
+  not yet offer is an equivalent path from the keyboard it holds; the next two seeds close that gap.
 - **Notification selection.** Marking one notification as the current subject and moving that
   selection with the keyboard — which arrives directly, the overlay being focused — including how
   the overlay indicates the selection without redrawing the notification itself.
@@ -82,9 +81,9 @@ for `C-*`/`X-*`.
   [notification-access](../notification-access/requirements.md#open-seeds-not-yet-specified).
 - **Window level and opacity assertions.** Most of this feature is acceptance-testable — see the
   [acceptance scenarios](acceptance/_index.md). Two properties are not reachable through AX and need
-  a small helper dumping the on-screen window list: `RIM-1`'s stacking above the panel and `RIM-2`'s
-  translucency. `RIM-1`'s "on every Space" clause and the tint color have no practical automated
-  check at all and are accepted as visually verified.
+  a small helper dumping the on-screen window list: `RIM-1`'s panel-above-overlay stacking and
+  `RIM-2`'s translucency. `RIM-1`'s "on every Space" clause and the tint color have no practical
+  automated check at all and are accepted as visually verified.
 - **Overlay appearance.** Tint color, label text, font, exact opacity, multi-display behavior
   (mirror on every screen vs. main only). Feature-work detail, deliberately not pinned as acceptance
   criteria beyond [RIM-2](#mode-signal)'s "translucent, not opaque".

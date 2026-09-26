@@ -2,12 +2,14 @@ import AppKit
 
 final class OverlayWindow: NSWindow {
     private static let escapeKeyCode: UInt16 = 53
+    private static let dockWindowLevel = NSWindow.Level(
+        rawValue: Int(CGWindowLevelForKey(.dockWindow)))
 
     var onEscape: (() -> Void)?
 
     init(frame: CGRect) {
         super.init(contentRect: frame, styleMask: .borderless, backing: .buffered, defer: false)
-        level = .screenSaver
+        level = Self.dockWindowLevel
         collectionBehavior = [.canJoinAllSpaces, .fullScreenAuxiliary, .stationary]
         isOpaque = false
         backgroundColor = .black

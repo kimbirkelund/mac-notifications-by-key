@@ -2,9 +2,9 @@
 
 A keyboard-driven tool for interacting with macOS notifications. It reads and acts on Notification
 Center entries through the public Accessibility (AX) API and exposes those operations as one-shot
-CLI commands suitable for binding to hotkeys (skhd), plus an interactive mode that overlays the
-Notification Center UI. Requirements are written in EARS syntax to guide which feature to work on
-and to generate BDD-style acceptance tests, which are made executable and used as the basis for
+CLI commands suitable for binding to hotkeys (skhd), plus an interactive mode that sits alongside
+the Notification Center UI. Requirements are written in EARS syntax to guide which feature to work
+on and to generate BDD-style acceptance tests, which are made executable and used as the basis for
 coding (see [README](../README.md)).
 
 ## Documentation convention

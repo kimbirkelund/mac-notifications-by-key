@@ -41,11 +41,12 @@ nothing: a translucent tint and a label naming the mode.
 
 That makes its required properties unusually strict, and each one is observable:
 
-- **Above everything, on every Space.** It covers full-screen apps and the Notification Center panel
-  alike, and follows the user between Spaces rather than staying behind on one.
-- **Translucent, never opaque.** Covering the panel is not hiding it: the overlay is a tint, so the
-  notifications underneath stay readable through it. This is what lets the overlay sit on top
-  without concealing its own subject.
+- **Above everything except the panel, on every Space.** It covers full-screen apps and every other
+  window, but sits beneath the Notification Center panel, which stays on top of it, untinted and
+  reachable; it follows the user between Spaces rather than staying behind on one.
+- **Translucent, never opaque.** The overlay is a tint over the desktop, not a blackout: the panel
+  sits above it already untinted, and the rest of the screen stays visible in outline through the
+  overlay rather than disappearing behind solid black.
 - **Takes focus.** Entering the mode makes the overlay the active, focused window. This is what
   later features are built on: once the overlay holds focus, keystrokes arrive at it directly, so
   selecting a notification and invoking its actions needs no system-wide event tap and no
@@ -60,10 +61,11 @@ Two consequences follow, and both matter:
 - **The mode really is exclusive.** Because the overlay takes focus and consumes input, "only
   notifications can be acted on" is enforced by the system itself rather than by the hotkey daemon's
   mode keymap. That is the simplification focus buys.
-- **Exclusive means unreachable, for now.** The same property that blocks stray input also blocks
-  clicks from reaching the notifications beneath the overlay. Until the overlay offers its own
-  selection and action controls, the mode is signal-only: it says "notifications mode" without yet
-  providing a way to act. The controls are the next slice.
+- **Reachable by mouse, not yet by keyboard.** The panel sits above the overlay and takes mouse
+  clicks directly, so a notification can already be dismissed or opened through the panel's own UI.
+  What the mode does not yet offer is selection and action through the overlay itself: marking a
+  notification as the current subject and acting on it with the keyboard the overlay holds. That is
+  the next slice.
 
 ## Why the mode opens the panel
 
