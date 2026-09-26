@@ -12,7 +12,8 @@ Notifications are reached **only through the public Accessibility (AX) API** aga
 Notification Center process (`com.apple.notificationcenterui`) — there is no public API to read or
 act on another app's notifications, and the AX surface exposes notifications as addressable elements
 with readable text and named actions. No screenshots/OCR, no fixed-coordinate mouse simulation, no
-private frameworks. Requires Accessibility permission for the host process and is macOS-only.
+private frameworks. Requires Accessibility permission for the host process and is only support on
+recent versions of macOS.
 
 ## Development flow
 
