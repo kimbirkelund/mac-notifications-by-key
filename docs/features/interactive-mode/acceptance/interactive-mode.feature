@@ -48,12 +48,12 @@ Feature: Interactive mode
     And no overlay window is present
     And the Notification Center panel is closed
 
-  # Validates RIM-1 (stacking) and RIM-2: the overlay covers the panel yet leaves
-  # it readable. Needs the window-list helper — window level and alpha are not
-  # exposed through AX.
-  Scenario: The overlay sits above the panel without hiding it
+  # Validates RIM-1 (stacking) and RIM-2: the panel stays above the overlay,
+  # untinted, and the overlay is translucent rather than opaque. Needs the
+  # window-list helper — window level and alpha are not exposed through AX.
+  Scenario: The panel sits above the overlay, untinted
     Given interactive mode is running
-    Then the overlay is above the Notification Center panel in the window order
+    Then the Notification Center panel is above the overlay in the window order
     And the overlay is translucent
 
   # Validates RIM-9: entering a mode whose every operation would fail is refused.

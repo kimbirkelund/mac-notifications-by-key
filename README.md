@@ -6,7 +6,7 @@
 A keyboard-driven tool for interacting with macOS notifications. It reads the notifications macOS is
 currently presenting and acts on a designated one — dismiss, trigger a named action, or activate —
 exposed as one-shot CLI commands (`nbk`) suitable for binding to a hotkey daemon (skhd), plus an
-interactive mode that overlays the Notification Center UI.
+interactive mode that sits alongside the Notification Center UI.
 
 Notifications are reached **only through the public Accessibility (AX) API** against the
 Notification Center process (`com.apple.notificationcenterui`) — there is no public API to read or
