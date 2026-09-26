@@ -11,8 +11,8 @@ Shared domain vocabulary used across all features.
   Accessibility window that exposes notifications exists **only while a banner is on screen or the
   Notification Center panel is open**, and a banner takes a short interval to render after delivery
   — operations must account for this (see [C-3](constraints.md), `RNA-*` wait behavior). The panel
-  half of that condition can be forced: pressing ControlCenter's menu bar clock over AX opens the
-  panel on demand (see the [AX reference](notification-center-ax-api.md)), which is how
+  half of that condition can be forced: pressing the menu bar clock over AX opens the panel on
+  demand (see the [AX reference](notification-center-ax-api.md)), which is how
   [interactive mode](features/interactive-mode/_index.md) guarantees itself a subject.
 - **Notification Center.** The macOS process (`com.apple.notificationcenterui`) that owns the banner
   and the persistent notification list. It is the target of all AX reads and actions. There is **no

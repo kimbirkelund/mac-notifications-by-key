@@ -81,6 +81,6 @@ AX code thin.
 | `./build.ps1 -DoTest -Kinds Unit,Acceptance` | a subset (comma-separated)                   |
 
 `-Kinds` accepts `All` (default), `Unit`, `Integration`, `Acceptance`. The underlying commands are
-`swift test --filter NotificationCoreTests --filter NotificationAXUnitTests`,
-`swift test --filter NotificationAXIntegrationTests`, and `npx cucumber-js`. `@wip` scenarios are
-excluded from the acceptance run via `tags: 'not @wip'` in `cucumber.mjs`.
+`swift test --filter NotificationCoreTests --filter NotificationAXUnitTests --filter InteractiveModeTests`,
+`swift test --filter NotificationAXIntegrationTests`, and `npx cucumber-js`. `@wip` and `@operator`
+scenarios are excluded from the acceptance run via `tags` in `cucumber.mjs`.

@@ -11,6 +11,5 @@ it. Only the first step is specified so far: the overlay that signals the mode i
 - [Description](description.md) — how it works (prose, mental model).
 - [Requirements](requirements.md) — behavioral requirements (`RIM-*`) and open seeds; selection,
   per-notification action menus, and clear-all are still seeds.
-- [Acceptance scenarios](acceptance/_index.md) — BDD scenarios. All `@wip` until the `interactive`
-  subcommand exists; the notes there record what the harness needs to drive a long-running,
-  focus-taking process.
+- [Acceptance scenarios](acceptance/_index.md) — BDD scenarios for the overlay signal; the notes
+  there record what the harness adds to drive a long-running, focus-taking process.

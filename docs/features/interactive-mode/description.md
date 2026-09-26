@@ -73,9 +73,9 @@ panel-only controls, including per-app clear and `Clear All`, would never be rea
 the mode opens the panel outright, giving the mode a stable subject for as long as it runs.
 
 Opening it is cheap and unobtrusive: it is a named action on a public element (the menu bar clock,
-which belongs to ControlCenter rather than Notification Center) and it does not disturb which
-application has focus. See the [AX reference](../../notification-center-ax-api.md) for the element
-and the probe evidence.
+which belongs to a menu bar process, not to Notification Center; the AX reference names the process
+for each macOS release) and it does not disturb which application has focus. See the
+[AX reference](../../notification-center-ax-api.md) for the element and the probe evidence.
 
 Closing it is not optional. The panel is sticky — it survives focus moving elsewhere and it survives
 the process that opened it exiting. Whatever opens the panel therefore owns closing it, or the mode
