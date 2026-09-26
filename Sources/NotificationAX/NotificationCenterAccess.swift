@@ -9,9 +9,11 @@ import NotificationCore
 /// added conformer plus a factory branch, never an edit to callers (C-3).
 public protocol NotificationCenterAccess {
     var isTrusted: Bool { get }
+    var isPanelOpen: Bool { get }
     func notificationCenterPID() -> pid_t?
     func read(wait: TimeInterval) throws -> [NotificationItem]
     func dismiss(index: Int) throws
     func press(index: Int) throws
     func perform(action displayName: String, index: Int) throws
+    func setPanelOpen(_ open: Bool) throws
 }

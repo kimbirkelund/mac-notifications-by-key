@@ -7,7 +7,11 @@ Before(async function () {
   await this.clearTestNotifications()
 })
 
-After(async function () {
+// timeout: stopping interactive mode and waiting for the panel to close each poll
+// to their own deadline, which together exceed cucumber's 5s default.
+After({ timeout: 30000 }, async function () {
+  await this.killAllInteractive()
+  await this.closePanelIfOpen()
   await this.settleDeliveries()
   await this.clearTestNotifications()
 })

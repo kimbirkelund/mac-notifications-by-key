@@ -43,7 +43,8 @@ When a scenario genuinely needs a step with no programmatic API (e.g. revoking A
 substitute a human operator rather than dropping the requirement. Conventions:
 
 - Tag `@operator`; exclude from the default/CI run. cucumber-js ANDs config `tags` with CLI
-  `--tags`, so expose a named profile instead of a tag flag: run with `npx cucumber-js -p operator`.
+  `--tags`, so expose a named profile instead of a tag flag: run with
+  `./build.ps1 -DoTest -Kinds Operator`, which wraps `npx cucumber-js -p operator`.
 - Block for real: read `/dev/tty` synchronously, not `process.stdin` (cucumber detaches it).
 - Set `timeout: -1` on the attended step/hook — the human wait exceeds the 5s cap.
 - Verify the substituted precondition by ground truth (`nbk doctor`), looping until it agrees. Do
@@ -72,15 +73,17 @@ AX code thin.
 
 ## Running
 
-| Command                                      | Runs                                         |
-| -------------------------------------------- | -------------------------------------------- |
-| `./build.ps1 -DoTest`                        | all three tiers (`-Kinds All`, the default)  |
-| `./build.ps1 -DoTest -Kinds Unit`            | unit only                                    |
-| `./build.ps1 -DoTest -Kinds Integration`     | AX-integration only (needs AX trust)         |
-| `./build.ps1 -DoTest -Kinds Acceptance`      | cucumber-js acceptance only (needs AX trust) |
-| `./build.ps1 -DoTest -Kinds Unit,Acceptance` | a subset (comma-separated)                   |
+| Command                                      | Runs                                                        |
+| -------------------------------------------- | ----------------------------------------------------------- |
+| `./build.ps1 -DoTest`                        | all three tiers (`-Kinds All`, the default)                 |
+| `./build.ps1 -DoTest -Kinds Unit`            | unit only                                                   |
+| `./build.ps1 -DoTest -Kinds Integration`     | AX-integration only (needs AX trust)                        |
+| `./build.ps1 -DoTest -Kinds Acceptance`      | cucumber-js acceptance only (needs AX trust)                |
+| `./build.ps1 -DoTest -Kinds Unit,Acceptance` | a subset (comma-separated)                                  |
+| `./build.ps1 -DoTest -Kinds Operator`        | attended `@operator` scenarios (needs AX trust and a human) |
 
-`-Kinds` accepts `All` (default), `Unit`, `Integration`, `Acceptance`. The underlying commands are
-`swift test --filter NotificationCoreTests --filter NotificationAXUnitTests`,
-`swift test --filter NotificationAXIntegrationTests`, and `npx cucumber-js`. `@wip` scenarios are
-excluded from the acceptance run via `tags: 'not @wip'` in `cucumber.mjs`.
+`-Kinds` accepts `All` (default), `Unit`, `Integration`, `Acceptance`, `Operator`. `All` never
+includes `Operator`, because it waits for a human at the terminal. The underlying commands are
+`swift test --filter NotificationCoreTests --filter NotificationAXUnitTests --filter InteractiveModeTests`,
+`swift test --filter NotificationAXIntegrationTests`, and `npx cucumber-js`. `@wip` and `@operator`
+scenarios are excluded from the acceptance run via `tags` in `cucumber.mjs`.

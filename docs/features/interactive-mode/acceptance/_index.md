@@ -4,36 +4,43 @@ BDD scenarios (Gherkin) specifying interactive mode. These `.feature` files **ar
 acceptance tests: [cucumber-js](https://github.com/cucumber/cucumber-js) runs them against the
 compiled `nbk` binary as a black box, using the step definitions in `acceptance/steps/`.
 
-Every scenario is `@wip` today — the `interactive` subcommand does not exist yet.
+The six unattended scenarios run in the default acceptance run. The trust scenario is `@operator`
+and runs only attended.
 
-| Scenario                                            | Validates    | Status                                   |
-| --------------------------------------------------- | ------------ | ---------------------------------------- |
-| Entering the mode shows the overlay and opens panel | RIM-1, RIM-5 | 🚧 `@wip` — until `interactive` is built |
-| The mode keeps no application presence              | RIM-3        | 🚧 `@wip`                                |
-| Re-invoking does not stack a second overlay         | RIM-4        | 🚧 `@wip`                                |
-| Terminating on a signal tears everything down       | RIM-6        | 🚧 `@wip`                                |
-| Pressing Escape leaves the mode                     | RIM-7        | 🚧 `@wip` — needs the key-event step     |
-| The overlay sits above the panel without hiding it  | RIM-1, RIM-2 | 🚧 `@wip` — needs the window-list helper |
-| Missing Accessibility trust is refused              | RIM-9        | 🚧 `@wip` `@operator` — attended         |
+| Scenario                                            | Validates    | Status                                 |
+| --------------------------------------------------- | ------------ | -------------------------------------- |
+| Entering the mode shows the overlay and opens panel | RIM-1, RIM-5 | ✅                                     |
+| The mode keeps no application presence              | RIM-3        | ✅                                     |
+| Re-invoking does not stack a second overlay         | RIM-4        | ✅                                     |
+| Terminating on a signal tears everything down       | RIM-6        | ✅                                     |
+| Pressing Escape leaves the mode                     | RIM-7        | ✅                                     |
+| The overlay sits above the panel without hiding it  | RIM-1, RIM-2 | ✅                                     |
+| Missing Accessibility trust is refused              | RIM-9        | ⏳ `@operator` — attended, not yet run |
 
-## What the harness needs
+## What the harness adds
 
-Interactive mode is long-running and graphical, so three additions to `acceptance/support/world.mjs`
-are required beyond what notification access uses. None needs a new framework.
+Interactive mode is long-running and graphical, so the harness has three capabilities beyond what
+notification access uses. None needs a new framework.
 
 - **A spawned, retained process.** The existing world promisifies `execFile`, which awaits exit;
-  interactive mode never exits on its own. Needs `spawn`, a retained handle, and a promise for the
-  exit status.
+  interactive mode never exits on its own. The harness spawns it, retains the handle, and awaits a
+  promise for the exit status. Cleanup stops any leftover interactive process and closes the panel.
 - **Overlay introspection.** System Events can enumerate our own AX windows (existence, position,
   size, and the mode label as static text) with no extra tooling or permission.
 - **A real key event.** `osascript -e 'tell application "System Events" to key code 53'` posts
   Escape. Because it goes to whatever holds focus, the step asserts the overlay is frontmost first —
   otherwise a mistimed keystroke lands in the developer's editor and the failure is misleading.
+  System Events reports a bundle-less accessory process as never frontmost, so the frontmost check
+  asks the workspace for the active application instead.
 
 One scenario needs more: window **level** and **alpha** are not exposed through AX, so "above the
 panel" and "translucent" need a small helper that dumps `CGWindowListCopyWindowInfo` (owner, level,
 front-to-back order, alpha). No permission required — the probe recorded in the
-[AX reference](../../../notification-center-ax-api.md) read exactly that.
+[AX reference](../../../notification-center-ax-api.md) read exactly that. The helper is built
+alongside `nbk` but is not part of its CLI. Rows are matched by process, because owner names are
+localized. A banner produces the same Notification Center row as the panel, so the window list
+proves only order; whether the panel is open always comes from the AX check described in the AX
+reference.
 
 ## Deliberately not covered here
 

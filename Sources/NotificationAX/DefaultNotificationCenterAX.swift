@@ -6,7 +6,7 @@ import NotificationCore
 
 /// Reads and acts on the live Notification Center accessibility tree.
 ///
-/// Mechanism notes (probe-verified, macOS 26.5.1 — see docs/constraints.md C-3):
+/// Mechanism notes (see docs/constraints.md C-3). Probe-verified on macOS 26.5.1:
 /// - Notification = `AXGroup` exposing an `AXPress` action, under the
 ///   "Notification Center" `AXWindow` → group → group → scroll area.
 ///   Children are `AXStaticText` with identifiers `title` / `subtitle` / `body`.
@@ -14,6 +14,14 @@ import NotificationCore
 ///   and a banner takes ~1s to render after delivery → `read(wait:)` polls.
 /// - `Close` is a no-op unless the element is focused first → `dismiss` focuses,
 ///   settles, then performs `Close`.
+///
+/// Probe-verified on macOS 27.0:
+/// - Banners and the open panel are the same full-screen `AXSystemDialog` window;
+///   only the panel contains the "Edit Widgets" button.
+/// - The menu bar clock that toggles the panel belongs to MenuBarAgent; it belonged
+///   to ControlCenter on earlier releases.
+/// - Just after opening, the panel's subtree may not have rendered yet, so a single
+///   closed reading is not trusted before pressing.
 public struct DefaultNotificationCenterAX: NotificationCenterAccess {
     public init() {}
 
@@ -99,6 +107,73 @@ public struct DefaultNotificationCenterAX: NotificationCenterAccess {
     public func perform(action displayName: String, index n: Int) throws {
         let element = try elementAt(n)
         try perform(displayName: displayName, on: element)
+    }
+
+    // MARK: Panel
+
+    public var isPanelOpen: Bool {
+        guard isTrusted, let pid = notificationCenterPID() else { return false }
+        return panelIsOpen(pid)
+    }
+
+    public func setPanelOpen(_ open: Bool) throws {
+        let pid = try requirePID()
+        if settledPanelIsOpen(pid) == open { return }
+        let name = open ? "open panel" : "close panel"
+        guard let clock = clockMenuExtra(),
+            AXUIElementPerformAction(clock, kAXPressAction as CFString) == .success
+        else { throw NbkError.actionFailed(name: name) }
+        let deadline = Date().addingTimeInterval(2)
+        while panelIsOpen(pid) != open {
+            guard Date() < deadline else {
+                throw NbkError.actionFailed(name: "\(name) (unconfirmed)")
+            }
+            Thread.sleep(forTimeInterval: 0.1)
+        }
+    }
+
+    private func settledPanelIsOpen(_ pid: pid_t) -> Bool {
+        for attempt in 0..<3 {
+            if panelIsOpen(pid) { return true }
+            if attempt < 2 { Thread.sleep(forTimeInterval: 0.15) }
+        }
+        return false
+    }
+
+    private func panelIsOpen(_ pid: pid_t) -> Bool {
+        let app = AXUIElementCreateApplication(pid)
+        let windows = (attr(app, kAXWindowsAttribute as String) as? [AXUIElement]) ?? []
+        return windows.contains { window in
+            axSubrole(window) == "AXSystemDialog"
+                && firstDescendant(of: window) { axIdentifier($0) == "widget-editor-button" } != nil
+        }
+    }
+
+    /// The menu bar clock toggles the panel. Its owning process has moved between
+    /// releases (ControlCenter, then MenuBarAgent), so every candidate is searched.
+    private func clockMenuExtra() -> AXUIElement? {
+        let owners = [
+            ("com.apple.MenuBarAgent", "CoreServices/MenuBarAgent.app/"),
+            ("com.apple.controlcenter", "CoreServices/ControlCenter.app/"),
+        ]
+        let bars = owners.compactMap { bundleID, path -> AXUIElement? in
+            let pid =
+                NSRunningApplication.runningApplications(withBundleIdentifier: bundleID)
+                .first?.processIdentifier ?? pidByExecutablePath(containing: path)
+            guard let pid, let bar = attr(AXUIElementCreateApplication(pid), "AXExtrasMenuBar"),
+                CFGetTypeID(bar) == AXUIElementGetTypeID()
+            else { return nil }
+            return unsafeDowncast(bar, to: AXUIElement.self)
+        }
+        let menuExtras = bars.flatMap { bar in
+            descendants(of: bar).filter {
+                axRole($0) == (kAXMenuBarItemRole as String) && axSubrole($0) == "AXMenuExtra"
+            }
+        }
+        return menuExtras.first { axIdentifier($0) == "com.apple.menuextra.clock" }
+            ?? menuExtras.first {
+                attr($0, kAXDescriptionAttribute as String) as? String == "Clock"
+            }
     }
 
     // MARK: - Internals
@@ -193,6 +268,28 @@ public struct DefaultNotificationCenterAX: NotificationCenterAccess {
 
     private func axChildren(_ element: AXUIElement) -> [AXUIElement] {
         (attr(element, kAXChildrenAttribute as String) as? [AXUIElement]) ?? []
+    }
+
+    private func firstDescendant(
+        of element: AXUIElement, where matches: (AXUIElement) -> Bool
+    ) -> AXUIElement? {
+        for child in axChildren(element) {
+            if matches(child) { return child }
+            if let found = firstDescendant(of: child, where: matches) { return found }
+        }
+        return nil
+    }
+
+    private func descendants(of element: AXUIElement) -> [AXUIElement] {
+        axChildren(element).flatMap { [$0] + descendants(of: $0) }
+    }
+
+    private func axSubrole(_ element: AXUIElement) -> String? {
+        attr(element, kAXSubroleAttribute as String) as? String
+    }
+
+    private func axIdentifier(_ element: AXUIElement) -> String? {
+        attr(element, kAXIdentifierAttribute as String) as? String
     }
 
     private func axRole(_ element: AXUIElement) -> String {

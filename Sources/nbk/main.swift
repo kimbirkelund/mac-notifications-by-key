@@ -1,4 +1,6 @@
+import AppKit
 import Foundation
+import InteractiveMode
 import NotificationAX
 import NotificationCore
 
@@ -13,6 +15,7 @@ let usage = """
       dismiss <index>           dismiss the notification at <index>
       action <index> <name>     perform a named action (e.g. "Show")
       press <index>             default activation (open)
+      interactive               show the interactive-mode overlay (Escape or SIGINT/SIGTERM ends it)
       doctor                    report Accessibility trust, NC pid, macOS version
       --version                 print the version
     """
@@ -49,6 +52,10 @@ do {
         }
         try nc.perform(action: rest[1], index: n)
 
+    case "interactive":
+        if !nc.isTrusted { die(NbkError.notTrusted.message, code: NbkError.notTrusted.exitCode) }
+        try InteractiveSession.run(access: nc, mainScreenFrame: { NSScreen.main?.frame })
+
     case "doctor":
         let trusted = nc.isTrusted
         let pid = nc.notificationCenterPID()
@@ -69,6 +76,8 @@ do {
 } catch let error as ArgumentError {
     die(error.message, code: error.exitCode)
 } catch let error as NbkError {
+    die(error.message, code: error.exitCode)
+} catch let error as InteractiveError {
     die(error.message, code: error.exitCode)
 } catch {
     die("error: \(error)")

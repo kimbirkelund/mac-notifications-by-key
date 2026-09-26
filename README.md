@@ -12,7 +12,8 @@ Notifications are reached **only through the public Accessibility (AX) API** aga
 Notification Center process (`com.apple.notificationcenterui`) — there is no public API to read or
 act on another app's notifications, and the AX surface exposes notifications as addressable elements
 with readable text and named actions. No screenshots/OCR, no fixed-coordinate mouse simulation, no
-private frameworks. Requires Accessibility permission for the host process and is macOS-only.
+private frameworks. Requires Accessibility permission for the host process and is only support on
+recent versions of macOS.
 
 ## Development flow
 
@@ -27,6 +28,7 @@ nbk list [--wait <seconds>]      # JSON of presented notifications, newest first
 nbk dismiss <index>              # dismiss the notification at <index>
 nbk action <index> <name>        # perform a named action (e.g. "Show")
 nbk press <index>                # default activation (open)
+nbk interactive                  # overlay mode: opens the NC panel; Escape or SIGINT/SIGTERM ends it
 nbk doctor                       # report Accessibility trust, NC pid, macOS version
 ```
 
@@ -41,6 +43,8 @@ Three tiers (full strategy: [`docs/testing.md`](docs/testing.md)):
   against the compiled `nbk` binary as a black box.
 
 `./build.ps1 -DoTest` runs all three; `-Kinds Unit|Integration|Acceptance|All` selects a subset.
+`-Kinds Operator` runs the attended scenarios, which need a human at the terminal; `All` excludes
+it.
 
 ## Build / test / run
 
