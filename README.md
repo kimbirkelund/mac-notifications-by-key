@@ -43,6 +43,8 @@ Three tiers (full strategy: [`docs/testing.md`](docs/testing.md)):
   against the compiled `nbk` binary as a black box.
 
 `./build.ps1 -DoTest` runs all three; `-Kinds Unit|Integration|Acceptance|All` selects a subset.
+`-Kinds Operator` runs the attended scenarios, which need a human at the terminal; `All` excludes
+it.
 
 ## Build / test / run
 

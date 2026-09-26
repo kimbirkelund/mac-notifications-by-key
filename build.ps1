@@ -6,10 +6,12 @@
 .DESCRIPTION
   Wraps SwiftPM (the nbk CLI + libraries) and the cucumber-js acceptance harness.
   The three test tiers (see docs/testing.md) are selected with -Kinds:
-    Unit         swift test --filter NotificationCoreTests|NotificationAXUnitTests (no AX)
+    Unit         swift test --filter NotificationCoreTests|NotificationAXUnitTests|InteractiveModeTests (no AX)
     Integration  swift test --filter NotificationAXIntegrationTests  (needs AX trust)
     Acceptance   cucumber-js driving the compiled nbk binary         (needs AX trust)
-  Integration/Acceptance are skipped (not failed) when Accessibility trust is absent.
+  Operator runs the attended @operator scenarios (cucumber-js -p operator); it
+  prompts a human at the terminal, so it is never part of All.
+  Integration/Acceptance/Operator are skipped (not failed) when Accessibility trust is absent.
 
   Lint (-DoLint) covers both code and docs:
     Swift      swift-format (.swift-format config)
@@ -34,6 +36,7 @@
 .EXAMPLE
   ./build.ps1 -DoBuild
   ./build.ps1 -DoTest -Kinds Unit
+  ./build.ps1 -DoTest -Kinds Operator      # attended scenarios; needs a human at the terminal
   ./build.ps1 -DoLint            # check only (fails on violations)
   ./build.ps1 -DoLint -Fix       # auto-format Swift + docs in place
   ./build.ps1 -DoPackage -Version 1.2.3
@@ -78,7 +81,7 @@ param(
   [string[]]$RunArgs = @(),
 
   [Parameter(ParameterSetName = 'Test')]
-  [ValidateSet('All', 'Unit', 'Integration', 'Acceptance')]
+  [ValidateSet('All', 'Unit', 'Integration', 'Acceptance', 'Operator')]
   [string[]]$Kinds = @('All'),
 
   [Parameter(ParameterSetName = 'Build')]
@@ -235,8 +238,11 @@ $binPath = if ($Universal)
 }
 else { ".build/$Configuration/nbk" }
 
-# Resolve which tiers to run.
-$selected = if ($Kinds -contains 'All') { @('Unit', 'Integration', 'Acceptance') } else { $Kinds }
+# Resolve which tiers to run. All excludes Operator: it needs a human at the terminal.
+$selected = @(
+  if ($Kinds -contains 'All') { 'Unit', 'Integration', 'Acceptance' }
+  $Kinds | Where-Object { $_ -ne 'All' }
+) | Select-Object -Unique
 
 # nbk doctor exits 3 when Accessibility trust is missing; use it as the preflight.
 function Test-AxTrust
@@ -294,7 +300,7 @@ if ($DoTest)
     Invoke-Checked 'swift' @('test', '--filter', 'NotificationCoreTests', '--filter', 'NotificationAXUnitTests', '--filter', 'InteractiveModeTests')
   }
 
-  $needTrust = ($selected -contains 'Integration') -or ($selected -contains 'Acceptance')
+  $needTrust = ($selected -contains 'Integration') -or ($selected -contains 'Acceptance') -or ($selected -contains 'Operator')
   $trusted = if ($needTrust) { Test-AxTrust } else { $false }
   if ($needTrust -and -not $trusted)
   {
@@ -322,6 +328,18 @@ if ($DoTest)
       Invoke-Checked 'npx' @('cucumber-js')
     }
     else { Write-Skip 'Acceptance tier (no Accessibility trust)' }
+  }
+
+  if ($selected -contains 'Operator')
+  {
+    if ($trusted)
+    {
+      Write-Step 'Operator tier (cucumber-js -p operator, attended)'
+      if (-not (Test-Path 'node_modules')) { Invoke-Checked 'npm' @('install') }
+      $env:NBK_BIN = (Resolve-Path $binPath).Path
+      Invoke-Checked 'npx' @('cucumber-js', '-p', 'operator')
+    }
+    else { Write-Skip 'Operator tier (no Accessibility trust)' }
   }
 }
 
