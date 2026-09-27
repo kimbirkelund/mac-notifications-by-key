@@ -7,15 +7,15 @@ compiled `nbk` binary as a black box, using the step definitions in `acceptance/
 The six unattended scenarios run in the default acceptance run. The trust scenario is `@operator`
 and runs only attended.
 
-| Scenario                                            | Validates    | Status                                 |
-| --------------------------------------------------- | ------------ | -------------------------------------- |
-| Entering the mode shows the overlay and opens panel | RIM-1, RIM-5 | ✅                                     |
-| The mode keeps no application presence              | RIM-3        | ✅                                     |
-| Re-invoking does not stack a second overlay         | RIM-4        | ✅                                     |
-| Terminating on a signal tears everything down       | RIM-6        | ✅                                     |
-| Pressing Escape leaves the mode                     | RIM-7        | ✅                                     |
-| The panel sits above the overlay, untinted          | RIM-1, RIM-2 | ✅                                     |
-| Missing Accessibility trust is refused              | RIM-9        | ⏳ `@operator` — attended, not yet run |
+| Scenario                                            | Validates    | Status                                         |
+| --------------------------------------------------- | ------------ | ---------------------------------------------- |
+| Entering the mode shows the overlay and opens panel | RIM-1, RIM-5 | ✅                                             |
+| The mode keeps no application presence              | RIM-3        | ✅                                             |
+| Re-invoking does not stack a second overlay         | RIM-4        | ✅                                             |
+| Terminating on a signal tears everything down       | RIM-6        | ✅                                             |
+| Pressing Escape leaves the mode                     | RIM-7        | ✅                                             |
+| The panel sits above the overlay, untinted          | RIM-1, RIM-2 | ✅                                             |
+| Missing Accessibility trust is refused              | RIM-9        | ✅ `@operator` — attended; last run 2026-09-27 |
 
 ## What the harness adds
 

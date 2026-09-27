@@ -6,18 +6,18 @@ against the compiled `nbk` binary as a black box, using the step definitions in 
 Steps deliver real notifications (`osascript -e 'display notification …'`) and assert the CLI's
 observable output and exit status.
 
-| Scenario                                                 | Validates    | Status                                   |
-| -------------------------------------------------------- | ------------ | ---------------------------------------- |
-| Listing includes a delivered notification                | RNA-1, RNA-3 | ✅                                       |
-| Waiting catches a notification delivered after start     | RNA-3        | ✅                                       |
-| Listing is empty when nothing is presented               | RNA-2        | ✅                                       |
-| Dismissing the newest notification removes it            | RNA-4        | ✅                                       |
-| Triggering a named action on a notification              | RNA-5        | ✅                                       |
-| Activating a notification with press                     | RNA-6        | ✅                                       |
-| Designating an out-of-range index fails safely           | RNA-7        | ✅                                       |
-| Triggering an unknown action fails and lists what exists | RNA-8        | ✅                                       |
-| Doctor reports the environment                           | RNA-10       | ✅                                       |
-| Missing Accessibility trust is reported                  | RNA-9        | ⏳ `@operator` — attended, run on demand |
+| Scenario                                                 | Validates    | Status                                         |
+| -------------------------------------------------------- | ------------ | ---------------------------------------------- |
+| Listing includes a delivered notification                | RNA-1, RNA-3 | ✅                                             |
+| Waiting catches a notification delivered after start     | RNA-3        | ✅                                             |
+| Listing is empty when nothing is presented               | RNA-2        | ✅                                             |
+| Dismissing the newest notification removes it            | RNA-4        | ✅                                             |
+| Triggering a named action on a notification              | RNA-5        | ✅                                             |
+| Activating a notification with press                     | RNA-6        | ✅                                             |
+| Designating an out-of-range index fails safely           | RNA-7        | ✅                                             |
+| Triggering an unknown action fails and lists what exists | RNA-8        | ✅                                             |
+| Doctor reports the environment                           | RNA-10       | ✅                                             |
+| Missing Accessibility trust is reported                  | RNA-9        | ✅ `@operator` — attended; last run 2026-09-27 |
 
 ## Walking skeleton
 
