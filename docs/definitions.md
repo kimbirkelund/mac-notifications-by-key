@@ -22,6 +22,11 @@ Shared domain vocabulary used across all features.
   e.g. `Close`, `Show`, `Show Details`, the default activate (`AXPress`), and app-specific actions.
   Acting on a notification means performing one of these (some require focusing the element first;
   see [notification-access](features/notification-access/_index.md)).
+- **Action panel.** In [interactive mode](features/interactive-mode/_index.md), the small panel the
+  overlay draws to the left of each presented notification, listing what can be done to it:
+  `Activate` (or `Expand` for a collapsed stack), `Dismiss`, and the notification's named actions.
+  The panel of the **selected** notification additionally shows an **activator** — the single key
+  that triggers each entry.
 - **Selector.** How a CLI invocation designates which notification to act on (e.g. an index into the
   current list, newest-first). Selection logic is pure and unit-tested independently of the AX layer
   (see [testing](testing.md)).
