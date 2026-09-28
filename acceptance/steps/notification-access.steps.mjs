@@ -14,7 +14,8 @@ Given('a notification is delivered with title {string}', async function (title) 
   await this.deliver(title)
 })
 
-Given('no notifications are presented', async function () {
+// timeout: clearing opens and closes the panel, each polling to its own deadline.
+Given('no notifications are presented', { timeout: 30000 }, async function () {
   await this.clearTestNotifications()
 })
 

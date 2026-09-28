@@ -105,7 +105,7 @@ tell application "System Events"
 end tell`
 
 // Our overlay windows across every process named like the binary (a re-invocation
-// is a second process), as JSON [{pid, x, y, width, height, labels}].
+// is a second process), as JSON [{pid, name, x, y, width, height, labels}].
 const OVERLAY_WINDOWS_SCRIPT = `
 const se = Application('System Events')
 const out = []
@@ -118,8 +118,119 @@ for (const p of se.applicationProcesses.whose({ name: ${JSON.stringify(NBK_PROCE
     try {
       labels = w.staticTexts.value().filter((v) => typeof v === 'string' && v.trim() !== '')
     } catch (e) {}
-    out.push({ pid, x, y, width, height, labels })
+    let name = ''
+    try {
+      name = w.name() ?? ''
+    } catch (e) {}
+    out.push({ pid, name, x, y, width, height, labels })
   }
+}
+JSON.stringify(out)`
+
+// Notification frames in the NC panel, in tree order (newest first), as JSON
+// [{title, x, y, width, height}]. A notification is an AXGroup exposing AXPress,
+// matched pre-order and descended into, as nbk does (stack members nest);
+// the panel is the AXSystemDialog window holding the "Edit Widgets" button.
+const NOTIFICATION_FRAMES_SCRIPT = `
+const se = Application('System Events')
+const attr = (el, name) => {
+  try {
+    return el.attributes.byName(name).value()
+  } catch (e) {
+    return null
+  }
+}
+function walk(el, depth, acc) {
+  if (depth > 10) return
+  let kids = []
+  try {
+    kids = el.uiElements()
+  } catch (e) {}
+  for (const k of kids) {
+    let role = null
+    try {
+      role = k.role()
+    } catch (e) {}
+    if (role === 'AXButton' && attr(k, 'AXIdentifier') === 'widget-editor-button') acc.isPanel = true
+    let actions = []
+    if (role === 'AXGroup') {
+      try {
+        actions = k.actions.name()
+      } catch (e) {}
+    }
+    if (actions.includes('AXPress')) {
+      const [x, y] = k.position()
+      const [width, height] = k.size()
+      let title = null
+      try {
+        for (const t of k.staticTexts()) {
+          if (attr(t, 'AXIdentifier') === 'title') title = t.value()
+        }
+      } catch (e) {}
+      acc.frames.push({ title, x, y, width, height })
+    }
+    walk(k, depth + 1, acc)
+  }
+}
+let out = []
+if (se.applicationProcesses.whose({ name: 'NotificationCenter' }).length > 0) {
+  for (const w of se.applicationProcesses.byName('NotificationCenter').windows()) {
+    let sr = null
+    try {
+      sr = w.subrole()
+    } catch (e) {}
+    if (sr !== 'AXSystemDialog') continue
+    const acc = { isPanel: false, frames: [] }
+    walk(w, 1, acc)
+    if (acc.isPanel) {
+      out = acc.frames
+      break
+    }
+  }
+}
+JSON.stringify(out)`
+
+// Action panels drawn by one nbk process, as JSON [{x, y, width, height, entries}]
+// where entries are the panel's static texts in row-major order (texts within 2 px
+// of a row's top share it). A panel is an AXGroup holding static texts, found at
+// any (bounded) depth under the process's windows.
+const actionPanelsScript = (pid) => `
+const se = Application('System Events')
+function rowMajor(texts) {
+  const rows = []
+  for (const t of [...texts].sort((a, b) => a.y - b.y)) {
+    const row = rows[rows.length - 1]
+    if (row && t.y - row[0].y <= 2) row.push(t)
+    else rows.push([t])
+  }
+  return rows.flatMap((row) => row.sort((a, b) => a.x - b.x))
+}
+function walk(el, depth, out) {
+  if (depth > 6) return
+  let groups = []
+  try {
+    groups = el.groups()
+  } catch (e) {}
+  for (const g of groups) {
+    let texts = []
+    try {
+      texts = g.staticTexts().map((t) => {
+        const [x, y] = t.position()
+        return { value: t.value(), x, y }
+      })
+    } catch (e) {}
+    if (texts.length > 0) {
+      const [x, y] = g.position()
+      const [width, height] = g.size()
+      out.push({ x, y, width, height, entries: rowMajor(texts).map((t) => t.value) })
+    } else {
+      walk(g, depth + 1, out)
+    }
+  }
+}
+const out = []
+for (const p of se.applicationProcesses.whose({ unixId: ${Number(pid)} })()) {
+  for (const w of p.windows()) walk(w, 1, out)
 }
 JSON.stringify(out)`
 
@@ -261,15 +372,29 @@ class NbkWorld extends World {
 
   // Dismiss our test app's notifications so a stale stack can't coalesce and hide
   // the notification a scenario delivers. Scoped to TEST_APP to avoid nuking the
-  // developer's unrelated notifications. Dismissing shifts indices, so re-list
-  // each iteration and always dismiss the first match.
+  // developer's unrelated notifications. Runs with the panel open, since a closed
+  // panel exposes only banners and history would survive. A collapsed stack offers
+  // no Close, only Clear All. Dismissing shifts indices, so re-list each iteration
+  // and always act on the first match. Leaves the panel closed.
   async clearTestNotifications() {
-    for (let i = 0; i < 30; i++) {
-      const items = await this.listJson()
-      const idx = items.findIndex((n) => n.app === TEST_APP)
-      if (idx === -1) return
-      await this.exec(['dismiss', String(idx)])
-      await sleep(300)
+    await this.openPanelIfClosed()
+    try {
+      for (let i = 0; i < 30; i++) {
+        const items = await this.listJson()
+        const idx = items.findIndex((n) => n.app === TEST_APP)
+        if (idx === -1) return
+        const argv =
+          !items[idx].actions.includes('Close') && items[idx].actions.includes('Clear All')
+            ? ['action', String(idx), 'Clear All']
+            : ['dismiss', String(idx)]
+        await this.exec(argv)
+        await sleep(300)
+      }
+      throw new Error(
+        `could not clear ${TEST_APP} notifications: ${JSON.stringify(await this.listJson())}`
+      )
+    } finally {
+      await this.closePanelIfOpen()
     }
   }
 
@@ -359,6 +484,16 @@ class NbkWorld extends World {
     return JSON.parse(await osascript(OVERLAY_WINDOWS_SCRIPT, 'JavaScript'))
   }
 
+  async notificationFrames() {
+    return JSON.parse(await osascript(NOTIFICATION_FRAMES_SCRIPT, 'JavaScript'))
+  }
+
+  // Sorted top-down so they pair index-wise with notificationFrames (newest on top).
+  async actionPanels(pid = this.interactive.child.pid) {
+    const panels = JSON.parse(await osascript(actionPanelsScript(pid), 'JavaScript'))
+    return panels.sort((a, b) => a.y - b.y)
+  }
+
   async screenSizes() {
     return JSON.parse(await osascript(SCREEN_SIZES_SCRIPT, 'JavaScript'))
   }
@@ -428,15 +563,29 @@ class NbkWorld extends World {
     return true
   }
 
+  async pressClock(purpose) {
+    if ((await osascript(PRESS_CLOCK_SCRIPT)) !== 'true') {
+      throw new Error(`cannot ${purpose} the Notification Center panel: clock menu extra not found`)
+    }
+  }
+
   // Never blind-toggle: the clock extra flips state, so pressing it on a closed or
   // closing panel would open it and strand it for the next scenario.
   async closePanelIfOpen() {
     if (!(await this.isPanelSettledOpen())) return
-    if ((await osascript(PRESS_CLOCK_SCRIPT)) !== 'true') {
-      throw new Error('cannot close the Notification Center panel: clock menu extra not found')
-    }
+    await this.pressClock('close')
     if (!(await this.waitForPanel(false))) {
       throw new Error('the Notification Center panel did not close')
+    }
+  }
+
+  // Let a closing panel finish first, so the press opens it rather than racing the close.
+  async openPanelIfClosed() {
+    if (await this.isPanelSettledOpen()) return
+    await this.waitForPanel(false)
+    await this.pressClock('open')
+    if (!(await this.waitForPanel(true))) {
+      throw new Error('the Notification Center panel did not open')
     }
   }
 
