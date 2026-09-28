@@ -24,6 +24,10 @@ private final class UnusedAccess: NotificationCenterAccess {
         touched = true
         return []
     }
+    func readPresented() throws -> [PresentedNotification] {
+        touched = true
+        return []
+    }
     func dismiss(index: Int) throws { touched = true }
     func press(index: Int) throws { touched = true }
     func perform(action displayName: String, index: Int) throws { touched = true }
