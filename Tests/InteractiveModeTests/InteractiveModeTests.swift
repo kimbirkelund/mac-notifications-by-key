@@ -69,3 +69,21 @@ private final class UnusedAccess: NotificationCenterAccess {
         #expect(InstanceDecision(lockAcquired: false, ownerPID: nil) == .focusExisting(nil))
     }
 }
+
+@Suite struct ScreenGeometryTests {
+    /// RIM-10: panels are laid out in top-left-origin screen coordinates and drawn in AppKit's.
+    @Test func flipsTopLeftOriginRectIntoBottomLeftOrigin() {
+        let cg = CGRect(x: 100, y: 50, width: 160, height: 80)
+        #expect(
+            ScreenGeometry.appKitRect(fromCG: cg, primaryScreenHeight: 1000)
+                == CGRect(x: 100, y: 870, width: 160, height: 80))
+    }
+
+    @Test func localRectIsRelativeToTheWindowOrigin() {
+        let rect = CGRect(x: 1540, y: 870, width: 160, height: 80)
+        let window = CGRect(x: 1440, y: 0, width: 1920, height: 1080)
+        #expect(
+            ScreenGeometry.local(rect, in: window) == CGRect(x: 100, y: 870, width: 160, height: 80)
+        )
+    }
+}
