@@ -344,11 +344,11 @@ foundation for any "custom UI that mirrors Notification Center live" work.
 **Used by `nbk` today:** `AXIsProcessTrusted`, `AXUIElementCreateApplication`,
 `AXUIElementCopyAttributeValue`, `AXUIElementCopyActionNames`, `AXUIElementPerformAction`,
 `AXUIElementSetAttributeValue`; attributes `Windows`, `Children`, `Role`, `Identifier`, `Value`,
-`Description`, `Focused`, `Subrole`; roles `AXGroup`, `AXStaticText`, `AXButton` (the panel's "Edit
-Widgets" button, to tell the panel from a banner); actions `AXPress`, `Close`, `Show`,
-`Show Details`; the menu bar clock extra for opening and closing the panel (§1).
+`Description`, `Focused`, `Subrole`, `Position`, `Size` (a notification's on-screen frame); roles
+`AXGroup`, `AXStaticText`, `AXButton` (the panel's "Edit Widgets" button, to tell the panel from a
+banner); actions `AXPress`, `Close`, `Show`, `Show Details`; the menu bar clock extra for opening
+and closing the panel (§1).
 
 **Available but unused (probe before relying):** `AXUIElementCopyAttributeNames`, `AXObserver*`
-(live events); attributes `Position`, `Size`, `Frame`, `Enabled`, `Help`, `Parent`,
-`TopLevelUIElement`; action buttons as `AXButton`; stack-container children/expand action and
-panel-level `Clear All`.
+(live events); attributes `Frame`, `Enabled`, `Help`, `Parent`, `TopLevelUIElement`; action buttons
+as `AXButton`; stack-container children/expand action and panel-level `Clear All`.

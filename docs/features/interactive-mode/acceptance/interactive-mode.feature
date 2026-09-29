@@ -56,6 +56,24 @@ Feature: Interactive mode
     Then the Notification Center panel is above the overlay in the window order
     And the overlay is translucent
 
+  # Validates RIM-10: one panel per presented notification, listing Activate,
+  # Dismiss, then that notification's actions, immediately left of it and
+  # top-aligned. Listing first waits out the banner render delay.
+  Scenario: Each presented notification gets an action panel
+    Given a notification is delivered with title "PanelOne"
+    And a notification is delivered with title "PanelTwo"
+    And I run "nbk list --wait 5"
+    And interactive mode is running
+    Then one action panel is present per presented notification
+    And each panel lists "Activate", "Dismiss", then that notification's actions in order
+    And each panel sits to the left of its notification with the same top edge
+
+  # Validates RIM-10: with nothing presented there is nothing to attach a panel to.
+  Scenario: No action panel when nothing is presented
+    Given no notifications are presented
+    And interactive mode is running
+    Then no action panel is present
+
   # Validates RIM-9: entering a mode whose every operation would fail is refused.
   # @operator because there is no API to revoke Accessibility trust; a human does
   # it when prompted. Attended only: npx cucumber-js -p operator

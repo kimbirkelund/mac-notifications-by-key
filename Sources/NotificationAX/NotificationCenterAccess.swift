@@ -12,6 +12,7 @@ public protocol NotificationCenterAccess {
     var isPanelOpen: Bool { get }
     func notificationCenterPID() -> pid_t?
     func read(wait: TimeInterval) throws -> [NotificationItem]
+    func readPresented() throws -> [PresentedNotification]
     func dismiss(index: Int) throws
     func press(index: Int) throws
     func perform(action displayName: String, index: Int) throws

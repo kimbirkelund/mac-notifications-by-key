@@ -78,6 +78,14 @@ public struct DefaultNotificationCenterAX: NotificationCenterAccess {
         return elements.enumerated().map { item(from: $0.element, index: $0.offset) }
     }
 
+    public func readPresented() throws -> [PresentedNotification] {
+        let pid = try requirePID()
+        return notificationElements(pid).enumerated().compactMap { offset, element in
+            guard let frame = frame(of: element) else { return nil }
+            return PresentedNotification(item: item(from: element, index: offset), frame: frame)
+        }
+    }
+
     // MARK: Act
 
     public func dismiss(index n: Int) throws {
@@ -258,6 +266,20 @@ public struct DefaultNotificationCenterAX: NotificationCenterAccess {
         var value: CFTypeRef?
         return AXUIElementCopyAttributeValue(element, name as CFString, &value) == .success
             ? value : nil
+    }
+
+    private func frame(of element: AXUIElement) -> CGRect? {
+        guard let position = attr(element, kAXPositionAttribute as String),
+            let size = attr(element, kAXSizeAttribute as String),
+            CFGetTypeID(position) == AXValueGetTypeID(),
+            CFGetTypeID(size) == AXValueGetTypeID()
+        else { return nil }
+        var origin = CGPoint.zero
+        var extent = CGSize.zero
+        guard AXValueGetValue(unsafeDowncast(position, to: AXValue.self), .cgPoint, &origin),
+            AXValueGetValue(unsafeDowncast(size, to: AXValue.self), .cgSize, &extent)
+        else { return nil }
+        return CGRect(origin: origin, size: extent)
     }
 
     private func axActions(_ element: AXUIElement) -> [String] {

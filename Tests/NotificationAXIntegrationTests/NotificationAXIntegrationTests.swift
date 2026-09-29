@@ -124,4 +124,50 @@ import Testing
         try nc.setPanelOpen(false)
         #expect(!nc.isPanelOpen)
     }
+
+    @Test(.enabled(if: NotificationAXIntegrationTests.available))
+    func readPresentedReturnsFrameOnScreen() throws {
+        defer {
+            try? nc.setPanelOpen(false)
+            clearAll()
+        }
+        try nc.setPanelOpen(false)
+        clearAll()
+        let title = "AXPresentedFrameProbe"
+        #expect(deliver(title: title))
+        try #require(
+            try nc.read(wait: Self.deliveryReadTimeout).contains { $0.title == title },
+            "delivered banner did not appear")
+        try nc.setPanelOpen(true)
+        let presented = try #require(
+            try stablePresented(title: title),
+            "delivered notification has no stable frame in the open panel")
+        #expect(!presented.frame.isEmpty)
+        let displays = activeDisplayBounds()
+        try #require(!displays.isEmpty, "no active displays")
+        #expect(displays.contains { $0.contains(presented.frame) })
+    }
+
+    /// Rows slide in and reshuffle while the panel settles, so wait for two identical reads.
+    func stablePresented(
+        title: String, timeout: TimeInterval = 10
+    ) throws -> PresentedNotification? {
+        let deadline = Date().addingTimeInterval(timeout)
+        var previous: PresentedNotification?
+        while Date() < deadline {
+            let current = try nc.readPresented().first { $0.item.title == title }
+            if let current, current == previous, !current.frame.isEmpty { return current }
+            previous = current
+            Thread.sleep(forTimeInterval: 0.2)
+        }
+        return nil
+    }
+
+    func activeDisplayBounds() -> [CGRect] {
+        var count: UInt32 = 0
+        CGGetActiveDisplayList(0, nil, &count)
+        var ids = [CGDirectDisplayID](repeating: 0, count: Int(count))
+        CGGetActiveDisplayList(count, &ids, &count)
+        return ids.prefix(Int(count)).map { CGDisplayBounds($0) }
+    }
 }

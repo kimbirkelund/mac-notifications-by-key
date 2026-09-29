@@ -10,6 +10,7 @@ struct Bounds: Encodable {
 
 struct WindowRow: Encodable {
     let owner: String
+    let name: String
     let pid: Int
     let layer: Int
     let alpha: Double
@@ -25,6 +26,7 @@ let rows = infos.map { info -> WindowRow in
         .flatMap { CGRect(dictionaryRepresentation: $0 as CFDictionary) } ?? .zero
     return WindowRow(
         owner: info[kCGWindowOwnerName as String] as? String ?? "",
+        name: info[kCGWindowName as String] as? String ?? "",
         pid: info[kCGWindowOwnerPID as String] as? Int ?? 0,
         layer: info[kCGWindowLayer as String] as? Int ?? 0,
         alpha: info[kCGWindowAlpha as String] as? Double ?? 1,

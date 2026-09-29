@@ -67,6 +67,15 @@ Two consequences follow, and both matter:
   notification as the current subject and acting on it with the keyboard the overlay holds. That is
   the next slice.
 
+## Action panels
+
+For each notification the panel presents, the overlay shows a small **action panel** immediately to
+its left, aligned with the notification's top edge. It lists `Activate`, `Dismiss`, and then the
+names of that notification's own actions, in that order (RIM-10). The panels stay in step with what
+is presented: when a notification arrives or goes away while the mode runs, the panels are redrawn
+to match. For now the panels only show names; selecting a notification and pressing keys to invoke
+an entry come later.
+
 ## Why the mode opens the panel
 
 Notification Center's Accessibility surface exists only while a banner is on screen or the panel is
@@ -103,9 +112,9 @@ costs nothing.
 In scope: entering the mode, opening the Notification Center panel, the overlay that signals the
 mode and holds focus, re-invoking while it runs, and leaving the mode again by signal or Escape —
 closing the panel on the way out. **Out of scope** (open seeds): selecting a notification and moving
-that selection, per-notification action menus, `clear-all` / `clear-all-for-app`, reacting to
-notifications arriving while the mode is active, and which application regains focus once the
-overlay closes.
+that selection, per-notification action invocation, `clear-all` / `clear-all-for-app`, reacting to
+notifications arriving while the mode is active (beyond redrawing the action panels), and which
+application regains focus once the overlay closes.
 
 ## Conventions
 
