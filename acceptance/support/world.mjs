@@ -190,12 +190,22 @@ if (se.applicationProcesses.whose({ name: 'NotificationCenter' }).length > 0) {
 }
 JSON.stringify(out)`
 
-// Action panels drawn by one nbk process, as JSON [{x, y, width, height, entries}]
-// where entries are the panel's static texts in row-major order (texts within 2 px
-// of a row's top share it). A panel is an AXGroup holding static texts, found at
-// any (bounded) depth under the process's windows.
+// Action panels drawn by one nbk process, as JSON
+// [{x, y, width, height, selected, entries: [{activator, name}]}]. A panel is an
+// AXGroup identified "action-panel" (its texts gathered at any bounded depth), or
+// failing that any AXGroup holding static texts. Entries are the non-activator
+// texts in row-major order (within 2 px of a row's top share it); each text
+// identified "activator" belongs to the nearest entry to its right whose vertical
+// span overlaps it, so entries without one carry activator null.
 const actionPanelsScript = (pid) => `
 const se = Application('System Events')
+const attr = (el, name) => {
+  try {
+    return el.attributes.byName(name).value()
+  } catch (e) {
+    return null
+  }
+}
 function rowMajor(texts) {
   const rows = []
   for (const t of [...texts].sort((a, b) => a.y - b.y)) {
@@ -205,6 +215,37 @@ function rowMajor(texts) {
   }
   return rows.flatMap((row) => row.sort((a, b) => a.x - b.x))
 }
+function pairEntries(texts) {
+  const names = rowMajor(texts.filter((t) => t.id !== 'activator'))
+  const entries = names.map((t) => ({ activator: null, name: t.value }))
+  for (const a of texts.filter((t) => t.id === 'activator')) {
+    let best = -1
+    names.forEach((t, i) => {
+      const overlaps = t.y < a.y + a.height && a.y < t.y + t.height
+      if (overlaps && t.x >= a.x && (best === -1 || t.x < names[best].x)) best = i
+    })
+    if (best !== -1) entries[best].activator = a.value
+  }
+  return entries
+}
+function textsOf(el, depth) {
+  let texts = []
+  try {
+    texts = el.staticTexts().map((t) => {
+      const [x, y] = t.position()
+      const [, height] = t.size()
+      return { value: t.value(), id: attr(t, 'AXIdentifier'), x, y, height }
+    })
+  } catch (e) {}
+  if (depth > 0) {
+    let groups = []
+    try {
+      groups = el.groups()
+    } catch (e) {}
+    for (const g of groups) texts = texts.concat(textsOf(g, depth - 1))
+  }
+  return texts
+}
 function walk(el, depth, out) {
   if (depth > 6) return
   let groups = []
@@ -212,17 +253,13 @@ function walk(el, depth, out) {
     groups = el.groups()
   } catch (e) {}
   for (const g of groups) {
-    let texts = []
-    try {
-      texts = g.staticTexts().map((t) => {
-        const [x, y] = t.position()
-        return { value: t.value(), x, y }
-      })
-    } catch (e) {}
-    if (texts.length > 0) {
+    const isPanel = attr(g, 'AXIdentifier') === 'action-panel'
+    const texts = textsOf(g, isPanel ? 4 : 0)
+    if (isPanel || texts.length > 0) {
       const [x, y] = g.position()
       const [width, height] = g.size()
-      out.push({ x, y, width, height, entries: rowMajor(texts).map((t) => t.value) })
+      const selected = attr(g, 'AXSelected') === true
+      out.push({ x, y, width, height, selected, entries: pairEntries(texts) })
     } else {
       walk(g, depth + 1, out)
     }
@@ -239,6 +276,8 @@ JSON.stringify(out)`
 const FRONTMOST_PID_SCRIPT = `
 ObjC.import('AppKit')
 $.NSWorkspace.sharedWorkspace.frontmostApplication.processIdentifier`
+
+const KEY_CODES = { Escape: 53, Space: 49, Down: 125, Up: 126 }
 
 const SCREEN_SIZES_SCRIPT = `
 ObjC.import('AppKit')
@@ -520,12 +559,26 @@ class NbkWorld extends World {
     )
   }
 
-  // Escape goes to whatever holds focus, so refuse to post it unless we do.
-  async pressEscape() {
+  // Keys go to whatever holds focus, so refuse to post one unless we do. `spec` is
+  // a named key (Escape, Up, Down, Space) or a single character typed as-is.
+  async pressKey(spec) {
     if (!(await this.isInteractiveFrontmost())) {
-      throw new Error('refusing to post Escape: interactive mode is not the frontmost application')
+      throw new Error(
+        `refusing to post ${JSON.stringify(spec)}: interactive mode is not the frontmost application`
+      )
     }
-    await osascript('tell application "System Events" to key code 53')
+    const keyCode = KEY_CODES[spec === ' ' ? 'Space' : spec]
+    if (keyCode !== undefined) {
+      await osascript(`tell application "System Events" to key code ${keyCode}`)
+    } else if (spec.length === 1) {
+      await osascript(`tell application "System Events" to keystroke ${JSON.stringify(spec)}`)
+    } else {
+      throw new Error(`unknown key: ${JSON.stringify(spec)}`)
+    }
+  }
+
+  async pressEscape() {
+    await this.pressKey('Escape')
   }
 
   // Window-list owner names are localized ("Notification Centre"), so rows are
