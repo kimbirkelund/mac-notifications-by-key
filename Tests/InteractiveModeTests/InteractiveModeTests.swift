@@ -1,3 +1,4 @@
+import AppKit
 import CoreGraphics
 import Foundation
 import NotificationAX
@@ -85,5 +86,69 @@ private final class UnusedAccess: NotificationCenterAccess {
         #expect(
             ScreenGeometry.local(rect, in: window) == CGRect(x: 100, y: 870, width: 160, height: 80)
         )
+    }
+}
+
+@Suite struct OverlayKeyTests {
+    private func key(
+        _ keyCode: UInt16, _ characters: String?, _ modifiers: NSEvent.ModifierFlags = []
+    ) -> OverlayKey? {
+        OverlayKey(keyCode: keyCode, characters: characters, modifiers: modifiers)
+    }
+
+    @Test func mapsEscapeAndArrowsByKeyCode() {
+        #expect(key(53, "\u{1b}") == .escape)
+        #expect(key(126, "\u{f700}", [.numericPad, .function]) == .up)
+        #expect(key(125, "\u{f701}", [.numericPad, .function]) == .down)
+    }
+
+    @Test func unshiftedLetterIsLowerCaseCharacter() {
+        #expect(key(38, "j") == .character("j"))
+    }
+
+    /// RIM-17: a shifted letter maps to an upper-case character that nothing binds.
+    @Test func shiftedLetterIsUpperCaseCharacter() {
+        #expect(key(38, "j", .shift) == .character("J"))
+    }
+
+    @Test func spaceIsASpaceCharacter() {
+        #expect(key(49, " ") == .character(" "))
+    }
+
+    /// RIM-17: Command, Option or Control chords are unbound, whatever the key.
+    @Test func chordsWithCommandOptionOrControlAreUnmapped() {
+        for modifier: NSEvent.ModifierFlags in [.command, .option, .control] {
+            #expect(key(38, "j", modifier) == nil)
+            #expect(key(125, "\u{f701}", [modifier, .function]) == nil)
+            #expect(key(53, "\u{1b}", modifier) == nil)
+        }
+    }
+
+    /// RIM-17: function keys report a private-use character and are ignored.
+    @Test func functionKeysAreUnmapped() {
+        #expect(key(122, "\u{f704}", .function) == nil)
+        #expect(key(111, "\u{f70f}", .function) == nil)
+    }
+
+    @Test func keysWithoutASingleCharacterAreUnmapped() {
+        #expect(key(0, nil) == nil)
+        #expect(key(0, "") == nil)
+    }
+}
+
+@Suite struct OverlayKeySelectionMoveTests {
+    /// RIM-12: Down and j move down; Up and k move up.
+    @Test func movementKeysMapToMoves() {
+        #expect(OverlayKey.down.selectionMove == .down)
+        #expect(OverlayKey.character("j").selectionMove == .down)
+        #expect(OverlayKey.up.selectionMove == .up)
+        #expect(OverlayKey.character("k").selectionMove == .up)
+    }
+
+    /// RIM-17: other keys, including shifted J/K, move nothing.
+    @Test func otherKeysMapToNoMove() {
+        for key: OverlayKey in [.escape, .character("x"), .character("J"), .character("K")] {
+            #expect(key.selectionMove == nil)
+        }
     }
 }

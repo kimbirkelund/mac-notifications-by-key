@@ -66,3 +66,23 @@ import Testing
         #expect(SelectionState(count: 0, selectedIndex: 1).selectedIndex == nil)
     }
 }
+
+@Suite struct SelectionMoveTests {
+    @Test func applyingDownAndUpMovesLikeMoveDownAndMoveUp() {
+        var s = SelectionState(count: 3, selectedIndex: 1)
+        s.apply(.down)
+        #expect(s.selectedIndex == 2)
+        s.apply(.up)
+        s.apply(.up)
+        #expect(s.selectedIndex == 0)
+    }
+
+    @Test func applyingClampsAtBothEnds() {
+        var s = SelectionState(count: 2, selectedIndex: 1)
+        s.apply(.down)
+        #expect(s.selectedIndex == 1)
+        s.apply(.up)
+        s.apply(.up)
+        #expect(s.selectedIndex == 0)
+    }
+}

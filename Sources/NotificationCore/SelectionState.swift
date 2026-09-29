@@ -27,3 +27,16 @@ public struct SelectionState: Equatable, Sendable {
         return SelectionState(count: count, selectedIndex: min(selectedIndex ?? 0, count - 1))
     }
 }
+
+public enum SelectionMove: Equatable, Sendable {
+    case up, down
+}
+
+extension SelectionState {
+    public mutating func apply(_ move: SelectionMove) {
+        switch move {
+        case .up: moveUp()
+        case .down: moveDown()
+        }
+    }
+}
