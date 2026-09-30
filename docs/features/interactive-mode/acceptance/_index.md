@@ -4,7 +4,7 @@ BDD scenarios (Gherkin) specifying interactive mode. These `.feature` files **ar
 acceptance tests: [cucumber-js](https://github.com/cucumber/cucumber-js) runs them against the
 compiled `nbk` binary as a black box, using the step definitions in `acceptance/steps/`.
 
-The eight unattended scenarios run in the default acceptance run. The trust scenario is `@operator`
+The twelve unattended scenarios run in the default acceptance run. The trust scenario is `@operator`
 and runs only attended.
 
 | Scenario                                            | Validates    | Status                                         |
@@ -17,11 +17,15 @@ and runs only attended.
 | The panel sits above the overlay, untinted          | RIM-1, RIM-2 | ✅                                             |
 | Each presented notification gets an action panel    | RIM-10       | ✅                                             |
 | No action panel when nothing is presented           | RIM-10       | ✅                                             |
+| The newest notification is selected on entry        | RIM-11       | ⏳ not yet run                                 |
+| The selected panel shows lower-case activators      | RIM-13       | ⏳ not yet run                                 |
+| Movement keys keep a lone selection in place        | RIM-12       | ⏳ not yet run; two-notification movement live |
+| Unbound keys are ignored                            | RIM-17       | ⏳ not yet run                                 |
 | Missing Accessibility trust is refused              | RIM-9        | ✅ `@operator` — attended; last run 2026-09-27 |
 
 ## What the harness adds
 
-Interactive mode is long-running and graphical, so the harness has four capabilities beyond what
+Interactive mode is long-running and graphical, so the harness has five capabilities beyond what
 notification access uses. None needs a new framework.
 
 - **A spawned, retained process.** The existing world promisifies `execFile`, which awaits exit;
@@ -38,6 +42,8 @@ notification access uses. None needs a new framework.
   position and size from Notification Center's AX tree, and our own action-panel groups (their
   position, size, and the action names they list) through System Events. Same permission, no new
   tooling.
+- **Keystrokes.** Movement and activator keys are posted through System Events, each step first
+  asserting the overlay is frontmost so a mistimed key cannot reach another app.
 
 One scenario needs more: window **level** and **alpha** are not exposed through AX, so "panel above
 the overlay" and "translucent" need a small helper that dumps `CGWindowListCopyWindowInfo` (owner,
@@ -62,6 +68,11 @@ is open always comes from the AX check described in the AX reference.
 
 ## Notes
 
+- **One notification at a time.** The harness cannot present a second notification: every
+  notification it delivers is attributed to Script Editor and collapses into that app's stack.
+  RIM-12 is therefore covered unattended only by one scenario that guards against wrap-around or a
+  crash with a single notification, and movement between two notifications is verified live by the
+  operator.
 - `@wip` scenarios are excluded from the default run via `tags` in `cucumber.mjs`; the `operator`
   profile excludes them too, so an unimplemented attended scenario cannot fail an attended run.
 - Scenarios assert observable state — exit status, window presence, panel state — never macOS copy.

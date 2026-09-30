@@ -133,6 +133,18 @@ When('I press Escape', async function () {
   await this.pressEscape()
 })
 
+When('I press {string}', STEP, async function (key) {
+  await pressRecordingSelection(this, key)
+})
+
+When('I press the Down arrow', STEP, async function () {
+  await pressRecordingSelection(this, 'Down')
+})
+
+When('I press the Up arrow', STEP, async function () {
+  await pressRecordingSelection(this, 'Up')
+})
+
 // The panel's window level. A banner shares it, so this proves order only; that the
 // panel is the open window comes from the AX check in 'interactive mode is running'.
 const PANEL_LAYER = 21
@@ -215,7 +227,7 @@ Then(
         `no listed notification titled ${JSON.stringify(frame.title)}: ${JSON.stringify(items)}`
       )
       assert.deepEqual(
-        panels[i].entries,
+        panels[i].entries.map((e) => e.name),
         ['Activate', 'Dismiss', ...item.actions],
         `panel ${i} does not match notification ${JSON.stringify(frame.title)}`
       )
@@ -256,5 +268,109 @@ Then('no action panel is present', STEP, async function () {
   do {
     const panels = await this.actionPanels()
     assert.equal(panels.length, 0, `expected no action panel; got: ${JSON.stringify(panels)}`)
+  } while (Date.now() < deadline)
+})
+
+// Top-down index of the one selected panel, or null when none or several are.
+function selectedIndex(panels) {
+  const selected = panels.flatMap((p, i) => (p.selected ? [i] : []))
+  return selected.length === 1 ? selected[0] : null
+}
+
+// A settled read: one panel per presented notification, and one of them selected
+// whenever any are presented.
+async function settledSelection(world) {
+  let last = { frames: [], panels: [] }
+  const settled = await world.pollUntil(async () => {
+    const [frames, panels] = [await world.notificationFrames(), await world.actionPanels()]
+    last = { frames, panels }
+    if (panels.length !== frames.length) return null
+    const index = selectedIndex(panels)
+    return frames.length === 0 || index !== null ? { panels, index } : null
+  }, SETTLE_MS)
+  assert.ok(
+    settled,
+    `expected one action panel per presented notification with exactly one selected; last read: ${JSON.stringify(last)}`
+  )
+  return settled
+}
+
+// "The selection is unchanged" compares against the selection just before the
+// most recent key press, so the baseline is taken here.
+async function pressRecordingSelection(world, key) {
+  world.selectionBeforeKey = (await settledSelection(world)).index
+  await world.pressKey(key)
+}
+
+async function assertSelectedIndex(world, want, describe) {
+  let last = []
+  const ok = await world.pollUntil(async () => {
+    last = await world.actionPanels()
+    return want(last) !== null && selectedIndex(last) === want(last)
+  }, SETTLE_MS)
+  assert.ok(ok, `expected ${describe} to be selected; panels: ${JSON.stringify(last)}`)
+}
+
+async function selectedPanel(world) {
+  const { panels, index } = await settledSelection(world)
+  assert.notEqual(index, null, `expected a selected panel; panels: ${JSON.stringify(panels)}`)
+  return panels[index]
+}
+
+Then('exactly one action panel is selected', STEP, async function () {
+  const { panels, index } = await settledSelection(this)
+  assert.notEqual(
+    index,
+    null,
+    `expected exactly one selected panel; panels: ${JSON.stringify(panels)}`
+  )
+})
+
+Then('the selected panel is the topmost panel', STEP, async function () {
+  const { panels, index } = await settledSelection(this)
+  assert.equal(index, 0, `expected the topmost panel selected; panels: ${JSON.stringify(panels)}`)
+})
+
+Then('the topmost action panel is selected', STEP, async function () {
+  await assertSelectedIndex(this, (panels) => (panels.length > 0 ? 0 : null), 'the topmost panel')
+})
+
+function assertActivator(panel, activator, name) {
+  const entry = panel.entries.find((e) => e.name === name)
+  assert.ok(
+    entry,
+    `no entry ${JSON.stringify(name)} in the selected panel: ${JSON.stringify(panel)}`
+  )
+  assert.equal(
+    entry.activator,
+    activator,
+    `expected activator ${JSON.stringify(activator)} before ${JSON.stringify(name)}: ${JSON.stringify(panel)}`
+  )
+}
+
+Then(
+  'the selected panel shows activator {string} before {string}',
+  STEP,
+  async function (activator, name) {
+    assertActivator(await selectedPanel(this), activator, name)
+  }
+)
+
+// Nothing marks a key as handled, so hold for a window in which a move would show.
+const UNCHANGED_HOLD_MS = 1000
+
+Then('the selection is unchanged', STEP, async function () {
+  assert.ok(
+    'selectionBeforeKey' in this,
+    'no selection was recorded: press a key before asserting it is unchanged'
+  )
+  const deadline = Date.now() + UNCHANGED_HOLD_MS
+  do {
+    const panels = await this.actionPanels()
+    assert.equal(
+      selectedIndex(panels),
+      this.selectionBeforeKey,
+      `expected the selection to stay at ${this.selectionBeforeKey}; panels: ${JSON.stringify(panels)}`
+    )
   } while (Date.now() < deadline)
 })

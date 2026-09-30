@@ -74,6 +74,56 @@ Feature: Interactive mode
     And interactive mode is running
     Then no action panel is present
 
+  # Validates RIM-11: on entering the mode the newest notification is selected,
+  # and only one panel is selected at a time.
+  Scenario: The newest notification is selected on entry
+    Given a notification is delivered with title "SelectOne"
+    And I run "nbk list --wait 5"
+    And interactive mode is running
+    Then exactly one action panel is selected
+    And the selected panel is the topmost panel
+
+  # Validates RIM-13: the selected panel shows a lower-case key left of each entry.
+  # Script Editor's notification exposes Show Details, Show and Close.
+  Scenario: The selected panel shows lower-case activators
+    Given a notification is delivered with title "ActivatorOne"
+    And I run "nbk list --wait 5"
+    And interactive mode is running
+    Then the selected panel shows activator "Space" before "Activate"
+    And the selected panel shows activator "d" before "Dismiss"
+    And the selected panel shows activator "s" before "Show Details"
+    And the selected panel shows activator "h" before "Show"
+    And the selected panel shows activator "c" before "Close"
+
+  # Validates RIM-12: with one notification presented it is both first and last,
+  # so every movement key must leave the selection where it is. This only guards
+  # against wrap-around or a crash; movement between notifications is verified
+  # live, because the harness cannot present a second one.
+  Scenario: Moving the selection clamps at the ends
+    Given a notification is delivered with title "MoveOne"
+    And I run "nbk list --wait 5"
+    And interactive mode is running
+    And the overlay is the frontmost application
+    When I press "j"
+    Then the selection is unchanged
+    When I press the Down arrow
+    Then the selection is unchanged
+    When I press the Up arrow
+    Then the selection is unchanged
+    When I press "k"
+    Then the selection is unchanged
+
+  # Validates RIM-17: a key that is bound to nothing does nothing.
+  Scenario: Unbound keys are ignored
+    Given a notification is delivered with title "UnboundOne"
+    And I run "nbk list --wait 5"
+    And interactive mode is running
+    And the overlay is the frontmost application
+    When I press "x"
+    Then interactive mode is still running
+    And the selection is unchanged
+    And exactly one overlay window is present
+
   # Validates RIM-9: entering a mode whose every operation would fail is refused.
   # @operator because there is no API to revoke Accessibility trust; a human does
   # it when prompted. Attended only: npx cucumber-js -p operator

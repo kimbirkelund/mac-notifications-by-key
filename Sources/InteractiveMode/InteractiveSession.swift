@@ -44,6 +44,7 @@ private final class Session {
     private var window: OverlayWindow?
     private var panelsWindow: ActionPanelsWindow?
     private var drawnPresented: [PresentedNotification] = []
+    private var selection = SelectionState.initial(count: 0)
     private var signalSources: [DispatchSourceSignal] = []
     private var tearingDown = false
 
@@ -69,7 +70,7 @@ private final class Session {
         let app = NSApplication.shared
         app.setActivationPolicy(.accessory)
         let window = OverlayWindow(frame: frame)
-        window.onEscape = { [weak self] in self?.teardown() }
+        window.onKey = { [weak self] key in self?.handle(key) }
         self.window = window
         window.makeKeyAndOrderFront(nil)
         app.activate(ignoringOtherApps: true)
@@ -106,9 +107,20 @@ private final class Session {
         }
     }
 
+    private func handle(_ key: OverlayKey) {
+        if key == .escape { return teardown() }
+        guard let move = key.selectionMove else { return }
+        let before = selection
+        selection.apply(move)
+        if selection != before { drawActionPanels(drawnPresented) }
+    }
+
     private func refreshActionPanels(with presented: [PresentedNotification]?) {
         guard !tearingDown else { return }
-        if let presented, presented != drawnPresented { drawActionPanels(presented) }
+        if let presented = presented.map(PresentedNotification.topDown), presented != drawnPresented
+        {
+            drawActionPanels(presented)
+        }
         DispatchQueue.main.asyncAfter(deadline: .now() + Self.refreshInterval) { [weak self] in
             MainActor.assumeIsolated { self?.scheduleRead() }
         }
@@ -128,6 +140,7 @@ private final class Session {
     private func drawActionPanels(_ presented: [PresentedNotification]) {
         guard let window, let primary = NSScreen.screens.first else { return }
         drawnPresented = presented
+        selection = selection.clamped(to: presented.count)
         let panels: ActionPanelsWindow
         if let existing = panelsWindow {
             panels = existing
@@ -139,7 +152,8 @@ private final class Session {
             panels.orderFront(nil)
         }
         panels.show(
-            ActionPanelLayout.panels(for: presented, width: Self.panelWidth),
+            ActionPanelLayout.panels(
+                for: presented, selectedIndex: selection.selectedIndex, width: Self.panelWidth),
             primaryScreenHeight: primary.frame.height)
     }
 

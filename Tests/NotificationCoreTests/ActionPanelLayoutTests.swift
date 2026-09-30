@@ -49,4 +49,22 @@ import Testing
     @Test func emptyInputYieldsNoPanels() {
         #expect(ActionPanelLayout.panels(for: []).isEmpty)
     }
+
+    @Test func selectedPanelCarriesActivatorsAndOthersDoNot() {
+        let a = presented(
+            0, actions: ["Reply"], frame: CGRect(x: 1000, y: 50, width: 360, height: 80))
+        let b = presented(
+            1, actions: ["Reply"], frame: CGRect(x: 1000, y: 150, width: 360, height: 80))
+        let specs = ActionPanelLayout.panels(for: [a, b], selectedIndex: 1)
+        #expect(specs.map(\.isSelected) == [false, true])
+        #expect(specs[0].activators == nil)
+        #expect(specs[1].activators == ["Space", "d", "r"])
+    }
+
+    @Test func nilSelectionSelectsNothing() {
+        let n = presented(0, frame: CGRect(x: 1000, y: 50, width: 360, height: 80))
+        let spec = ActionPanelLayout.panels(for: [n], selectedIndex: nil)[0]
+        #expect(!spec.isSelected)
+        #expect(spec.activators == nil)
+    }
 }

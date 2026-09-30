@@ -4,8 +4,8 @@
 notification" when the user already knows what is on screen;
 [notification access](../notification-access/_index.md) covers that. Interactive mode answers the
 other half: the user presses a hotkey, the desktop visibly changes register to say _notifications
-are the subject now_, and from there the user picks one and acts on it. Only the mode signal — the
-overlay itself — is specified so far.
+are the subject now_, and from there the user picks one and acts on it. Specified so far: the mode
+signal, the action panels, and selecting a notification.
 
 ## The mode
 
@@ -61,11 +61,10 @@ Two consequences follow, and both matter:
 - **The mode really is exclusive.** Because the overlay takes focus and consumes input, "only
   notifications can be acted on" is enforced by the system itself rather than by the hotkey daemon's
   mode keymap. That is the simplification focus buys.
-- **Reachable by mouse, not yet by keyboard.** The panel sits above the overlay and takes mouse
-  clicks directly, so a notification can already be dismissed or opened through the panel's own UI.
-  What the mode does not yet offer is selection and action through the overlay itself: marking a
-  notification as the current subject and acting on it with the keyboard the overlay holds. That is
-  the next slice.
+- **Selectable by keyboard, not yet actionable by keyboard.** The panel sits above the overlay and
+  takes mouse clicks directly, so a notification can be dismissed or opened through the panel's own
+  UI. The overlay marks one notification as the current subject and moves that mark with the
+  keyboard it holds. Invoking an entry with its key is the next slice.
 
 ## Action panels
 
@@ -73,8 +72,13 @@ For each notification the panel presents, the overlay shows a small **action pan
 its left, aligned with the notification's top edge. It lists `Activate`, `Dismiss`, and then the
 names of that notification's own actions, in that order (RIM-10). The panels stay in step with what
 is presented: when a notification arrives or goes away while the mode runs, the panels are redrawn
-to match. For now the panels only show names; selecting a notification and pressing keys to invoke
-an entry come later.
+to match. Exactly one notification is selected at a time, and on entering the mode it is the newest;
+its panel is visibly distinct from the others (RIM-11). Down or `j` moves the selection to the next
+older notification, Up or `k` to the next newer, and it stops at either end rather than wrapping
+(RIM-12). The selected panel shows a key to the left of each entry: Space for `Activate`, `d` for
+`Dismiss`, and a lower-case letter for each of the notification's own actions, so `r` and `m` for
+`Reply` and `Mark as Read` (RIM-13). Unselected panels show names only. Any other key is ignored
+(RIM-17). Pressing an activator to invoke its entry comes later.
 
 ## Why the mode opens the panel
 
@@ -111,10 +115,10 @@ costs nothing.
 
 In scope: entering the mode, opening the Notification Center panel, the overlay that signals the
 mode and holds focus, re-invoking while it runs, and leaving the mode again by signal or Escape —
-closing the panel on the way out. **Out of scope** (open seeds): selecting a notification and moving
-that selection, per-notification action invocation, `clear-all` / `clear-all-for-app`, reacting to
-notifications arriving while the mode is active (beyond redrawing the action panels), and which
-application regains focus once the overlay closes.
+closing the panel on the way out. **Out of scope** (open seeds): per-notification action invocation
+by key, `clear-all` / `clear-all-for-app`, reacting to notifications arriving while the mode is
+active (beyond redrawing the action panels), and which application regains focus once the overlay
+closes.
 
 ## Conventions
 
