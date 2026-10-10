@@ -4,8 +4,8 @@ BDD scenarios (Gherkin) specifying interactive mode. These `.feature` files **ar
 acceptance tests: [cucumber-js](https://github.com/cucumber/cucumber-js) runs them against the
 compiled `nbk` binary as a black box, using the step definitions in `acceptance/steps/`.
 
-The twelve unattended scenarios run in the default acceptance run. The trust scenario is `@operator`
-and runs only attended.
+The fifteen unattended scenarios run in the default acceptance run. The trust scenario is
+`@operator` and runs only attended.
 
 | Scenario                                            | Validates    | Status                                         |
 | --------------------------------------------------- | ------------ | ---------------------------------------------- |
@@ -21,6 +21,9 @@ and runs only attended.
 | The selected panel shows lower-case activators      | RIM-13       | ⏳ not yet run                                 |
 | Movement keys keep a lone selection in place        | RIM-12       | ⏳ not yet run; two-notification movement live |
 | Unbound keys are ignored                            | RIM-17       | ⏳ not yet run                                 |
+| Pressing d dismisses the selected notification      | RIM-14       | ⏳ not yet run                                 |
+| Pressing a named action's key performs it           | RIM-14       | ⏳ not yet run                                 |
+| Pressing Space activates the selected notification  | RIM-14       | ⏳ not yet run                                 |
 | Missing Accessibility trust is refused              | RIM-9        | ✅ `@operator` — attended; last run 2026-09-27 |
 
 ## What the harness adds

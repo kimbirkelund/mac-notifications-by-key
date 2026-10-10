@@ -374,3 +374,22 @@ Then('the selection is unchanged', STEP, async function () {
     )
   } while (Date.now() < deadline)
 })
+
+// A failed or unparsable list proves nothing about absence, so only a successful read counts.
+Then('the notification titled {string} is no longer presented', STEP, async function (title) {
+  let last = null
+  const gone = await this.pollUntil(async () => {
+    last = await this.exec(['list'])
+    if (last.code !== 0) return false
+    try {
+      const items = JSON.parse(last.stdout)
+      return Array.isArray(items) && !items.some((n) => n.title === title)
+    } catch {
+      return false
+    }
+  }, SETTLE_MS)
+  assert.ok(
+    gone,
+    `expected a successful list without a notification titled ${JSON.stringify(title)}; last result: ${JSON.stringify(last)}`
+  )
+})
