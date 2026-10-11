@@ -1,0 +1,11 @@
+{
+  "notifications": [
+    {
+      "app": "Reminders",
+      "title": "Pinned",
+      "subtitle": null,
+      "body": null,
+      "actions": [{ "name": "Remind", "closes": false }]
+    }
+  ]
+}

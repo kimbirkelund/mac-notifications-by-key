@@ -75,90 +75,97 @@ Feature: Interactive mode
     Then no action panel is present
 
   # Validates RIM-11: on entering the mode the newest notification is selected,
-  # and only one panel is selected at a time.
+  # and only one panel is selected at a time. Fixture notifications, so there is
+  # more than one to choose between.
   Scenario: The newest notification is selected on entry
-    Given a notification is delivered with title "SelectOne"
-    And I run "nbk list --wait 5"
-    And interactive mode is running
+    Given interactive mode is running with demo file "three.json"
     Then exactly one action panel is selected
     And the selected panel is the topmost panel
+    And the Notification Center panel is closed
 
   # Validates RIM-13: the selected panel shows a lower-case key left of each entry.
-  # Script Editor's notification exposes Show Details, Show and Close.
   Scenario: The selected panel shows lower-case activators
-    Given a notification is delivered with title "ActivatorOne"
-    And I run "nbk list --wait 5"
-    And interactive mode is running
+    Given interactive mode is running with demo file "one.json"
     Then the selected panel shows activator "Space" before "Activate"
     And the selected panel shows activator "d" before "Dismiss"
-    And the selected panel shows activator "s" before "Show Details"
-    And the selected panel shows activator "h" before "Show"
-    And the selected panel shows activator "c" before "Close"
+    And the selected panel shows activator "a" before "Archive"
+    And the selected panel shows activator "n" before "Answer"
+    And the selected panel shows activator "e" before "Delete"
+    And the selected panel shows activator "r" before "Reply"
+    And the selected panel shows activator "1" before "Ad"
 
-  # Validates RIM-12: with one notification presented it is both first and last,
-  # so every movement key must leave the selection where it is. This only guards
-  # against wrap-around or a crash; movement between notifications is verified
-  # live, because the harness cannot present a second one.
-  Scenario: Moving the selection clamps at the ends
-    Given a notification is delivered with title "MoveOne"
-    And I run "nbk list --wait 5"
-    And interactive mode is running
+  # Validates RIM-12: j/k and Down/Up move one step, and the ends clamp rather than wrap.
+  Scenario: Moving the selection between notifications
+    Given interactive mode is running with demo file "three.json"
     And the overlay is the frontmost application
     When I press "j"
-    Then the selection is unchanged
+    Then the action panel at position 2 is selected
     When I press the Down arrow
+    Then the action panel at position 3 is selected
+    When I press "j"
     Then the selection is unchanged
     When I press the Up arrow
-    Then the selection is unchanged
+    Then the action panel at position 2 is selected
     When I press "k"
+    Then the topmost action panel is selected
+    When I press the Up arrow
     Then the selection is unchanged
 
   # Validates RIM-17: a key that is bound to nothing does nothing.
   Scenario: Unbound keys are ignored
-    Given a notification is delivered with title "UnboundOne"
-    And I run "nbk list --wait 5"
-    And interactive mode is running
+    Given interactive mode is running with demo file "one.json"
     And the overlay is the frontmost application
     When I press "x"
     Then interactive mode is still running
     And the selection is unchanged
     And exactly one overlay window is present
 
-  # Validates RIM-14: d performs Dismiss on the selected notification and the mode stays.
+  # Validates RIM-14, RIM-15: d performs Dismiss on the selected notification, the mode
+  # stays, and the selection stays at the same position, now on the next notification.
   Scenario: Pressing d dismisses the selected notification
-    Given a notification is delivered with title "DismissByKey"
-    And I run "nbk list --wait 5"
-    And the JSON output contains a notification with title "DismissByKey"
-    And interactive mode is running
+    Given interactive mode is running with demo file "three.json"
     And the overlay is the frontmost application
+    When I press "j"
+    Then the action panel at position 2 is selected
     When I press "d"
-    Then the notification titled "DismissByKey" is no longer presented
+    Then the notification titled "Second" is no longer presented
+    And the action panel at position 2 is selected
     And interactive mode is still running
 
-  # Validates RIM-14: c performs the named action Close and the mode stays.
+  # Validates RIM-14: a named action's key performs that action and the mode stays.
   Scenario: Pressing a named action's key performs it
-    Given a notification is delivered with title "CloseByKey"
-    And I run "nbk list --wait 5"
-    And the JSON output contains a notification with title "CloseByKey"
-    And interactive mode is running
+    Given interactive mode is running with demo file "three.json"
     And the overlay is the frontmost application
-    When I press "c"
-    Then the notification titled "CloseByKey" is no longer presented
+    When I press "a"
+    Then the notification titled "First" is no longer presented
     And interactive mode is still running
 
-  # Validates RIM-14: Space performs Activate and the mode stays; the notification is removed
-  # once the mode exits.
+  # Validates RIM-14, RIM-21: an action the demo file marks as not closing leaves the
+  # notification presented; the later d proves the key reached the mode.
+  Scenario: An action that does not close keeps the notification
+    Given interactive mode is running with demo file "keep-open.json"
+    And the overlay is the frontmost application
+    When I press "r"
+    Then the notification titled "Pinned" is still presented
+    And interactive mode is still running
+    When I press "d"
+    Then the notification titled "Pinned" is no longer presented
+
+  # Validates RIM-14: Space performs Activate and the mode stays.
   Scenario: Pressing Space activates the selected notification
-    Given a notification is delivered with title "ActivateByKey"
-    And I run "nbk list --wait 5"
-    And the JSON output contains a notification with title "ActivateByKey"
-    And interactive mode is running
+    Given interactive mode is running with demo file "three.json"
     And the overlay is the frontmost application
     When I press "Space"
-    Then interactive mode is still running
-    When interactive mode is sent SIGTERM
-    Then interactive mode exits with status 0
-    And the notification titled "ActivateByKey" is no longer presented
+    Then the notification titled "First" is no longer presented
+    And interactive mode is still running
+
+  # Validates RIM-21: a demo file that cannot be read is an argument error, reported before
+  # any window appears.
+  Scenario: A missing demo file is refused before the overlay appears
+    When I run "nbk interactive --demo missing.json"
+    Then the command exits with status 64
+    And the error output starts with "nbk: --demo:"
+    And no overlay window is present
 
   # Validates RIM-9: entering a mode whose every operation would fail is refused.
   # @operator because there is no API to revoke Accessibility trust; a human does

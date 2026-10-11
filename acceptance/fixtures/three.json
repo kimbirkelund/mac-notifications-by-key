@@ -1,0 +1,25 @@
+{
+  "notifications": [
+    {
+      "app": "Mail",
+      "title": "First",
+      "subtitle": null,
+      "body": null,
+      "actions": ["Archive", "Reply"]
+    },
+    {
+      "app": "Calendar",
+      "title": "Second",
+      "subtitle": null,
+      "body": null,
+      "actions": ["Snooze"]
+    },
+    {
+      "app": "Messages",
+      "title": "Third",
+      "subtitle": null,
+      "body": null,
+      "actions": []
+    }
+  ]
+}

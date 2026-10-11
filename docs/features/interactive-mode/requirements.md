@@ -122,6 +122,15 @@ for `C-*`/`X-*`.
   Deferred: depends on `clear-all` and `clear-all-for-app` existing as operations under
   [notification-access](../notification-access/_index.md), where they are still an open seed.
 
+## Demo mode
+
+- **RIM-21 (optional) — Demo notifications in place of Notification Center's.** Where `interactive`
+  is invoked with `--demo <file>`, the system shall present the file's notifications in place of
+  Notification Center's, draw a placeholder per notification, open and close no panel, and apply
+  entries to that list according to whether the file says each entry closes its notification;
+  everything else shall behave as without `--demo`. The file's format is the
+  [demo file](../../definitions.md).
+
 ## Safe failure
 
 - **RIM-8 (unwanted) — No usable display.** If no screen is available when `interactive` is invoked,

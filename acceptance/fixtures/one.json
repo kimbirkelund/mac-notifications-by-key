@@ -1,0 +1,11 @@
+{
+  "notifications": [
+    {
+      "app": "Mail",
+      "title": "Standup",
+      "subtitle": null,
+      "body": null,
+      "actions": ["Archive", "Answer", "Delete", "Reply", "Ad"]
+    }
+  ]
+}
