@@ -15,7 +15,7 @@ let usage = """
       dismiss <index>           dismiss the notification at <index>
       action <index> <name>     perform a named action (e.g. "Show")
       press <index>             default activation (open)
-      interactive               show the interactive-mode overlay (Escape or SIGINT/SIGTERM ends it)
+      interactive [--demo <file>]  show the interactive-mode overlay (Escape or SIGINT/SIGTERM ends it)
       doctor                    report Accessibility trust, NC pid, macOS version
       --version                 print the version
     """
@@ -27,6 +27,17 @@ let rest = Array(args.dropFirst())
 func intArg(_ tokens: [String], _ position: Int) -> Int? {
     guard position < tokens.count else { return nil }
     return Int(tokens[position])
+}
+
+@MainActor
+func loadDemo(_ path: String, mainScreenFrame: () -> CGRect?) throws -> DemoMode {
+    do {
+        return try DemoMode(
+            file: try DemoFile.load(from: URL(fileURLWithPath: path)),
+            mainScreenFrame: mainScreenFrame)
+    } catch let error as DemoFileError {
+        throw ArgumentError.demoFile(reason: error.description)
+    }
 }
 
 let nc = NotificationCenterAccessFactory.make()
@@ -53,6 +64,12 @@ do {
         try nc.perform(action: rest[1], index: n)
 
     case "interactive":
+        if let demoPath = try DemoOption.parse(rest) {
+            let frame = { NSScreen.main?.frame }
+            let demo = try loadDemo(demoPath, mainScreenFrame: frame)
+            try InteractiveSession.run(
+                access: demo.access, mainScreenFrame: frame, decorator: demo.decorator)
+        }
         if !nc.isTrusted { die(NbkError.notTrusted.message, code: NbkError.notTrusted.exitCode) }
         try InteractiveSession.run(access: nc, mainScreenFrame: { NSScreen.main?.frame })
 
