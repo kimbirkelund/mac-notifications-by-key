@@ -61,10 +61,10 @@ Two consequences follow, and both matter:
 - **The mode really is exclusive.** Because the overlay takes focus and consumes input, "only
   notifications can be acted on" is enforced by the system itself rather than by the hotkey daemon's
   mode keymap. That is the simplification focus buys.
-- **Selectable by keyboard, not yet actionable by keyboard.** The panel sits above the overlay and
-  takes mouse clicks directly, so a notification can be dismissed or opened through the panel's own
-  UI. The overlay marks one notification as the current subject and moves that mark with the
-  keyboard it holds. Invoking an entry with its key is the next slice.
+- **Selectable and actionable by keyboard.** The panel sits above the overlay and takes mouse clicks
+  directly, so a notification can also be dismissed or opened through the panel's own UI. The
+  overlay marks one notification as the current subject, moves that mark with the keyboard it holds,
+  and performs the selected panel's entries when their keys are pressed.
 
 ## Action panels
 
@@ -77,8 +77,10 @@ its panel is visibly distinct from the others (RIM-11). Down or `j` moves the se
 older notification, Up or `k` to the next newer, and it stops at either end rather than wrapping
 (RIM-12). The selected panel shows a key to the left of each entry: Space for `Activate`, `d` for
 `Dismiss`, and a lower-case letter for each of the notification's own actions, so `r` and `m` for
-`Reply` and `Mark as Read` (RIM-13). Unselected panels show names only. Any other key is ignored
-(RIM-17). Pressing an activator to invoke its entry comes later.
+`Reply` and `Mark as Read` (RIM-13). Unselected panels show names only. Pressing a shown key
+performs that entry on the selected notification: `d` dismisses it, Space activates it, and a named
+action's key performs that action. The mode stays running afterwards, so the user can act on the
+next notification (RIM-14). Any other key is ignored (RIM-17).
 
 ## Why the mode opens the panel
 
@@ -115,10 +117,9 @@ costs nothing.
 
 In scope: entering the mode, opening the Notification Center panel, the overlay that signals the
 mode and holds focus, re-invoking while it runs, and leaving the mode again by signal or Escape —
-closing the panel on the way out. **Out of scope** (open seeds): per-notification action invocation
-by key, `clear-all` / `clear-all-for-app`, reacting to notifications arriving while the mode is
-active (beyond redrawing the action panels), and which application regains focus once the overlay
-closes.
+closing the panel on the way out. **Out of scope** (open seeds): `clear-all` / `clear-all-for-app`,
+reacting to notifications arriving while the mode is active (beyond redrawing the action panels),
+and which application regains focus once the overlay closes.
 
 ## Conventions
 

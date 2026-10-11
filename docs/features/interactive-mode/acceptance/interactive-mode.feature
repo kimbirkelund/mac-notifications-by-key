@@ -124,6 +124,42 @@ Feature: Interactive mode
     And the selection is unchanged
     And exactly one overlay window is present
 
+  # Validates RIM-14: d performs Dismiss on the selected notification and the mode stays.
+  Scenario: Pressing d dismisses the selected notification
+    Given a notification is delivered with title "DismissByKey"
+    And I run "nbk list --wait 5"
+    And the JSON output contains a notification with title "DismissByKey"
+    And interactive mode is running
+    And the overlay is the frontmost application
+    When I press "d"
+    Then the notification titled "DismissByKey" is no longer presented
+    And interactive mode is still running
+
+  # Validates RIM-14: c performs the named action Close and the mode stays.
+  Scenario: Pressing a named action's key performs it
+    Given a notification is delivered with title "CloseByKey"
+    And I run "nbk list --wait 5"
+    And the JSON output contains a notification with title "CloseByKey"
+    And interactive mode is running
+    And the overlay is the frontmost application
+    When I press "c"
+    Then the notification titled "CloseByKey" is no longer presented
+    And interactive mode is still running
+
+  # Validates RIM-14: Space performs Activate and the mode stays; the notification is removed
+  # once the mode exits.
+  Scenario: Pressing Space activates the selected notification
+    Given a notification is delivered with title "ActivateByKey"
+    And I run "nbk list --wait 5"
+    And the JSON output contains a notification with title "ActivateByKey"
+    And interactive mode is running
+    And the overlay is the frontmost application
+    When I press "Space"
+    Then interactive mode is still running
+    When interactive mode is sent SIGTERM
+    Then interactive mode exits with status 0
+    And the notification titled "ActivateByKey" is no longer presented
+
   # Validates RIM-9: entering a mode whose every operation would fail is refused.
   # @operator because there is no API to revoke Accessibility trust; a human does
   # it when prompted. Attended only: npx cucumber-js -p operator

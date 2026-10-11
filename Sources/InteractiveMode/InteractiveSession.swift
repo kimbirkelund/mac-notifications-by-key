@@ -39,17 +39,23 @@ public enum InteractiveSession {
 }
 
 @MainActor
-private final class Session {
+final class Session {
     private let access: NotificationCenterAccess
+    private let dispatchQueue: DispatchQueue
     private var window: OverlayWindow?
     private var panelsWindow: ActionPanelsWindow?
     private var drawnPresented: [PresentedNotification] = []
     private var selection = SelectionState.initial(count: 0)
     private var signalSources: [DispatchSourceSignal] = []
     private var tearingDown = false
+    private var dispatching = false
 
-    init(access: NotificationCenterAccess) {
+    init(
+        access: NotificationCenterAccess,
+        dispatchQueue: DispatchQueue = .global(qos: .userInitiated)
+    ) {
         self.access = access
+        self.dispatchQueue = dispatchQueue
     }
 
     /// Installed before the panel opens so a signal during setup still closes it: the
@@ -107,40 +113,100 @@ private final class Session {
         }
     }
 
-    private func handle(_ key: OverlayKey) {
+    func handle(_ key: OverlayKey) {
         if key == .escape { return teardown() }
-        guard let move = key.selectionMove else { return }
-        let before = selection
-        selection.apply(move)
-        if selection != before { drawActionPanels(drawnPresented) }
+        if let move = key.selectionMove {
+            let before = selection
+            selection.apply(move)
+            if selection != before { drawActionPanels(drawnPresented) }
+        } else if case .character(let character) = key {
+            dispatchEntry(forKey: character)
+        }
+    }
+
+    private func dispatchEntry(forKey key: String) {
+        guard !dispatching, let selected = selection.selectedIndex,
+            drawnPresented.indices.contains(selected)
+        else { return }
+        let item = drawnPresented[selected].item
+        guard
+            let command = EntryCommand.resolve(
+                key: key, entries: ActionPanelLayout.builtInEntries + item.actions)
+        else { return }
+        dispatching = true
+        nonisolated(unsafe) let access = access
+        dispatchQueue.async {
+            Self.run(command, on: item.index, access)
+            DispatchQueue.main.async {
+                MainActor.assumeIsolated {
+                    self.dispatching = false
+                    self.readNow()
+                }
+            }
+        }
+    }
+
+    private nonisolated static func run(
+        _ command: EntryCommand, on index: Int, _ access: NotificationCenterAccess
+    ) {
+        do {
+            switch command {
+            case .activate: try access.press(index: index)
+            case .dismiss: try access.dismiss(index: index)
+            case .action(let name): try access.perform(action: name, index: index)
+            }
+        } catch {
+            reportError(error)
+        }
+    }
+
+    private nonisolated static func reportError(_ error: Error) {
+        let message = (error as? NbkError)?.message ?? "\(error)"
+        FileHandle.standardError.write(Data("nbk: \(message)\n".utf8))
     }
 
     private func refreshActionPanels(with presented: [PresentedNotification]?) {
         guard !tearingDown else { return }
-        if let presented = presented.map(PresentedNotification.topDown), presented != drawnPresented
-        {
-            drawActionPanels(presented)
-        }
+        redraw(with: presented)
         DispatchQueue.main.asyncAfter(deadline: .now() + Self.refreshInterval) { [weak self] in
             MainActor.assumeIsolated { self?.scheduleRead() }
         }
     }
 
+    private func redraw(with presented: [PresentedNotification]?) {
+        if let presented = presented.map(PresentedNotification.topDown), presented != drawnPresented
+        {
+            drawActionPanels(presented)
+        }
+    }
+
     private func scheduleRead() {
+        read { $0.refreshActionPanels(with: $1) }
+    }
+
+    private func readNow() {
+        read { session, presented in
+            guard !session.tearingDown else { return }
+            session.redraw(with: presented)
+        }
+    }
+
+    private func read(then apply: @escaping (Session, [PresentedNotification]?) -> Void) {
         guard !tearingDown else { return }
         nonisolated(unsafe) let access = access
+        nonisolated(unsafe) let apply = apply
         DispatchQueue.global(qos: .userInitiated).async {
             let presented = try? access.readPresented()
             DispatchQueue.main.async {
-                MainActor.assumeIsolated { self.refreshActionPanels(with: presented) }
+                MainActor.assumeIsolated { apply(self, presented) }
             }
         }
     }
 
-    private func drawActionPanels(_ presented: [PresentedNotification]) {
-        guard let window, let primary = NSScreen.screens.first else { return }
+    func drawActionPanels(_ presented: [PresentedNotification]) {
         drawnPresented = presented
         selection = selection.clamped(to: presented.count)
+        guard let window, let primary = NSScreen.screens.first else { return }
         let panels: ActionPanelsWindow
         if let existing = panelsWindow {
             panels = existing
@@ -164,10 +230,8 @@ private final class Session {
         window?.orderOut(nil)
         do {
             try access.setPanelOpen(false)
-        } catch let error as NbkError {
-            FileHandle.standardError.write(Data("nbk: \(error.message)\n".utf8))
         } catch {
-            FileHandle.standardError.write(Data("nbk: \(error)\n".utf8))
+            Self.reportError(error)
         }
         exit(0)
     }
