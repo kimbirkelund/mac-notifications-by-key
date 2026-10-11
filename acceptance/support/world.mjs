@@ -2,6 +2,7 @@ import { setWorldConstructor, World } from '@cucumber/cucumber'
 import { execFile, spawn } from 'node:child_process'
 import fs from 'node:fs'
 import path from 'node:path'
+import { fileURLToPath } from 'node:url'
 import { promisify } from 'node:util'
 
 const run = promisify(execFile)
@@ -22,6 +23,12 @@ const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms))
 
 // Interactive mode shows up in System Events under the executable's name.
 const NBK_PROCESS = path.basename(NBK_BIN)
+
+// Demo files named in scenarios are relative to this directory.
+const FIXTURES_DIR = path.join(path.dirname(fileURLToPath(import.meta.url)), '..', 'fixtures')
+
+// The window in which `--demo` draws a placeholder box per notification.
+const DEMO_WINDOW_NAME = 'Demo notifications'
 
 // Poll `probe` until it returns a truthy value or the deadline passes; returns the
 // last value either way so callers can assert on it with context.
@@ -197,6 +204,7 @@ JSON.stringify(out)`
 // texts in row-major order (within 2 px of a row's top share it); each text
 // identified "activator" belongs to the nearest entry to its right whose vertical
 // span overlaps it, so entries without one carry activator null.
+// The demo window holds placeholders, not panels, so it is skipped.
 const actionPanelsScript = (pid) => `
 const se = Application('System Events')
 const attr = (el, name) => {
@@ -267,9 +275,64 @@ function walk(el, depth, out) {
 }
 const out = []
 for (const p of se.applicationProcesses.whose({ unixId: ${Number(pid)} })()) {
-  for (const w of p.windows()) walk(w, 1, out)
+  for (const w of p.windows()) {
+    let name = ''
+    try {
+      name = w.name() ?? ''
+    } catch (e) {}
+    if (name !== ${JSON.stringify(DEMO_WINDOW_NAME)}) walk(w, 1, out)
+  }
 }
 JSON.stringify(out)`
+
+// Placeholder boxes in one nbk process's demo window, as JSON
+// {window: bool, frames: [{title, x, y, width, height}]}. A box is an AXGroup
+// holding static texts (searched at bounded depth); its title is the text
+// identified "title", or failing that its first text. `window` is false when no
+// demo window exists, so a missing window cannot pass for an empty one.
+const demoFramesScript = (pid) => `
+const se = Application('System Events')
+const attr = (el, name) => {
+  try {
+    return el.attributes.byName(name).value()
+  } catch (e) {
+    return null
+  }
+}
+function walk(el, depth, out) {
+  if (depth > 6) return
+  let groups = []
+  try {
+    groups = el.groups()
+  } catch (e) {}
+  for (const g of groups) {
+    let texts = []
+    try {
+      texts = g.staticTexts()
+    } catch (e) {}
+    if (texts.length > 0) {
+      const titled = texts.find((t) => attr(t, 'AXIdentifier') === 'title') ?? texts[0]
+      const [x, y] = g.position()
+      const [width, height] = g.size()
+      out.push({ title: titled.value(), x, y, width, height })
+    } else {
+      walk(g, depth + 1, out)
+    }
+  }
+}
+const result = { window: false, frames: [] }
+for (const p of se.applicationProcesses.whose({ unixId: ${Number(pid)} })()) {
+  for (const w of p.windows()) {
+    let name = ''
+    try {
+      name = w.name() ?? ''
+    } catch (e) {}
+    if (name !== ${JSON.stringify(DEMO_WINDOW_NAME)}) continue
+    result.window = true
+    walk(w, 1, result.frames)
+  }
+}
+JSON.stringify(result)`
 
 // System Events reports frontmost false for a bundle-less accessory process even
 // while it is the active application; NSWorkspace reports the truth.
@@ -298,6 +361,10 @@ class NbkWorld extends World {
   lastResult = null
 
   interactive = null
+
+  // Set while interactive mode runs from a demo file: { path, fixture }, where
+  // fixture is the parsed file, or null when it is not valid JSON.
+  demo = null
 
   pendingDeliveries = []
 
@@ -439,8 +506,8 @@ class NbkWorld extends World {
 
   // Launch `nbk interactive` and retain it: the mode never exits on its own, so
   // execFile (which awaits exit) cannot drive it.
-  startInteractive() {
-    const child = spawn(NBK_BIN, ['interactive'], { stdio: ['ignore', 'ignore', 'pipe'] })
+  startInteractive(args = []) {
+    const child = spawn(NBK_BIN, ['interactive', ...args], { stdio: ['ignore', 'ignore', 'pipe'] })
     const proc = { child, stderr: '', exit: null }
     child.stderr.on('data', (chunk) => (proc.stderr += chunk))
     proc.exitPromise = new Promise((resolve) => {
@@ -455,6 +522,28 @@ class NbkWorld extends World {
     })
     this.interactive = proc
     return proc
+  }
+
+  startDemo(file) {
+    const demoPath = path.join(FIXTURES_DIR, file)
+    let fixture = null
+    try {
+      fixture = JSON.parse(fs.readFileSync(demoPath, 'utf8'))
+    } catch {}
+    this.demo = { path: demoPath, fixture }
+    return this.startInteractive(['--demo', demoPath])
+  }
+
+  // The file's notifications as { title, actions: [name] }, newest first.
+  demoNotifications() {
+    const notifications = this.demo?.fixture?.notifications
+    if (!Array.isArray(notifications)) {
+      throw new Error(`demo file has no notifications array: ${this.demo?.path}`)
+    }
+    return notifications.map((n) => ({
+      title: n.title,
+      actions: (n.actions ?? []).map((a) => (typeof a === 'string' ? a : a.name))
+    }))
   }
 
   sendSignal(sig) {
@@ -525,6 +614,19 @@ class NbkWorld extends World {
 
   async notificationFrames() {
     return JSON.parse(await osascript(NOTIFICATION_FRAMES_SCRIPT, 'JavaScript'))
+  }
+
+  // Sorted top-down, like the real panel's tree order (newest on top).
+  async demoFrames(pid = this.interactive.child.pid) {
+    const result = JSON.parse(await osascript(demoFramesScript(pid), 'JavaScript'))
+    result.frames.sort((a, b) => a.y - b.y)
+    return result
+  }
+
+  // What the running mode presents: the demo window's boxes under `--demo`,
+  // otherwise the real Notification Center panel's notifications.
+  async presentedFrames() {
+    return this.demo ? (await this.demoFrames()).frames : this.notificationFrames()
   }
 
   // Sorted top-down so they pair index-wise with notificationFrames (newest on top).
