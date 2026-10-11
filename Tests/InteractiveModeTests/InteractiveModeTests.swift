@@ -227,6 +227,60 @@ private final class RecordingAccess: NotificationCenterAccess, @unchecked Sendab
     }
 }
 
+@MainActor @Suite struct SessionDecoratorTests {
+    private static func presented(atTops tops: CGFloat...) -> [PresentedNotification] {
+        tops.enumerated().map { index, top in
+            PresentedNotification(
+                item: NotificationItem(index: index, title: "N\(index)", actions: []),
+                frame: CGRect(x: 0, y: top, width: 300, height: 80))
+        }
+    }
+
+    private final class Recorder {
+        var calls: [[PresentedNotification]] = []
+    }
+
+    private func session(_ access: RecordingAccess) -> (Session, Recorder) {
+        let recorder = Recorder()
+        let session = Session(access: access)
+        session.presentedDecorator = { recorder.calls.append($0) }
+        return (session, recorder)
+    }
+
+    private func waitUntil(timeout: TimeInterval = 3, _ condition: () -> Bool) async throws {
+        let deadline = Date().addingTimeInterval(timeout)
+        while !condition(), Date() < deadline {
+            try await Task.sleep(for: .milliseconds(20))
+        }
+    }
+
+    @Test func readPresentedReachesTheDecoratorTopDown() async throws {
+        let bottomUp = Self.presented(atTops: 200, 100)
+        let (session, recorder) = session(RecordingAccess(presented: bottomUp))
+        session.showActionPanels()
+        try await waitUntil { !recorder.calls.isEmpty }
+        #expect(recorder.calls == [PresentedNotification.topDown(bottomUp)])
+        #expect(recorder.calls.first?.map(\.item.index) == [1, 0])
+    }
+
+    @Test func aSelectionMoveRedecorates() {
+        let presented = Self.presented(atTops: 0, 100)
+        let (session, recorder) = session(RecordingAccess(presented: presented))
+        session.drawActionPanels(presented)
+        session.handle(.character("j"))
+        #expect(recorder.calls == [presented, presented])
+    }
+
+    @Test func anEmptyFirstReadStillDecoratesOnce() async throws {
+        let (session, recorder) = session(RecordingAccess(presented: []))
+        session.showActionPanels()
+        try await waitUntil { !recorder.calls.isEmpty }
+        #expect(recorder.calls == [[]])
+        try await Task.sleep(for: .milliseconds(1200))
+        #expect(recorder.calls == [[]])
+    }
+}
+
 @Suite struct InteractiveErrorTests {
     /// RIM-8: reported on stderr with a non-zero exit.
     @Test func noScreenHasMessageAndExitCodeOne() {
