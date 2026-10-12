@@ -7,7 +7,8 @@ public enum InteractiveSession {
     private static var session: Session?
 
     public static func run(
-        access: NotificationCenterAccess, mainScreenFrame: () -> CGRect?
+        access: NotificationCenterAccess, mainScreenFrame: () -> CGRect?,
+        decorator: (@MainActor ([PresentedNotification]) -> Void)? = nil
     ) throws -> Never {
         guard let frame = mainScreenFrame() else { throw InteractiveError.noScreen }
 
@@ -23,6 +24,7 @@ public enum InteractiveSession {
         }
 
         let session = Session(access: access)
+        session.presentedDecorator = decorator
         Self.session = session
         session.installSignalHandlers()
         do {
@@ -49,6 +51,8 @@ final class Session {
     private var signalSources: [DispatchSourceSignal] = []
     private var tearingDown = false
     private var dispatching = false
+    private var hasDrawn = false
+    var presentedDecorator: (@MainActor (_ presented: [PresentedNotification]) -> Void)?
 
     init(
         access: NotificationCenterAccess,
@@ -174,7 +178,8 @@ final class Session {
     }
 
     private func redraw(with presented: [PresentedNotification]?) {
-        if let presented = presented.map(PresentedNotification.topDown), presented != drawnPresented
+        if let presented = presented.map(PresentedNotification.topDown),
+            presented != drawnPresented || !hasDrawn
         {
             drawActionPanels(presented)
         }
@@ -205,7 +210,9 @@ final class Session {
 
     func drawActionPanels(_ presented: [PresentedNotification]) {
         drawnPresented = presented
+        hasDrawn = true
         selection = selection.clamped(to: presented.count)
+        presentedDecorator?(presented)
         guard let window, let primary = NSScreen.screens.first else { return }
         let panels: ActionPanelsWindow
         if let existing = panelsWindow {

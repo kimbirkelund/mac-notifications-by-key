@@ -55,6 +55,23 @@ Given('interactive mode is running', STEP, async function () {
   assert.ok(await this.waitForPanel(true), 'expected the Notification Center panel to open')
 })
 
+// Demo mode opens no panel; it is running once every fixture notification has a
+// box, so no key can fire before the first redraw.
+Given('interactive mode is running with demo file {string}', STEP, async function (file) {
+  this.startDemo(file)
+  const want = this.demoNotifications().length
+  await waitForOverlay(this)
+  let last = null
+  const shown = await this.pollUntil(async () => {
+    last = await this.demoFrames()
+    return last.window && last.frames.length === want
+  }, SETTLE_MS)
+  assert.ok(
+    shown,
+    `expected the demo window with ${want} notifications; last read: ${JSON.stringify(last)}; stderr: ${this.interactive.stderr}`
+  )
+})
+
 Then('an overlay window covering the screen is present', STEP, async function () {
   await waitForOverlay(this)
 })
@@ -199,7 +216,7 @@ const MAX_GAP_PX = 20
 async function panelsWithFrames(world) {
   let last = { frames: [], panels: [] }
   const paired = await world.pollUntil(async () => {
-    const [frames, panels] = [await world.notificationFrames(), await world.actionPanels()]
+    const [frames, panels] = [await world.presentedFrames(), await world.actionPanels()]
     last = { frames, panels }
     return frames.length > 0 && panels.length === frames.length ? last : null
   }, SETTLE_MS)
@@ -219,7 +236,7 @@ Then(
   STEP,
   async function () {
     const { frames, panels } = await panelsWithFrames(this)
-    const items = await this.listJson()
+    const items = this.demo ? this.demoNotifications() : await this.listJson()
     frames.forEach((frame, i) => {
       const item = items.find((n) => n.title === frame.title)
       assert.ok(
@@ -282,7 +299,7 @@ function selectedIndex(panels) {
 async function settledSelection(world) {
   let last = { frames: [], panels: [] }
   const settled = await world.pollUntil(async () => {
-    const [frames, panels] = [await world.notificationFrames(), await world.actionPanels()]
+    const [frames, panels] = [await world.presentedFrames(), await world.actionPanels()]
     last = { frames, panels }
     if (panels.length !== frames.length) return null
     const index = selectedIndex(panels)
@@ -375,8 +392,32 @@ Then('the selection is unchanged', STEP, async function () {
   } while (Date.now() < deadline)
 })
 
+// Under --demo the notifications exist only in the mode, so presence is read from
+// its demo window; a read that finds no window proves nothing about absence.
+async function demoTitles(world) {
+  const read = await world.demoFrames()
+  return { read, titles: read.window ? read.frames.map((f) => f.title) : null }
+}
+
 // A failed or unparsable list proves nothing about absence, so only a successful read counts.
 Then('the notification titled {string} is no longer presented', STEP, async function (title) {
+  if (this.demo) {
+    this.demoRemoved = [...(this.demoRemoved ?? []), title]
+    const want = this.demoNotifications()
+      .map((n) => n.title)
+      .filter((t) => !this.demoRemoved.includes(t))
+    let last = null
+    const gone = await this.pollUntil(async () => {
+      const { read, titles } = await demoTitles(this)
+      last = read
+      return titles !== null && JSON.stringify(titles) === JSON.stringify(want)
+    }, SETTLE_MS)
+    assert.ok(
+      gone,
+      `expected exactly ${JSON.stringify(want)} presented once ${JSON.stringify(title)} is gone; last read: ${JSON.stringify(last)}`
+    )
+    return
+  }
   let last = null
   const gone = await this.pollUntil(async () => {
     last = await this.exec(['list'])
@@ -391,5 +432,27 @@ Then('the notification titled {string} is no longer presented', STEP, async func
   assert.ok(
     gone,
     `expected a successful list without a notification titled ${JSON.stringify(title)}; last result: ${JSON.stringify(last)}`
+  )
+})
+
+// Nothing marks a non-closing entry as done, so hold for a window in which a removal would show.
+Then('the notification titled {string} is still presented', STEP, async function (title) {
+  assert.ok(this.demo, 'presence is only observable under --demo')
+  const deadline = Date.now() + UNCHANGED_HOLD_MS
+  do {
+    const { read, titles } = await demoTitles(this)
+    assert.ok(
+      titles?.includes(title),
+      `expected a notification titled ${JSON.stringify(title)} to stay presented; read: ${JSON.stringify(read)}`
+    )
+  } while (Date.now() < deadline)
+})
+
+// Positions count top-down from 1, as the scenario reads the stack.
+Then('the action panel at position {int} is selected', STEP, async function (position) {
+  await assertSelectedIndex(
+    this,
+    (panels) => (position >= 1 && position <= panels.length ? position - 1 : null),
+    `the panel at position ${position}`
   )
 })

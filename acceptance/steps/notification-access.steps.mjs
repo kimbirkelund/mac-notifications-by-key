@@ -55,6 +55,21 @@ Then('the command fails', function () {
   assert.notEqual(this.lastResult.code, 0, 'expected a non-zero exit')
 })
 
+Then('the command exits with status {int}', function (status) {
+  assert.equal(
+    this.lastResult.code,
+    status,
+    `expected exit ${status}, got ${this.lastResult.code}: ${this.lastResult.stderr}`
+  )
+})
+
+Then('the error output starts with {string}', function (prefix) {
+  assert.ok(
+    this.lastResult.stderr.startsWith(prefix),
+    `expected stderr to start with ${JSON.stringify(prefix)}; got: ${this.lastResult.stderr}`
+  )
+})
+
 Then('the JSON output is an empty array', function () {
   let parsed
   try {

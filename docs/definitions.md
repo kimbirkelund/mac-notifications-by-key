@@ -30,3 +30,11 @@ Shared domain vocabulary used across all features.
 - **Selector.** How a CLI invocation designates which notification to act on (e.g. an index into the
   current list, newest-first). Selection logic is pure and unit-tested independently of the AX layer
   (see [testing](testing.md)).
+- **Demo file.** A JSON file given to `interactive --demo`, listing the notifications that
+  [interactive mode](features/interactive-mode/_index.md) presents instead of Notification Center's,
+  newest first. Each notification may have an `app`, a `title`, a `subtitle`, a `body`, an
+  `activateCloses` flag (default true) saying whether activating it removes it, and `actions`
+  (default none). An action is either a bare name, which removes the notification when performed, or
+  an object with a `name` and a `closes` flag. Unknown keys are ignored. A file that is missing,
+  unreadable or not valid is reported as `nbk: --demo: <reason>` with exit status 64, before any
+  window appears.

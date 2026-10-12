@@ -4,31 +4,34 @@ BDD scenarios (Gherkin) specifying interactive mode. These `.feature` files **ar
 acceptance tests: [cucumber-js](https://github.com/cucumber/cucumber-js) runs them against the
 compiled `nbk` binary as a black box, using the step definitions in `acceptance/steps/`.
 
-The fifteen unattended scenarios run in the default acceptance run. The trust scenario is
-`@operator` and runs only attended.
+The seventeen unattended scenarios run in the default acceptance run. Those marked demo run against
+a fixture file ([RIM-21](../requirements.md#demo-mode)) rather than the real Notification Center.
+The trust scenario is `@operator` and runs only attended.
 
-| Scenario                                            | Validates    | Status                                         |
-| --------------------------------------------------- | ------------ | ---------------------------------------------- |
-| Entering the mode shows the overlay and opens panel | RIM-1, RIM-5 | ✅                                             |
-| The mode keeps no application presence              | RIM-3        | ✅                                             |
-| Re-invoking does not stack a second overlay         | RIM-4        | ✅                                             |
-| Terminating on a signal tears everything down       | RIM-6        | ✅                                             |
-| Pressing Escape leaves the mode                     | RIM-7        | ✅                                             |
-| The panel sits above the overlay, untinted          | RIM-1, RIM-2 | ✅                                             |
-| Each presented notification gets an action panel    | RIM-10       | ✅                                             |
-| No action panel when nothing is presented           | RIM-10       | ✅                                             |
-| The newest notification is selected on entry        | RIM-11       | ⏳ not yet run                                 |
-| The selected panel shows lower-case activators      | RIM-13       | ⏳ not yet run                                 |
-| Movement keys keep a lone selection in place        | RIM-12       | ⏳ not yet run; two-notification movement live |
-| Unbound keys are ignored                            | RIM-17       | ⏳ not yet run                                 |
-| Pressing d dismisses the selected notification      | RIM-14       | ⏳ not yet run                                 |
-| Pressing a named action's key performs it           | RIM-14       | ⏳ not yet run                                 |
-| Pressing Space activates the selected notification  | RIM-14       | ⏳ not yet run                                 |
-| Missing Accessibility trust is refused              | RIM-9        | ✅ `@operator` — attended; last run 2026-09-27 |
+| Scenario                                                    | Validates      | Status                                         |
+| ----------------------------------------------------------- | -------------- | ---------------------------------------------- |
+| Entering the mode shows the overlay and opens panel         | RIM-1, RIM-5   | ✅                                             |
+| The mode keeps no application presence                      | RIM-3          | ✅                                             |
+| Re-invoking does not stack a second overlay                 | RIM-4          | ✅                                             |
+| Terminating on a signal tears everything down               | RIM-6          | ✅                                             |
+| Pressing Escape leaves the mode                             | RIM-7          | ✅                                             |
+| The panel sits above the overlay, untinted                  | RIM-1, RIM-2   | ✅                                             |
+| Each presented notification gets an action panel            | RIM-10         | ✅                                             |
+| No action panel when nothing is presented                   | RIM-10         | ✅                                             |
+| The newest notification is selected on entry (demo)         | RIM-11         | ⏳ not yet run                                 |
+| The selected panel shows lower-case activators (demo)       | RIM-13         | ⏳ not yet run                                 |
+| Moving the selection between notifications (demo)           | RIM-12         | ⏳ not yet run                                 |
+| Unbound keys are ignored (demo)                             | RIM-17         | ⏳ not yet run                                 |
+| Pressing d dismisses the selected notification (demo)       | RIM-14         | ⏳ not yet run                                 |
+| Pressing a named action's key performs it (demo)            | RIM-14         | ⏳ not yet run                                 |
+| An action that does not close keeps the notification (demo) | RIM-14, RIM-21 | ⏳ not yet run                                 |
+| Pressing Space activates the selected notification (demo)   | RIM-14         | ⏳ not yet run                                 |
+| A missing demo file is refused before the overlay           | RIM-21         | ⏳ not yet run                                 |
+| Missing Accessibility trust is refused                      | RIM-9          | ✅ `@operator` — attended; last run 2026-09-27 |
 
 ## What the harness adds
 
-Interactive mode is long-running and graphical, so the harness has five capabilities beyond what
+Interactive mode is long-running and graphical, so the harness has six capabilities beyond what
 notification access uses. None needs a new framework.
 
 - **A spawned, retained process.** The existing world promisifies `execFile`, which awaits exit;
@@ -45,6 +48,10 @@ notification access uses. None needs a new framework.
   position and size from Notification Center's AX tree, and our own action-panel groups (their
   position, size, and the action names they list) through System Events. Same permission, no new
   tooling.
+- **Fixtures.** Scenarios that need a controlled set of notifications start the mode with
+  `--demo <file>`, the path relative to `acceptance/fixtures/`. Demo mode draws a placeholder per
+  notification, so the harness reads presented notifications from those placeholders instead of
+  Notification Center, and never runs `nbk list` in such a scenario.
 - **Keystrokes.** Movement and activator keys are posted through System Events, each step first
   asserting the overlay is frontmost so a mistimed key cannot reach another app.
 
@@ -71,11 +78,11 @@ is open always comes from the AX check described in the AX reference.
 
 ## Notes
 
-- **One notification at a time.** The harness cannot present a second notification: every
-  notification it delivers is attributed to Script Editor and collapses into that app's stack.
-  RIM-12 is therefore covered unattended only by one scenario that guards against wrap-around or a
-  crash with a single notification, and movement between two notifications is verified live by the
-  operator.
+- **One notification at a time in the real Notification Center.** The harness cannot present a
+  second real notification: every notification it delivers is attributed to Script Editor and
+  collapses into that app's stack. Behavior that needs several notifications, or notifications with
+  chosen actions, is therefore covered by the demo scenarios; the real-Notification-Center scenarios
+  cover entering and leaving the mode, the panel, and one real action panel.
 - `@wip` scenarios are excluded from the default run via `tags` in `cucumber.mjs`; the `operator`
   profile excludes them too, so an unimplemented attended scenario cannot fail an attended run.
 - Scenarios assert observable state — exit status, window presence, panel state — never macOS copy.

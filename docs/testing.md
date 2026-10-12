@@ -32,6 +32,23 @@ trust** for the test host ([C-2](constraints.md)), and they **deliver real notif
 the `--wait` behavior). These tiers are therefore environment-dependent: `build.ps1` preflights AX
 trust and skips them with a clear message when it is absent, rather than reporting false failures.
 
+## Fixture-driven acceptance (demo mode)
+
+Notification Center cannot be made to present a controlled set of notifications: every notification
+the harness delivers is attributed to Script Editor and collapses into one stack, so only one is
+ever presented, and what it exposes is fixed. Behavior that depends on the notification set (moving
+the selection, selection after removal, activator assignment, which entries close a notification) is
+therefore driven through **demo mode** ([RIM-21](features/interactive-mode/requirements.md)): the
+scenario starts `interactive --demo` with a fixture file from `acceptance/fixtures/`, and the
+notifications, their actions and whether each entry closes are exactly what the fixture says.
+Scenarios that use a fixture never run `nbk list`.
+
+Demo mode proves the key handling, selection and panel logic of the overlay, and that entries act on
+the list the way the file says. It does not prove that Notification Center's accessibility tree is
+read, dismissed, pressed or acted on correctly, that the panel is opened and closed, or that panels
+line up with the real notification boxes. Those stay with the AX-integration tier and the few
+acceptance scenarios that run against the real Notification Center.
+
 ## Attended (@operator) scenarios
 
 **Last resort only, and only after checking with the human.** An attended scenario trades away
