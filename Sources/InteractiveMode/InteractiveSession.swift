@@ -105,7 +105,10 @@ final class Session {
         nonisolated(unsafe) let access = access
         DispatchQueue.global(qos: .userInitiated).async {
             let presented = Self.settledPresented(
-                access, deadline: Date().addingTimeInterval(Self.presentedReadTimeout))
+                read: { (try? access.readPresented()) ?? [] },
+                isReady: { access.isPanelOpen },
+                emptyAgreement: Self.presentedEmptyAgreement,
+                deadline: Date().addingTimeInterval(Self.presentedReadTimeout))
             DispatchQueue.main.async {
                 MainActor.assumeIsolated { self.refreshActionPanels(with: presented) }
             }
@@ -114,21 +117,33 @@ final class Session {
 
     private nonisolated static let presentedReadTimeout: TimeInterval = 1
     private nonisolated static let presentedReadInterval: TimeInterval = 0.15
+    private nonisolated static let presentedEmptyAgreement = 2
     private static let refreshInterval: TimeInterval = 0.5
     private static let panelWidth: CGFloat = 260
 
     /// The panel fills in over several reads and its rows slide into place, so a
-    /// non-empty read counts only once the next one agrees with it.
-    private nonisolated static func settledPresented(
-        _ access: NotificationCenterAccess, deadline: Date
+    /// non-empty read counts only once the next one agrees with it. An empty read
+    /// counts only once the panel is ready and enough consecutive reads agree.
+    nonisolated static func settledPresented(
+        read: () -> [PresentedNotification],
+        isReady: () -> Bool,
+        emptyAgreement: Int,
+        deadline: Date,
+        interval: TimeInterval = presentedReadInterval,
+        now: () -> Date = Date.init,
+        sleep: (TimeInterval) -> Void = Thread.sleep(forTimeInterval:)
     ) -> [PresentedNotification] {
         var previous: [PresentedNotification]?
+        var readyEmptyReads = 0
         while true {
-            let current = (try? access.readPresented()) ?? []
+            let ready = isReady()
+            let current = read()
             if !current.isEmpty, current == previous { return current }
-            if Date() >= deadline { return current }
+            readyEmptyReads = ready && current.isEmpty ? readyEmptyReads + 1 : 0
+            if readyEmptyReads >= emptyAgreement { return current }
+            if now() >= deadline { return current }
             previous = current
-            Thread.sleep(forTimeInterval: presentedReadInterval)
+            sleep(interval)
         }
     }
 

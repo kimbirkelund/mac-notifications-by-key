@@ -512,3 +512,72 @@ private final class RecordingAccess: NotificationCenterAccess, @unchecked Sendab
         }
     }
 }
+
+@Suite struct SettledPresentedTests {
+    private static let interval: TimeInterval = 0.15
+    private static let cap: TimeInterval = 1
+
+    private static let one = [
+        PresentedNotification(
+            item: NotificationItem(index: 0, app: "Script Editor", title: "N0", actions: []),
+            frame: CGRect(x: 0, y: 0, width: 300, height: 80))
+    ]
+
+    private final class Script {
+        let reads: [(ready: Bool, presented: [PresentedNotification])]
+        private(set) var count = 0
+        private(set) var elapsed: TimeInterval = 0
+        init(_ reads: [(ready: Bool, presented: [PresentedNotification])]) { self.reads = reads }
+
+        func isReady() -> Bool { reads[min(count, reads.count - 1)].ready }
+        func read() -> [PresentedNotification] {
+            defer { count += 1 }
+            return reads[min(count, reads.count - 1)].presented
+        }
+        func now() -> Date { Date(timeIntervalSince1970: elapsed) }
+        func sleep(_ seconds: TimeInterval) { elapsed += seconds }
+    }
+
+    private static func settle(_ script: Script) -> [PresentedNotification] {
+        Session.settledPresented(
+            read: script.read, isReady: script.isReady, emptyAgreement: 2,
+            deadline: Date(timeIntervalSince1970: cap), interval: interval,
+            now: script.now, sleep: script.sleep)
+    }
+
+    @Test func emptyReadsBeforeReadyDoNotSettle() {
+        let script = Script([(false, []), (false, []), (false, []), (true, []), (true, [])])
+        #expect(Self.settle(script).isEmpty)
+        #expect(script.count == 5)
+    }
+
+    @Test func settlesOnTheSecondReadyEmptyRead() {
+        let script = Script([(true, []), (true, []), (true, []), (true, [])])
+        #expect(Self.settle(script).isEmpty)
+        #expect(script.count == 2)
+    }
+
+    @Test func aRowAppearingAfterAReadyEmptyReadWins() {
+        let script = Script([(true, []), (true, Self.one), (true, Self.one), (true, [])])
+        #expect(Self.settle(script) == Self.one)
+        #expect(script.count == 3)
+    }
+
+    @Test func readyEmptyReadsMustBeConsecutive() {
+        let script = Script([(true, []), (true, Self.one), (true, []), (true, []), (true, [])])
+        #expect(Self.settle(script).isEmpty)
+        #expect(script.count == 4)
+    }
+
+    @Test func readinessDroppingResetsTheEmptyCount() {
+        let script = Script([(true, []), (false, []), (true, []), (true, []), (true, [])])
+        #expect(Self.settle(script).isEmpty)
+        #expect(script.count == 4)
+    }
+
+    @Test func neverReadyStopsAtTheCap() {
+        let script = Script([(false, [])])
+        #expect(Self.settle(script).isEmpty)
+        #expect(script.count == Int((Self.cap / Self.interval).rounded(.up)) + 1)
+    }
+}
