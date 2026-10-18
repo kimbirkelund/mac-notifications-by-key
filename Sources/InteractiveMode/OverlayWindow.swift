@@ -57,7 +57,7 @@ final class FarewellWindow: NSWindow {
 
         let box = NSView()
         box.wantsLayer = true
-        box.layer?.backgroundColor = NSColor.black.cgColor
+        box.layer?.backgroundColor = NSColor.black.withAlphaComponent(0.8).cgColor
         box.layer?.borderColor = NSColor.lightGray.cgColor
         box.layer?.borderWidth = 3
         box.layer?.cornerRadius = 24
