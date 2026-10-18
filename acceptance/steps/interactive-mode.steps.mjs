@@ -44,11 +44,6 @@ Given('interactive mode is not running', STEP, async function () {
   assert.equal(wins.length, 0, `a stray nbk overlay is present: ${JSON.stringify(wins)}`)
 })
 
-When('I start {string}', function (command) {
-  assert.equal(command, 'nbk interactive', `only "nbk interactive" can be started; got: ${command}`)
-  this.startInteractive()
-})
-
 Given('interactive mode is running', STEP, async function () {
   this.startInteractive()
   await waitForOverlay(this)
