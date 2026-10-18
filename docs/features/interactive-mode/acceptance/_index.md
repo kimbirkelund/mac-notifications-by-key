@@ -18,9 +18,9 @@ only attended.
 | Pressing Escape leaves the mode (demo)                      | RIM-7               | ✅                                             |
 | The panel sits above the overlay, untinted                  | RIM-1, RIM-2, RIM-5 | ✅                                             |
 | Each presented notification gets an action panel (demo)     | RIM-10              | ✅                                             |
-| Nothing presented on entry ends the mode (demo)             | RIM-10, RIM-16      | ⏳                                             |
-| Dismissing the last notification ends the mode (demo)       | RIM-16              | ⏳                                             |
-| Escape during the farewell ends the mode at once (demo)     | RIM-16              | ⏳                                             |
+| Nothing presented on entry ends the mode (demo)             | RIM-10, RIM-16      | ✅                                             |
+| Dismissing the last notification ends the mode (demo)       | RIM-16              | ✅                                             |
+| Escape during the farewell ends the mode at once (demo)     | RIM-16              | ✅                                             |
 | The newest notification is selected on entry (demo)         | RIM-11              | ✅                                             |
 | The selected panel shows lower-case activators (demo)       | RIM-13              | ✅                                             |
 | Moving the selection between notifications (demo)           | RIM-12              | ✅                                             |
