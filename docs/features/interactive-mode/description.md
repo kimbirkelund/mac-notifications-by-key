@@ -83,7 +83,8 @@ older notification, Up or `k` to the next newer, and it stops at either end rath
 `Reply` and `Mark as Read` (RIM-13). Unselected panels show names only. Pressing a shown key
 performs that entry on the selected notification: `d` dismisses it, Space activates it, and a named
 action's key performs that action. The mode stays running afterwards, so the user can act on the
-next notification (RIM-14). Any other key is ignored (RIM-17).
+next notification (RIM-14). Any other key is ignored (RIM-17). Entries are triggered by keyboard
+only: the action panels are display, not controls, and clicking one does nothing.
 
 ## Why the mode opens the panel
 
