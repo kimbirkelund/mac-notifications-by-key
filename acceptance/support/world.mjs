@@ -678,7 +678,7 @@ export class NbkWorld extends World {
   // Several consecutive reads agree: a panel mid-close still reads open for a moment.
   async isPanelSettledOpen() {
     for (let i = 0; i < 3; i++) {
-      if (i > 0) await sleep(250)
+      if (i > 0) await sleep(100)
       if (!(await this.isPanelOpen())) return false
     }
     return true
