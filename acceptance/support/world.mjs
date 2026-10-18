@@ -197,23 +197,14 @@ if (se.applicationProcesses.whose({ name: 'NotificationCenter' }).length > 0) {
 }
 JSON.stringify(out)`
 
-// Action panels drawn by one nbk process, as JSON
-// [{x, y, width, height, selected, entries: [{activator, name}]}]. A panel is an
-// AXGroup identified "action-panel" (its texts gathered at any bounded depth), or
-// failing that any AXGroup holding static texts. Entries are the non-activator
-// texts in row-major order (within 2 px of a row's top share it); each text
-// identified "activator" belongs to the nearest entry to its right whose vertical
-// span overlaps it, so entries without one carry activator null.
-// The demo window holds placeholders, not panels, so it is skipped.
-const actionPanelsScript = (pid) => `
-const se = Application('System Events')
-const attr = (el, name) => {
-  try {
-    return el.attributes.byName(name).value()
-  } catch (e) {
-    return null
-  }
-}
+const AX_GROUP = 'AXGroup'
+const AX_STATIC_TEXT = 'AXStaticText'
+const MAX_GROUP_WALK_DEPTH = 6
+const PANEL_TEXT_DEPTH = 4
+
+const groupsOf = (node) => node.children.filter((c) => c.role === AX_GROUP)
+const staticTextsOf = (node) => node.children.filter((c) => c.role === AX_STATIC_TEXT)
+
 function rowMajor(texts) {
   const rows = []
   for (const t of [...texts].sort((a, b) => a.y - b.y)) {
@@ -223,6 +214,7 @@ function rowMajor(texts) {
   }
   return rows.flatMap((row) => row.sort((a, b) => a.x - b.x))
 }
+
 function pairEntries(texts) {
   const names = rowMajor(texts.filter((t) => t.id !== 'activator'))
   const entries = names.map((t) => ({ activator: null, name: t.value }))
@@ -236,103 +228,83 @@ function pairEntries(texts) {
   }
   return entries
 }
-function textsOf(el, depth) {
-  let texts = []
-  try {
-    texts = el.staticTexts().map((t) => {
-      const [x, y] = t.position()
-      const [, height] = t.size()
-      return { value: t.value(), id: attr(t, 'AXIdentifier'), x, y, height }
-    })
-  } catch (e) {}
-  if (depth > 0) {
-    let groups = []
-    try {
-      groups = el.groups()
-    } catch (e) {}
-    for (const g of groups) texts = texts.concat(textsOf(g, depth - 1))
-  }
+
+function textsOf(node, depth) {
+  const texts = staticTextsOf(node).map((t) => ({
+    value: t.value,
+    id: t.identifier,
+    x: t.x,
+    y: t.y,
+    height: t.height
+  }))
+  if (depth > 0) for (const g of groupsOf(node)) texts.push(...textsOf(g, depth - 1))
   return texts
 }
-function walk(el, depth, out) {
-  if (depth > 6) return
-  let groups = []
-  try {
-    groups = el.groups()
-  } catch (e) {}
-  for (const g of groups) {
-    const isPanel = attr(g, 'AXIdentifier') === 'action-panel'
-    const texts = textsOf(g, isPanel ? 4 : 0)
-    if (isPanel || texts.length > 0) {
-      const [x, y] = g.position()
-      const [width, height] = g.size()
-      const selected = attr(g, 'AXSelected') === true
-      out.push({ x, y, width, height, selected, entries: pairEntries(texts) })
-    } else {
-      walk(g, depth + 1, out)
-    }
-  }
-}
-const out = []
-for (const p of se.applicationProcesses.whose({ unixId: ${Number(pid)} })()) {
-  for (const w of p.windows()) {
-    let name = ''
-    try {
-      name = w.name() ?? ''
-    } catch (e) {}
-    if (name !== ${JSON.stringify(DEMO_WINDOW_NAME)}) walk(w, 1, out)
-  }
-}
-JSON.stringify(out)`
 
-// Placeholder boxes in one nbk process's demo window, as JSON
-// {window: bool, frames: [{title, x, y, width, height}]}. A box is an AXGroup
-// holding static texts (searched at bounded depth); its title is the text
-// identified "title", or failing that its first text. `window` is false when no
-// demo window exists, so a missing window cannot pass for an empty one.
-const demoFramesScript = (pid) => `
-const se = Application('System Events')
-const attr = (el, name) => {
-  try {
-    return el.attributes.byName(name).value()
-  } catch (e) {
-    return null
-  }
-}
-function walk(el, depth, out) {
-  if (depth > 6) return
-  let groups = []
-  try {
-    groups = el.groups()
-  } catch (e) {}
-  for (const g of groups) {
-    let texts = []
-    try {
-      texts = g.staticTexts()
-    } catch (e) {}
-    if (texts.length > 0) {
-      const titled = texts.find((t) => attr(t, 'AXIdentifier') === 'title') ?? texts[0]
-      const [x, y] = g.position()
-      const [width, height] = g.size()
-      out.push({ title: titled.value(), x, y, width, height })
-    } else {
-      walk(g, depth + 1, out)
+// Action panels in an AX window tree: [{x, y, width, height, selected, entries: [{activator, name}]}].
+// A panel is an AXGroup identified "action-panel" (its texts gathered at bounded depth), or
+// failing that any AXGroup holding static texts. Entries are the non-activator
+// texts in row-major order (within 2 px of a row's top share it); each text
+// identified "activator" belongs to the nearest entry to its right whose vertical
+// span overlaps it, so entries without one carry activator null.
+// The demo window holds placeholders, not panels, so it is skipped.
+function panelsIn(windows) {
+  const out = []
+  const walk = (node, depth) => {
+    if (depth > MAX_GROUP_WALK_DEPTH) return
+    for (const g of groupsOf(node)) {
+      const isPanel = g.identifier === 'action-panel'
+      const texts = textsOf(g, isPanel ? PANEL_TEXT_DEPTH : 0)
+      if (isPanel || texts.length > 0) {
+        out.push({
+          x: g.x,
+          y: g.y,
+          width: g.width,
+          height: g.height,
+          selected: g.selected === true,
+          entries: pairEntries(texts)
+        })
+      } else {
+        walk(g, depth + 1)
+      }
     }
   }
+  for (const w of windows) if (w.title !== DEMO_WINDOW_NAME) walk(w, 1)
+  return out
 }
-const result = { window: false, frames: [] }
-for (const p of se.applicationProcesses.whose({ unixId: ${Number(pid)} })()) {
-  for (const w of p.windows()) {
-    let name = ''
-    try {
-      name = w.name() ?? ''
-    } catch (e) {}
-    if (name !== ${JSON.stringify(DEMO_WINDOW_NAME)}) continue
-    result.window = true
-    walk(w, 1, result.frames)
+
+// Placeholder boxes in the demo window of an AX window tree, as
+// {window: bool, frames: [{title, x, y, width, height}]}. A box is the first AXGroup on
+// a path holding direct static texts; its title is the text identified "title", or
+// failing that its first text. `window` is false when no demo window exists, so a
+// missing window cannot pass for an empty one.
+function demoFramesIn(windows) {
+  const result = { window: false, frames: [] }
+  const walk = (node, depth) => {
+    if (depth > MAX_GROUP_WALK_DEPTH) return
+    for (const g of groupsOf(node)) {
+      const texts = staticTextsOf(g)
+      if (texts.length > 0) {
+        const titled = texts.find((t) => t.identifier === 'title') ?? texts[0]
+        result.frames.push({
+          title: titled.value,
+          x: g.x,
+          y: g.y,
+          width: g.width,
+          height: g.height
+        })
+      } else {
+        walk(g, depth + 1)
+      }
+    }
   }
+  for (const w of windows) {
+    if (w.title !== DEMO_WINDOW_NAME) continue
+    result.window = true
+    walk(w, 1)
+  }
+  return result
 }
-JSON.stringify(result)`
 
 // System Events reports frontmost false for a bundle-less accessory process even
 // while it is the active application; NSWorkspace reports the truth.
@@ -616,9 +588,22 @@ class NbkWorld extends World {
     return JSON.parse(await osascript(NOTIFICATION_FRAMES_SCRIPT, 'JavaScript'))
   }
 
+  async axTree(pid) {
+    try {
+      const { stdout } = await run(path.join(path.dirname(NBK_BIN), 'axdump'), [String(pid)], {
+        maxBuffer: 16 * 1024 * 1024,
+        timeout: EXEC_TIMEOUT_MS
+      })
+      return JSON.parse(stdout)
+    } catch (e) {
+      if (typeof e.code === 'number') return []
+      throw new Error(`axdump ${pid} failed: ${(e.stderr || e.message).toString().trim()}`)
+    }
+  }
+
   // Sorted top-down, like the real panel's tree order (newest on top).
   async demoFrames(pid = this.interactive.child.pid) {
-    const result = JSON.parse(await osascript(demoFramesScript(pid), 'JavaScript'))
+    const result = demoFramesIn(await this.axTree(pid))
     result.frames.sort((a, b) => a.y - b.y)
     return result
   }
@@ -631,7 +616,7 @@ class NbkWorld extends World {
 
   // Sorted top-down so they pair index-wise with notificationFrames (newest on top).
   async actionPanels(pid = this.interactive.child.pid) {
-    const panels = JSON.parse(await osascript(actionPanelsScript(pid), 'JavaScript'))
+    const panels = panelsIn(await this.axTree(pid))
     return panels.sort((a, b) => a.y - b.y)
   }
 
