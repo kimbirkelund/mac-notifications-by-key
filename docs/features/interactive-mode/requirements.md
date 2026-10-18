@@ -110,10 +110,8 @@ for `C-*`/`X-*`.
   stack's position. Deferred: depends on locating the stack container and its expand action over AX,
   which the [AX reference](../../notification-center-ax-api.md) lists as probed-but-unused.
 
-- **RIM-19 (event) — Entries are mouse-activatable.** When the user clicks an entry in any action
-  panel — selected or not — the system shall first select that panel's notification and then perform
-  the entry on it exactly as [RIM-14](#selection-and-actions) does for the key. Clicking a panel
-  outside an entry shall only select its notification.
+- **RIM-19 (retired)** — Mouse activation of panel entries was dropped from the design; the ID is
+  not reused.
 
 - **RIM-20 (event, deferred) — Clear all by upper-case key.** When the user presses `X` (Shift+`x`)
   while the overlay holds focus, the system shall clear every presented notification; when `C`
@@ -149,6 +147,8 @@ for `C-*`/`X-*`.
 - **Upper-case activators.** Shifted letters are left unbound by [RIM-13](#selection-and-actions) as
   a second layer of activators; [RIM-20](#selection-and-actions) takes `X` and `C`, the rest are
   free for later slices.
+- **Mouse activation.** Panel entries are keyboard-only by design; clicking an entry does nothing.
+  Re-adding clicks would be a new requirement, not a revival of [RIM-19](#selection-and-actions).
 - **Panel appearance.** Size, typography, and how the selected panel is distinguished
   ([RIM-11](#selection-and-actions)) are feature work; only "visibly distinct" is required.
 - **Cross-cutting actions.** `clear-all` and `clear-all-for-app` as one-shot CLI operations under
