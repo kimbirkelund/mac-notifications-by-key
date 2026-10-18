@@ -1,0 +1,110 @@
+import ApplicationServices
+import Foundation
+
+let maxDepth = 12
+
+struct Node: Encodable {
+    let role: String?
+    let identifier: String?
+    let title: String?
+    let value: String?
+    let selected: Bool?
+    let x: Double?
+    let y: Double?
+    let width: Double?
+    let height: Double?
+    let children: [Node]
+
+    enum CodingKeys: String, CodingKey {
+        case role, identifier, title, value, selected, x, y, width, height, children
+    }
+
+    func encode(to encoder: Encoder) throws {
+        var container = encoder.container(keyedBy: CodingKeys.self)
+        try container.encode(role, forKey: .role)
+        try container.encode(identifier, forKey: .identifier)
+        try container.encode(title, forKey: .title)
+        try container.encode(value, forKey: .value)
+        try container.encode(selected, forKey: .selected)
+        try container.encode(x, forKey: .x)
+        try container.encode(y, forKey: .y)
+        try container.encode(width, forKey: .width)
+        try container.encode(height, forKey: .height)
+        try container.encode(children, forKey: .children)
+    }
+}
+
+func fail(_ message: String) -> Never {
+    FileHandle.standardError.write(Data((message + "\n").utf8))
+    exit(1)
+}
+
+func attribute(_ element: AXUIElement, _ name: String) -> CFTypeRef? {
+    var value: CFTypeRef?
+    guard AXUIElementCopyAttributeValue(element, name as CFString, &value) == .success else {
+        return nil
+    }
+    return value
+}
+
+func stringAttribute(_ element: AXUIElement, _ name: String) -> String? {
+    attribute(element, name) as? String
+}
+
+func boolAttribute(_ element: AXUIElement, _ name: String) -> Bool? {
+    guard let value = attribute(element, name), CFGetTypeID(value) == CFBooleanGetTypeID() else {
+        return nil
+    }
+    return CFBooleanGetValue(value as! CFBoolean)
+}
+
+func axValueAttribute<T>(
+    _ element: AXUIElement, _ name: String, type: AXValueType, into result: inout T
+) -> Bool {
+    guard let value = attribute(element, name), CFGetTypeID(value) == AXValueGetTypeID() else {
+        return false
+    }
+    return AXValueGetValue(value as! AXValue, type, &result)
+}
+
+func node(_ element: AXUIElement, depth: Int) -> Node {
+    var point = CGPoint.zero
+    var size = CGSize.zero
+    let hasPoint = axValueAttribute(element, kAXPositionAttribute, type: .cgPoint, into: &point)
+    let hasSize = axValueAttribute(element, kAXSizeAttribute, type: .cgSize, into: &size)
+    let kids = depth < maxDepth ? childElements(element) : []
+    return Node(
+        role: stringAttribute(element, kAXRoleAttribute),
+        identifier: stringAttribute(element, kAXIdentifierAttribute),
+        title: stringAttribute(element, kAXTitleAttribute),
+        value: stringAttribute(element, kAXValueAttribute),
+        selected: boolAttribute(element, kAXSelectedAttribute),
+        x: hasPoint ? Double(point.x) : nil,
+        y: hasPoint ? Double(point.y) : nil,
+        width: hasSize ? Double(size.width) : nil,
+        height: hasSize ? Double(size.height) : nil,
+        children: kids.map { node($0, depth: depth + 1) }
+    )
+}
+
+func childElements(_ element: AXUIElement) -> [AXUIElement] {
+    attribute(element, kAXChildrenAttribute) as? [AXUIElement] ?? []
+}
+
+let arguments = CommandLine.arguments
+guard arguments.count == 2, let pid = pid_t(arguments[1]) else {
+    fail("usage: axdump <pid>")
+}
+guard AXIsProcessTrusted() else {
+    fail("axdump: Accessibility access is not granted")
+}
+
+let app = AXUIElementCreateApplication(pid)
+guard let windows = attribute(app, kAXWindowsAttribute) as? [AXUIElement] else {
+    fail("axdump: no windows attribute for pid \(pid)")
+}
+
+let encoder = JSONEncoder()
+encoder.outputFormatting = [.prettyPrinted, .sortedKeys]
+FileHandle.standardOutput.write(try encoder.encode(windows.map { node($0, depth: 1) }))
+FileHandle.standardOutput.write(Data("\n".utf8))
