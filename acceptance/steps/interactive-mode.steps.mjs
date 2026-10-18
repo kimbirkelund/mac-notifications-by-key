@@ -85,6 +85,18 @@ Then('the overlay shows the mode label', STEP, async function () {
   )
 })
 
+Then('the overlay shows the label {string}', STEP, async function (label) {
+  let last = []
+  const shown = await this.pollUntil(async () => {
+    last = await this.overlayWindows()
+    return last.some((w) => w.labels.includes(label))
+  }, SETTLE_MS)
+  assert.ok(
+    shown,
+    `expected an overlay label ${JSON.stringify(label)}; windows: ${JSON.stringify(last)}`
+  )
+})
+
 Then('the Notification Center panel is open', STEP, async function () {
   assert.ok(await this.waitForPanel(true), 'expected the Notification Center panel to be open')
 })
