@@ -43,6 +43,9 @@ scenario starts `interactive --demo` with a fixture file from `acceptance/fixtur
 notifications, their actions and whether each entry closes are exactly what the fixture says.
 Scenarios that use a fixture never run `nbk list`. Tag them `@demo`: the hooks then skip the
 Notification Center clearing (which opens and closes the panel) around them and only stop the mode.
+The harness reads the overlay's action panels and the demo window's placeholder boxes through
+`axdump`, a small helper built next to `nbk` that dumps the accessibility windows of an `nbk`
+process in one pass.
 
 Demo mode proves the key handling, selection and panel logic of the overlay, and that entries act on
 the list the way the file says. It does not prove that Notification Center's accessibility tree is
