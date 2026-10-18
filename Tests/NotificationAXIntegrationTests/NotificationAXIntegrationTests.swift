@@ -73,6 +73,27 @@ import Testing
     }
 
     @Test(.enabled(if: NotificationAXIntegrationTests.available))
+    func clearAllEmptiesThePanel() throws {
+        defer { try? nc.setPanelOpen(false) }
+        clearAll()
+        #expect(deliver(title: "AXClearAllProbeA"))
+        #expect(deliver(title: "AXClearAllProbeB"))
+        try nc.setPanelOpen(true)
+        let deadline = Date().addingTimeInterval(Self.deliveryReadTimeout)
+        var stacked = false
+        while !stacked, Date() < deadline {
+            let items = try nc.read(wait: 0)
+            stacked = items.contains {
+                $0.actions.contains("Clear All") && !$0.actions.contains("Close")
+            }
+            if !stacked { Thread.sleep(forTimeInterval: 0.2) }
+        }
+        #expect(stacked, "delivered pair did not present as a collapsed stack")
+        try nc.clearAll()
+        #expect(try nc.read(wait: 0).isEmpty)
+    }
+
+    @Test(.enabled(if: NotificationAXIntegrationTests.available))
     func setPanelOpenTogglesPanel() throws {
         defer { try? nc.setPanelOpen(false) }
         try nc.setPanelOpen(false)

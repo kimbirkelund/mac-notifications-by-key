@@ -40,6 +40,20 @@ public final class DemoNotificationCenterAccess: NotificationCenterAccess, @unch
         try removeIf(index: index) { _ in true }
     }
 
+    public func clearAll() throws {
+        lock.withLock { notifications.removeAll() }
+    }
+
+    public func clearAll(forApp index: Int) throws {
+        try lock.withLock {
+            guard notifications.indices.contains(index) else {
+                throw NbkError.indexOutOfRange(requested: index, count: notifications.count)
+            }
+            let app = notifications[index].app
+            notifications.removeAll { $0.app == app }
+        }
+    }
+
     public func press(index: Int) throws {
         try removeIf(index: index) { $0.activateCloses }
     }

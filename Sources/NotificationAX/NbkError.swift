@@ -5,6 +5,7 @@ public enum NbkError: Error, Sendable {
     case indexOutOfRange(requested: Int, count: Int)
     case unknownAction(name: String, available: [String])
     case actionFailed(name: String)
+    case clearIncomplete(remaining: Int)
 
     public var message: String {
         switch self {
@@ -21,6 +22,8 @@ public enum NbkError: Error, Sendable {
             return "Notification does not expose action \"\(name)\". Available: \(available)."
         case .actionFailed(let name):
             return "Performing action \"\(name)\" failed."
+        case .clearIncomplete(let remaining):
+            return "Could not clear \(remaining) notification(s)."
         }
     }
 

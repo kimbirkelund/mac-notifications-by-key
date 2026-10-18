@@ -15,6 +15,8 @@ let usage = """
       dismiss <index>           dismiss the notification at <index>
       action <index> <name>     perform a named action (e.g. "Show")
       press <index>             default activation (open)
+      clear-all                 dismiss every presented notification
+      clear-all-for-app <index> dismiss every notification from <index>'s app
       interactive [--demo <file>]  show the interactive-mode overlay (Escape or SIGINT/SIGTERM ends it)
       doctor                    report Accessibility trust, NC pid, macOS version
       --version                 print the version
@@ -62,6 +64,13 @@ do {
             die("usage: nbk action <index> <name>", code: 64)
         }
         try nc.perform(action: rest[1], index: n)
+
+    case "clear-all":
+        try nc.clearAll()
+
+    case "clear-all-for-app":
+        guard let n = intArg(rest, 0) else { die("usage: nbk clear-all-for-app <index>", code: 64) }
+        try nc.clearAll(forApp: n)
 
     case "interactive":
         if let demoPath = try DemoOption.parse(rest) {

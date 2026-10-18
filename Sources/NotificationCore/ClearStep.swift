@@ -2,7 +2,7 @@ public enum AppFilter: Equatable, Sendable {
     case any
     case app(String?)
 
-    func matches(_ item: NotificationItem) -> Bool {
+    public func matches(_ item: NotificationItem) -> Bool {
         switch self {
         case .any: return true
         case .app(let name): return item.app == name

@@ -66,6 +66,24 @@ import Testing
         #expect(access.isPanelOpen)
     }
 
+    @Test func clearAllForAppThrowsIndexOutOfRangeAndRemovesNothing() throws {
+        let access = Self.access([DemoNotification(app: "Mail", title: "A")])
+        #expect(throws: NbkError.self) { try access.clearAll(forApp: 1) }
+        #expect(try Self.titles(access) == ["A"])
+    }
+
+    @Test func clearAllForAppRemovesOnlyItemsOfThatApp() throws {
+        let access = Self.access([
+            DemoNotification(app: "Mail", title: "A"), DemoNotification(title: "B"),
+            DemoNotification(app: "Mail", title: "C"), DemoNotification(title: "D"),
+            DemoNotification(app: "Chat", title: "E"),
+        ])
+        try access.clearAll(forApp: 1)
+        #expect(try Self.titles(access) == ["A", "C", "E"])
+        try access.clearAll(forApp: 0)
+        #expect(try Self.titles(access) == ["E"])
+    }
+
     @Test func dismissRemovesTheNotificationAndRenumbers() throws {
         let access = Self.access([
             DemoNotification(title: "A"), DemoNotification(title: "B"),

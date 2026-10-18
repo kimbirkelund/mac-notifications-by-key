@@ -16,5 +16,7 @@ public protocol NotificationCenterAccess {
     func dismiss(index: Int) throws
     func press(index: Int) throws
     func perform(action displayName: String, index: Int) throws
+    func clearAll() throws
+    func clearAll(forApp index: Int) throws
     func setPanelOpen(_ open: Bool) throws
 }

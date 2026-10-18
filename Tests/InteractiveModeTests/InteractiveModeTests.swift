@@ -32,6 +32,8 @@ private final class UnusedAccess: NotificationCenterAccess {
     func dismiss(index: Int) throws { touched = true }
     func press(index: Int) throws { touched = true }
     func perform(action displayName: String, index: Int) throws { touched = true }
+    func clearAll() throws { touched = true }
+    func clearAll(forApp index: Int) throws { touched = true }
     func setPanelOpen(_ open: Bool) throws { touched = true }
 }
 
@@ -86,6 +88,8 @@ private final class RecordingAccess: NotificationCenterAccess, @unchecked Sendab
     func perform(action displayName: String, index: Int) throws {
         record(.perform(displayName, index))
     }
+    func clearAll() throws {}
+    func clearAll(forApp index: Int) throws {}
     func setPanelOpen(_ open: Bool) throws { record(.setPanelOpen(open)) }
 }
 

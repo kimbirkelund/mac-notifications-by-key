@@ -89,7 +89,10 @@ public struct DefaultNotificationCenterAX: NotificationCenterAccess {
     // MARK: Act
 
     public func dismiss(index n: Int) throws {
-        let element = try elementAt(n)
+        try close(try elementAt(n))
+    }
+
+    private func close(_ element: AXUIElement) throws {
         // Focus-before-close: required, else Close silently no-ops.
         AXUIElementSetAttributeValue(element, kAXFocusedAttribute as CFString, kCFBooleanTrue)
         Thread.sleep(forTimeInterval: 0.3)
@@ -115,6 +118,34 @@ public struct DefaultNotificationCenterAX: NotificationCenterAccess {
     public func perform(action displayName: String, index n: Int) throws {
         let element = try elementAt(n)
         try perform(displayName: displayName, on: element)
+    }
+
+    public func clearAll() throws {
+        try clear(app: .any)
+    }
+
+    public func clearAll(forApp index: Int) throws {
+        let items = try read(wait: 0)
+        guard items.indices.contains(index) else {
+            throw NbkError.indexOutOfRange(requested: index, count: items.count)
+        }
+        try clear(app: .app(items[index].app))
+    }
+
+    private func clear(app: AppFilter) throws {
+        let maxRounds = 50
+        for _ in 0..<maxRounds {
+            let elements = notificationElements(try requirePID())
+            let items = elements.enumerated().map { item(from: $0.element, index: $0.offset) }
+            guard let step = ClearStep.next(in: items, app: app) else { return }
+            switch step {
+            case .close(let index): try close(elements[index])
+            case .clearAll(let index): try perform(displayName: "Clear All", on: elements[index])
+            }
+            Thread.sleep(forTimeInterval: 0.3)
+        }
+        let remaining = try read(wait: 0).filter(app.matches).count
+        if remaining > 0 { throw NbkError.clearIncomplete(remaining: remaining) }
     }
 
     // MARK: Panel
