@@ -77,6 +77,7 @@ Feature: Interactive mode
   # Validates RIM-11: on entering the mode the newest notification is selected,
   # and only one panel is selected at a time. Fixture notifications, so there is
   # more than one to choose between.
+  @demo
   Scenario: The newest notification is selected on entry
     Given interactive mode is running with demo file "three.json"
     Then exactly one action panel is selected
@@ -84,6 +85,7 @@ Feature: Interactive mode
     And the Notification Center panel is closed
 
   # Validates RIM-13: the selected panel shows a lower-case key left of each entry.
+  @demo
   Scenario: The selected panel shows lower-case activators
     Given interactive mode is running with demo file "one.json"
     Then the selected panel shows activator "Space" before "Activate"
@@ -95,6 +97,7 @@ Feature: Interactive mode
     And the selected panel shows activator "1" before "Ad"
 
   # Validates RIM-12: j/k and Down/Up move one step, and the ends clamp rather than wrap.
+  @demo
   Scenario: Moving the selection between notifications
     Given interactive mode is running with demo file "three.json"
     And the overlay is the frontmost application
@@ -112,6 +115,7 @@ Feature: Interactive mode
     Then the selection is unchanged
 
   # Validates RIM-17: a key that is bound to nothing does nothing.
+  @demo
   Scenario: Unbound keys are ignored
     Given interactive mode is running with demo file "one.json"
     And the overlay is the frontmost application
@@ -122,6 +126,7 @@ Feature: Interactive mode
 
   # Validates RIM-14, RIM-15: d performs Dismiss on the selected notification, the mode
   # stays, and the selection stays at the same position, now on the next notification.
+  @demo
   Scenario: Pressing d dismisses the selected notification
     Given interactive mode is running with demo file "three.json"
     And the overlay is the frontmost application
@@ -133,6 +138,7 @@ Feature: Interactive mode
     And interactive mode is still running
 
   # Validates RIM-14: a named action's key performs that action and the mode stays.
+  @demo
   Scenario: Pressing a named action's key performs it
     Given interactive mode is running with demo file "three.json"
     And the overlay is the frontmost application
@@ -142,6 +148,7 @@ Feature: Interactive mode
 
   # Validates RIM-14, RIM-21: an action the demo file marks as not closing leaves the
   # notification presented; the later d proves the key reached the mode.
+  @demo
   Scenario: An action that does not close keeps the notification
     Given interactive mode is running with demo file "keep-open.json"
     And the overlay is the frontmost application
@@ -152,6 +159,7 @@ Feature: Interactive mode
     Then the notification titled "Pinned" is no longer presented
 
   # Validates RIM-14: Space performs Activate and the mode stays.
+  @demo
   Scenario: Pressing Space activates the selected notification
     Given interactive mode is running with demo file "three.json"
     And the overlay is the frontmost application

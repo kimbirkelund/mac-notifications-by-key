@@ -41,7 +41,8 @@ the selection, selection after removal, activator assignment, which entries clos
 therefore driven through **demo mode** ([RIM-21](features/interactive-mode/requirements.md)): the
 scenario starts `interactive --demo` with a fixture file from `acceptance/fixtures/`, and the
 notifications, their actions and whether each entry closes are exactly what the fixture says.
-Scenarios that use a fixture never run `nbk list`.
+Scenarios that use a fixture never run `nbk list`. Tag them `@demo`: the hooks then skip the
+Notification Center clearing (which opens and closes the panel) around them and only stop the mode.
 
 Demo mode proves the key handling, selection and panel logic of the overlay, and that entries act on
 the list the way the file says. It does not prove that Notification Center's accessibility tree is
