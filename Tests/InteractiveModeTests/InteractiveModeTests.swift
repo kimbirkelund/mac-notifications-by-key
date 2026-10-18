@@ -117,7 +117,7 @@ private final class RecordingAccess: NotificationCenterAccess, @unchecked Sendab
         _ access: RecordingAccess, presented: [PresentedNotification]
     ) -> (Session, DispatchQueue) {
         let queue = DispatchQueue(label: "dispatch-test")
-        let session = Session(access: access, dispatchQueue: queue)
+        let session = Session(access: access, dispatchQueue: queue, terminate: {})
         session.drawActionPanels(presented)
         return (session, queue)
     }
@@ -239,6 +239,119 @@ private final class RecordingAccess: NotificationCenterAccess, @unchecked Sendab
     }
 }
 
+@MainActor @Suite struct SessionEndingTests {
+    private final class Terminations {
+        var count = 0
+    }
+
+    private static func presented(_ indices: Int...) -> [PresentedNotification] {
+        indices.enumerated().map { offset, index in
+            PresentedNotification(
+                item: NotificationItem(
+                    index: index, app: "Script Editor", title: "N\(index)", actions: ["Close"]),
+                frame: CGRect(x: 0, y: CGFloat(offset) * 100, width: 300, height: 80))
+        }
+    }
+
+    private func session(
+        _ access: RecordingAccess, hold: TimeInterval = 0, queue: DispatchQueue = .main
+    ) -> (Session, Terminations) {
+        let terminations = Terminations()
+        let session = Session(
+            access: access, dispatchQueue: queue, endingHold: hold, endingFade: 0,
+            terminate: { terminations.count += 1 })
+        return (session, terminations)
+    }
+
+    private func waitUntil(timeout: TimeInterval = 2, _ condition: () -> Bool) async throws {
+        let deadline = Date().addingTimeInterval(timeout)
+        while !condition(), Date() < deadline {
+            try await Task.sleep(for: .milliseconds(20))
+        }
+    }
+
+    /// RIM-16: nothing presented ends the mode with the panel closed.
+    @Test func emptyPresentedSetEndsTheModeWithThePanelClosed() async throws {
+        let access = RecordingAccess()
+        let (session, terminations) = session(access)
+        session.drawActionPanels([])
+        try await waitUntil { terminations.count > 0 }
+        #expect(terminations.count == 1)
+        #expect(access.calls == [.setPanelOpen(false)])
+    }
+
+    @Test func nonEmptyPresentedSetKeepsTheModeRunning() async throws {
+        let presented = Self.presented(1)
+        let access = RecordingAccess(presented: presented)
+        let (session, terminations) = session(access)
+        session.drawActionPanels(presented)
+        try await Task.sleep(for: .milliseconds(200))
+        #expect(terminations.count == 0)
+        #expect(access.calls.isEmpty)
+    }
+
+    /// RIM-16: movement and activator keys do nothing while the label shows.
+    @Test func movementAndActivatorKeysDoNothingWhileEnding() {
+        let presented = Self.presented(1, 2)
+        let access = RecordingAccess(presented: presented)
+        let queue = DispatchQueue(label: "ending-test")
+        let (session, terminations) = session(access, hold: 60, queue: queue)
+        var decorated: [[PresentedNotification]] = []
+        session.presentedDecorator = { decorated.append($0) }
+        session.drawActionPanels([])
+        session.drawActionPanels(presented)
+        for key: OverlayKey in [.character("j"), .down, .character("d"), .character(" ")] {
+            session.handle(key)
+        }
+        queue.sync {}
+        #expect(access.calls.isEmpty)
+        #expect(decorated == [[], presented])
+        #expect(terminations.count == 0)
+    }
+
+    /// RIM-16: Escape while the label shows ends the mode at once.
+    @Test func escapeWhileEndingEndsTheModeAtOnce() {
+        let access = RecordingAccess()
+        let (session, terminations) = session(access, hold: 60)
+        session.drawActionPanels([])
+        session.handle(.escape)
+        #expect(terminations.count == 1)
+        #expect(access.calls == [.setPanelOpen(false)])
+    }
+
+    /// RIM-16: a signal during the label ends the mode once; the fade does not end it again.
+    @Test func teardownDuringEndingTerminatesOnce() async throws {
+        let access = RecordingAccess()
+        let (session, terminations) = session(access)
+        session.drawActionPanels([])
+        session.teardown()
+        try await Task.sleep(for: .milliseconds(200))
+        #expect(terminations.count == 1)
+        #expect(access.calls == [.setPanelOpen(false)])
+    }
+
+    /// RIM-16: Escape followed by a signal ends the mode once.
+    @Test func escapeThenSignalTerminatesOnce() {
+        let access = RecordingAccess()
+        let (session, terminations) = session(access, hold: 60)
+        session.drawActionPanels([])
+        session.handle(.escape)
+        session.teardown()
+        #expect(terminations.count == 1)
+        #expect(access.calls == [.setPanelOpen(false)])
+    }
+
+    @Test func repeatedEmptyDrawsTerminateOnce() async throws {
+        let access = RecordingAccess()
+        let (session, terminations) = session(access)
+        session.drawActionPanels([])
+        session.drawActionPanels([])
+        try await waitUntil { terminations.count > 0 }
+        try await Task.sleep(for: .milliseconds(200))
+        #expect(terminations.count == 1)
+    }
+}
+
 @MainActor @Suite struct SessionDecoratorTests {
     private static func presented(atTops tops: CGFloat...) -> [PresentedNotification] {
         tops.enumerated().map { index, top in
@@ -254,7 +367,7 @@ private final class RecordingAccess: NotificationCenterAccess, @unchecked Sendab
 
     private func session(_ access: RecordingAccess) -> (Session, Recorder) {
         let recorder = Recorder()
-        let session = Session(access: access)
+        let session = Session(access: access, terminate: {})
         session.presentedDecorator = { recorder.calls.append($0) }
         return (session, recorder)
     }

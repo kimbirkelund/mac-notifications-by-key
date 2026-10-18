@@ -42,6 +42,7 @@ final class OverlayWindow: NSWindow {
         rawValue: Int(CGWindowLevelForKey(.dockWindow)))
 
     var onKey: ((OverlayKey) -> Void)?
+    private let label = NSTextField(labelWithString: "Notifications")
 
     init(frame: CGRect) {
         super.init(contentRect: frame, styleMask: .borderless, backing: .buffered, defer: false)
@@ -55,7 +56,6 @@ final class OverlayWindow: NSWindow {
         isReleasedWhenClosed = false
         title = "Notifications"
 
-        let label = NSTextField(labelWithString: "Notifications")
         label.font = .systemFont(ofSize: 64, weight: .semibold)
         label.textColor = .white
         label.translatesAutoresizingMaskIntoConstraints = false
@@ -67,6 +67,10 @@ final class OverlayWindow: NSWindow {
             label.centerYAnchor.constraint(equalTo: content.centerYAnchor),
         ])
         contentView = content
+    }
+
+    func showEndingLabel(_ text: String) {
+        label.stringValue = text
     }
 
     override var canBecomeKey: Bool { true }
