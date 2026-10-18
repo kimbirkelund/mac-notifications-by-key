@@ -39,6 +39,35 @@ Feature: Notification access
     And I run "nbk list"
     And the JSON output does not include a notification with title "DismissMe"
 
+  # Validates RNA-11: clear-all dismisses every presented notification, exit 0.
+  Scenario: Clearing all removes the presented notifications
+    # RNA-11
+    Given a notification is delivered with title "ClearAllMe"
+    And I run "nbk list --wait 5"
+    When I run "nbk clear-all"
+    Then the command succeeds
+    And I run "nbk list"
+    And the JSON output does not include a notification with title "ClearAllMe"
+
+  # Validates RNA-12: clear-all-for-app dismisses every notification from the
+  # app of the notification at the index, including that one.
+  Scenario: Clearing all for an app removes that app's notifications
+    # RNA-12
+    Given a notification is delivered with title "ClearAppMe"
+    And I run "nbk list --wait 5"
+    When I run "nbk clear-all-for-app 0"
+    Then the command succeeds
+    And I run "nbk list"
+    And the JSON output does not include a notification with title "ClearAppMe"
+
+  # Validates RNA-12 with RNA-7: an index with no notification is a safe failure.
+  Scenario: Clearing all for an out-of-range index fails safely
+    # RNA-12, RNA-7
+    Given no notifications are presented
+    When I run "nbk clear-all-for-app 0"
+    Then the command fails
+    And the error output mentions an out-of-range index
+
   # Validates RNA-5: perform a named action the notification exposes, exit 0.
   # A Script Editor notification exposes "Show Details", "Show", "Close".
   Scenario: Triggering a named action on a notification

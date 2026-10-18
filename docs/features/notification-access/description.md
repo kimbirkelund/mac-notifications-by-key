@@ -12,6 +12,9 @@ notification is an element with readable title/subtitle/body and a set of named 
   title, subtitle, body, available action names, and a 0-based index. Output is JSON
   ([X-2](../../cross-cutting.md)).
 - **dismiss `<index>`** — dismiss the notification at that index.
+- **clear-all** — dismiss every presented notification, a collapsed stack as a whole.
+- **clear-all-for-app `<index>`** — dismiss every presented notification from the same app as the
+  notification at that index, including that one.
 - **action `<index> <name>`** — perform the named action (e.g. `Show`, `Show Details`, or an
   app-specific action) on that notification.
 - **press `<index>`** — perform the default activation (open the notification / launch its app).
@@ -43,10 +46,10 @@ one act command against index `0` (the newest notification).
 
 ## Scope
 
-In scope: reading presented notifications and acting on a single designated one by index. **Out of
-scope** (open seeds): a long-running daemon/watch mode, selecting by app/content rather than index,
-replying inline, and reading the historical notification list from the persistent panel beyond what
-is currently presented.
+In scope: reading presented notifications, acting on a single designated one by index, and clearing
+all presented notifications or all from one app. **Out of scope** (open seeds): a long-running
+daemon/watch mode, selecting by app/content rather than index, replying inline, and reading the
+historical notification list from the persistent panel beyond what is currently presented.
 
 ## Conventions
 

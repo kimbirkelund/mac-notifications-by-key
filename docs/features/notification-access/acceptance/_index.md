@@ -6,18 +6,21 @@ against the compiled `nbk` binary as a black box, using the step definitions in 
 Steps deliver real notifications (`osascript -e 'display notification …'`) and assert the CLI's
 observable output and exit status.
 
-| Scenario                                                 | Validates    | Status                                         |
-| -------------------------------------------------------- | ------------ | ---------------------------------------------- |
-| Listing includes a delivered notification                | RNA-1, RNA-3 | ✅                                             |
-| Waiting catches a notification delivered after start     | RNA-3        | ✅                                             |
-| Listing is empty when nothing is presented               | RNA-2        | ✅                                             |
-| Dismissing the newest notification removes it            | RNA-4        | ✅                                             |
-| Triggering a named action on a notification              | RNA-5        | ✅                                             |
-| Activating a notification with press                     | RNA-6        | ✅                                             |
-| Designating an out-of-range index fails safely           | RNA-7        | ✅                                             |
-| Triggering an unknown action fails and lists what exists | RNA-8        | ✅                                             |
-| Doctor reports the environment                           | RNA-10       | ✅                                             |
-| Missing Accessibility trust is reported                  | RNA-9        | ✅ `@operator` — attended; last run 2026-09-27 |
+| Scenario                                                 | Validates     | Status                                         |
+| -------------------------------------------------------- | ------------- | ---------------------------------------------- |
+| Listing includes a delivered notification                | RNA-1, RNA-3  | ✅                                             |
+| Waiting catches a notification delivered after start     | RNA-3         | ✅                                             |
+| Listing is empty when nothing is presented               | RNA-2         | ✅                                             |
+| Dismissing the newest notification removes it            | RNA-4         | ✅                                             |
+| Clearing all removes the presented notifications         | RNA-11        | ✅                                             |
+| Clearing all for an app removes that app's notifications | RNA-12        | ✅                                             |
+| Clearing all for an out-of-range index fails safely      | RNA-12, RNA-7 | ✅                                             |
+| Triggering a named action on a notification              | RNA-5         | ✅                                             |
+| Activating a notification with press                     | RNA-6         | ✅                                             |
+| Designating an out-of-range index fails safely           | RNA-7         | ✅                                             |
+| Triggering an unknown action fails and lists what exists | RNA-8         | ✅                                             |
+| Doctor reports the environment                           | RNA-10        | ✅                                             |
+| Missing Accessibility trust is reported                  | RNA-9         | ✅ `@operator` — attended; last run 2026-09-27 |
 
 ## Walking skeleton
 
@@ -27,6 +30,13 @@ output contains a notification with the delivered title. It wired the whole chai
 Swift CLI, the `NotificationAX` adapter, AX trust, banner-render polling, and the cucumber-js
 harness. The act/error scenarios followed once `dismiss`/`action`/`press` existed; all unattended
 scenarios now run in the default acceptance run.
+
+## Deliberately not covered
+
+- RNA-13 (clearing stalls) has no scenario: a stalling Notification Center cannot be staged, so no
+  automated test covers the stall path. The drain loop itself is covered by the AX-integration test.
+- That other apps' notifications survive `clear-all-for-app` cannot be staged black-box: the harness
+  can only deliver from one app. The app filtering is unit-tested.
 
 ## Notes
 
