@@ -46,44 +46,6 @@ async function osascript(script, language = 'AppleScript') {
   return stdout.trim()
 }
 
-// The Notification Center panel is the NC AXSystemDialog window holding the
-// "Edit Widgets" button; banners are AXSystemDialog windows too, but never hold it.
-// The button is searched at any depth (bounded) so a layout shift cannot hide it.
-const PANEL_OPEN_SCRIPT = `
-on hasPanelButton(el, depth)
-  if depth > 8 then return false
-  tell application "System Events"
-    set kids to {}
-    try
-      set kids to UI elements of el
-    end try
-    repeat with k in kids
-      try
-        if role of k is "AXButton" and value of attribute "AXIdentifier" of k is "widget-editor-button" then return true
-      end try
-      if my hasPanelButton(k, depth + 1) then return true
-    end repeat
-  end tell
-  return false
-end hasPanelButton
-
-tell application "System Events"
-  if not (exists application process "NotificationCenter") then return false
-  set ws to {}
-  try
-    set ws to every window of application process "NotificationCenter"
-  end try
-end tell
-repeat with w in ws
-  try
-    tell application "System Events" to set sr to subrole of w
-    if sr is "AXSystemDialog" then
-      if my hasPanelButton(w, 1) then return true
-    end if
-  end try
-end repeat
-return false`
-
 // The clock menu extra toggles the panel. Found by identifier under MenuBarAgent
 // (macOS 27), falling back to ControlCenter (earlier releases).
 const PRESS_CLOCK_SCRIPT = `
@@ -176,6 +138,9 @@ JSON.stringify(out)`
 
 const AX_GROUP = 'AXGroup'
 const AX_STATIC_TEXT = 'AXStaticText'
+
+const hasIdentifier = (node, identifier) =>
+  node.identifier === identifier || node.children.some((c) => hasIdentifier(c, identifier))
 const MAX_GROUP_WALK_DEPTH = 6
 const PANEL_TEXT_DEPTH = 4
 
@@ -671,11 +636,10 @@ export class NbkWorld extends World {
   // Window-list owner names are localized ("Notification Centre"), so rows are
   // matched by pid; the System Events process name is the executable's.
   async notificationCenterPid() {
-    return Number(
-      await osascript(
-        'tell application "System Events" to get unix id of application process "NotificationCenter"'
-      )
-    )
+    const { stdout } = await run('pgrep', ['-x', 'NotificationCenter'])
+    const pid = Number(stdout.trim().split('\n')[0])
+    if (!pid) throw new Error('NotificationCenter is not running')
+    return pid
   }
 
   // CGWindowList snapshot, front-to-back, from the helper built next to nbk.
@@ -686,8 +650,11 @@ export class NbkWorld extends World {
     return JSON.parse(stdout)
   }
 
+  // The panel is the Notification Center window holding the "Edit Widgets" button;
+  // banners never hold it. Searched at any depth so a layout shift cannot hide it.
   async isPanelOpen() {
-    return (await osascript(PANEL_OPEN_SCRIPT)) === 'true'
+    const windows = await this.axTree(await this.notificationCenterPid())
+    return windows.some((w) => hasIdentifier(w, 'widget-editor-button'))
   }
 
   async waitForPanel(open, timeoutMs = 5000) {
