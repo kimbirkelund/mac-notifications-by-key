@@ -16,14 +16,16 @@ Feature: Interactive mode
     And the Notification Center panel is open
 
   # Validates RIM-3: the mode holds focus without becoming an app you switch to.
+  @demo
   Scenario: The mode keeps no application presence
-    When I start "nbk interactive"
+    Given interactive mode is running with demo file "one.json"
     Then the mode presents no Dock icon and no menu bar
 
   # Validates RIM-4: a toggle hotkey pressed twice must not stack overlays. The
   # second invocation returns 0 and the first keeps owning the mode.
+  @demo
   Scenario: Re-invoking while the mode runs does not stack a second overlay
-    Given interactive mode is running
+    Given interactive mode is running with demo file "one.json"
     When I run "nbk interactive"
     Then the command succeeds
     And exactly one overlay window is present
