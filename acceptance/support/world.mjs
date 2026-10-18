@@ -282,7 +282,11 @@ export class NbkWorld extends World {
 
   pendingDeliveries = []
 
+  // True once a clear found nothing of ours left and nothing has been delivered since.
+  notificationCenterClean = false
+
   async deliver(title, body = 'acceptance body') {
+    this.notificationCenterClean = false
     await run('osascript', ['-e', `display notification "${body}" with title "${title}"`])
   }
 
@@ -397,12 +401,16 @@ export class NbkWorld extends World {
   // no Close, only Clear All. Dismissing shifts indices, so re-list each iteration
   // and always act on the first match. Leaves the panel closed.
   async clearTestNotifications() {
+    this.notificationCenterClean = false
     await this.openPanelIfClosed()
     try {
       for (let i = 0; i < 30; i++) {
         const items = await this.listJson()
         const idx = items.findIndex((n) => n.app === TEST_APP)
-        if (idx === -1) return
+        if (idx === -1) {
+          this.notificationCenterClean = true
+          return
+        }
         const argv =
           !items[idx].actions.includes('Close') && items[idx].actions.includes('Clear All')
             ? ['action', String(idx), 'Clear All']
@@ -416,6 +424,12 @@ export class NbkWorld extends World {
     } finally {
       await this.closePanelIfOpen()
     }
+  }
+
+  // A clear is one open/close cycle of the panel, so skip it when the last one
+  // found nothing and nothing was delivered since.
+  async ensureNoTestNotifications() {
+    if (!this.notificationCenterClean) await this.clearTestNotifications()
   }
 
   // Launch `nbk interactive` and retain it: the mode never exits on its own, so

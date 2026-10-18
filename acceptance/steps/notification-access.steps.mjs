@@ -16,7 +16,7 @@ Given('a notification is delivered with title {string}', async function (title) 
 
 // timeout: clearing opens and closes the panel, each polling to its own deadline.
 Given('no notifications are presented', { timeout: 30000 }, async function () {
-  await this.clearTestNotifications()
+  await this.ensureNoTestNotifications()
 })
 
 // RNA-9: no API revokes Accessibility trust, so a human operator stands in. Prompt
