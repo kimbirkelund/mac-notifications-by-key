@@ -19,15 +19,15 @@ only attended.
 | The panel sits above the overlay, untinted                  | RIM-1, RIM-2, RIM-5 | ✅                                             |
 | Each presented notification gets an action panel (demo)     | RIM-10              | ✅                                             |
 | No action panel when nothing is presented (demo)            | RIM-10              | ✅                                             |
-| The newest notification is selected on entry (demo)         | RIM-11              | ⏳ not yet run                                 |
-| The selected panel shows lower-case activators (demo)       | RIM-13              | ⏳ not yet run                                 |
-| Moving the selection between notifications (demo)           | RIM-12              | ⏳ not yet run                                 |
-| Unbound keys are ignored (demo)                             | RIM-17              | ⏳ not yet run                                 |
-| Pressing d dismisses the selected notification (demo)       | RIM-14              | ⏳ not yet run                                 |
-| Pressing a named action's key performs it (demo)            | RIM-14              | ⏳ not yet run                                 |
-| An action that does not close keeps the notification (demo) | RIM-14, RIM-21      | ⏳ not yet run                                 |
-| Pressing Space activates the selected notification (demo)   | RIM-14              | ⏳ not yet run                                 |
-| A missing demo file is refused before the overlay (demo)    | RIM-21              | ⏳ not yet run                                 |
+| The newest notification is selected on entry (demo)         | RIM-11              | ✅                                             |
+| The selected panel shows lower-case activators (demo)       | RIM-13              | ✅                                             |
+| Moving the selection between notifications (demo)           | RIM-12              | ✅                                             |
+| Unbound keys are ignored (demo)                             | RIM-17              | ✅                                             |
+| Pressing d dismisses the selected notification (demo)       | RIM-14              | ✅                                             |
+| Pressing a named action's key performs it (demo)            | RIM-14              | ✅                                             |
+| An action that does not close keeps the notification (demo) | RIM-14, RIM-21      | ✅                                             |
+| Pressing Space activates the selected notification (demo)   | RIM-14              | ✅                                             |
+| A missing demo file is refused before the overlay (demo)    | RIM-21              | ✅                                             |
 | Missing Accessibility trust is refused                      | RIM-9               | ✅ `@operator` — attended; last run 2026-09-27 |
 
 ## What the harness adds
