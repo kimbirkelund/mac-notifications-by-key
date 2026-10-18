@@ -50,16 +50,31 @@ final class Session {
     private var selection = SelectionState.initial(count: 0)
     private var signalSources: [DispatchSourceSignal] = []
     private var tearingDown = false
+    private var ending = false
+    private var terminated = false
     private var dispatching = false
     private var hasDrawn = false
+    private let endingHold: TimeInterval
+    private let endingFade: TimeInterval
+    private let terminate: () -> Void
     var presentedDecorator: (@MainActor (_ presented: [PresentedNotification]) -> Void)?
+
+    static let endingHold: TimeInterval = 1
+    static let endingFade: TimeInterval = 0.5
+    static let endingLabel = "No more jobs!"
 
     init(
         access: NotificationCenterAccess,
-        dispatchQueue: DispatchQueue = .global(qos: .userInitiated)
+        dispatchQueue: DispatchQueue = .global(qos: .userInitiated),
+        endingHold: TimeInterval = Session.endingHold,
+        endingFade: TimeInterval = Session.endingFade,
+        terminate: @escaping () -> Void = { exit(0) }
     ) {
         self.access = access
         self.dispatchQueue = dispatchQueue
+        self.endingHold = endingHold
+        self.endingFade = endingFade
+        self.terminate = terminate
     }
 
     /// Installed before the panel opens so a signal during setup still closes it: the
@@ -119,6 +134,7 @@ final class Session {
 
     func handle(_ key: OverlayKey) {
         if key == .escape { return teardown() }
+        guard !ending else { return }
         if let move = key.selectionMove {
             let before = selection
             selection.apply(move)
@@ -170,7 +186,7 @@ final class Session {
     }
 
     private func refreshActionPanels(with presented: [PresentedNotification]?) {
-        guard !tearingDown else { return }
+        guard !tearingDown, !ending else { return }
         redraw(with: presented)
         DispatchQueue.main.asyncAfter(deadline: .now() + Self.refreshInterval) { [weak self] in
             MainActor.assumeIsolated { self?.scheduleRead() }
@@ -191,13 +207,13 @@ final class Session {
 
     private func readNow() {
         read { session, presented in
-            guard !session.tearingDown else { return }
+            guard !session.tearingDown, !session.ending else { return }
             session.redraw(with: presented)
         }
     }
 
     private func read(then apply: @escaping (Session, [PresentedNotification]?) -> Void) {
-        guard !tearingDown else { return }
+        guard !tearingDown, !ending else { return }
         nonisolated(unsafe) let access = access
         nonisolated(unsafe) let apply = apply
         DispatchQueue.global(qos: .userInitiated).async {
@@ -213,6 +229,7 @@ final class Session {
         hasDrawn = true
         selection = selection.clamped(to: presented.count)
         presentedDecorator?(presented)
+        if presented.isEmpty, !ending, !tearingDown { beginEnding() }
         guard let window, let primary = NSScreen.screens.first else { return }
         let panels: ActionPanelsWindow
         if let existing = panelsWindow {
@@ -230,9 +247,27 @@ final class Session {
             primaryScreenHeight: primary.frame.height)
     }
 
+    private func beginEnding() {
+        ending = true
+        window?.showEndingLabel(Self.endingLabel)
+        DispatchQueue.main.asyncAfter(deadline: .now() + endingHold) { [weak self] in
+            MainActor.assumeIsolated { self?.fadeOut() }
+        }
+    }
+
+    private func fadeOut() {
+        guard !tearingDown else { return }
+        guard let window else { return teardown() }
+        window.fadeOut(duration: endingFade) { [weak self] in
+            MainActor.assumeIsolated { self?.teardown() }
+        }
+    }
+
     func teardown() {
+        guard !terminated else { return }
+        terminated = true
         releaseScreen()
-        exit(0)
+        terminate()
     }
 
     func releaseScreen() {

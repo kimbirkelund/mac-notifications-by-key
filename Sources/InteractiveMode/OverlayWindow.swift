@@ -37,11 +37,60 @@ extension OverlayKey {
     }
 }
 
+final class FarewellWindow: NSWindow {
+    private let label = NSTextField(labelWithString: "")
+
+    init(frame: CGRect, level: NSWindow.Level) {
+        super.init(contentRect: frame, styleMask: .borderless, backing: .buffered, defer: false)
+        self.level = level
+        collectionBehavior = [.canJoinAllSpaces, .fullScreenAuxiliary, .stationary]
+        isOpaque = false
+        backgroundColor = .clear
+        ignoresMouseEvents = true
+        hasShadow = false
+        isReleasedWhenClosed = false
+        title = "Farewell"
+
+        label.font = .systemFont(ofSize: 64, weight: .semibold)
+        label.textColor = NSColor(red: 0.1, green: 0.65, blue: 0.25, alpha: 1)
+        label.translatesAutoresizingMaskIntoConstraints = false
+
+        let box = NSView()
+        box.wantsLayer = true
+        box.layer?.backgroundColor = NSColor.black.withAlphaComponent(0.8).cgColor
+        box.layer?.borderColor = NSColor.lightGray.cgColor
+        box.layer?.borderWidth = 3
+        box.layer?.cornerRadius = 24
+        box.translatesAutoresizingMaskIntoConstraints = false
+        box.addSubview(label)
+
+        let content = NSView(frame: NSRect(origin: .zero, size: frame.size))
+        content.addSubview(box)
+        NSLayoutConstraint.activate([
+            box.centerXAnchor.constraint(equalTo: content.centerXAnchor),
+            box.centerYAnchor.constraint(equalTo: content.centerYAnchor),
+            label.leadingAnchor.constraint(equalTo: box.leadingAnchor, constant: 40),
+            label.trailingAnchor.constraint(equalTo: box.trailingAnchor, constant: -40),
+            label.topAnchor.constraint(equalTo: box.topAnchor, constant: 20),
+            label.bottomAnchor.constraint(equalTo: box.bottomAnchor, constant: -20),
+        ])
+        contentView = content
+    }
+
+    override var canBecomeKey: Bool { false }
+    override var canBecomeMain: Bool { false }
+
+    func show(_ text: String) {
+        label.stringValue = text
+    }
+}
+
 final class OverlayWindow: NSWindow {
     private static let dockWindowLevel = NSWindow.Level(
         rawValue: Int(CGWindowLevelForKey(.dockWindow)))
 
     var onKey: ((OverlayKey) -> Void)?
+    private var farewell: FarewellWindow?
 
     init(frame: CGRect) {
         super.init(contentRect: frame, styleMask: .borderless, backing: .buffered, defer: false)
@@ -54,19 +103,24 @@ final class OverlayWindow: NSWindow {
         hasShadow = false
         isReleasedWhenClosed = false
         title = "Notifications"
+        contentView = NSView(frame: NSRect(origin: .zero, size: frame.size))
+    }
 
-        let label = NSTextField(labelWithString: "Notifications")
-        label.font = .systemFont(ofSize: 64, weight: .semibold)
-        label.textColor = .white
-        label.translatesAutoresizingMaskIntoConstraints = false
+    func showEndingLabel(_ text: String) {
+        let farewell = FarewellWindow(frame: frame, level: level)
+        farewell.show(text)
+        addChildWindow(farewell, ordered: .above)
+        farewell.orderFront(nil)
+        self.farewell = farewell
+    }
 
-        let content = NSView(frame: NSRect(origin: .zero, size: frame.size))
-        content.addSubview(label)
-        NSLayoutConstraint.activate([
-            label.centerXAnchor.constraint(equalTo: content.centerXAnchor),
-            label.centerYAnchor.constraint(equalTo: content.centerYAnchor),
-        ])
-        contentView = content
+    func fadeOut(duration: TimeInterval, completion: @escaping () -> Void) {
+        NSAnimationContext.runAnimationGroup(
+            { context in
+                context.duration = duration
+                self.animator().alphaValue = 0
+                self.farewell?.animator().alphaValue = 0
+            }, completionHandler: completion)
     }
 
     override var canBecomeKey: Bool { true }

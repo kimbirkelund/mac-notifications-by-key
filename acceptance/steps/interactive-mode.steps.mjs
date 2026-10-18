@@ -77,11 +77,23 @@ Then('the overlay is the frontmost application', STEP, async function () {
   assert.ok(frontmost, 'expected nbk to be the frontmost application')
 })
 
-Then('the overlay shows the mode label', STEP, async function () {
+Then('the overlay shows no label', STEP, async function () {
   const wins = await waitForOverlay(this)
   assert.ok(
-    wins.some((w) => w.labels.length > 0),
-    `expected the overlay to show a label; windows: ${JSON.stringify(wins)}`
+    wins.every((w) => w.labels.length === 0),
+    `expected the overlay to show no label; windows: ${JSON.stringify(wins)}`
+  )
+})
+
+Then('the overlay shows the label {string}', STEP, async function (label) {
+  let last = []
+  const shown = await this.pollUntil(async () => {
+    last = await this.overlayWindows()
+    return last.some((w) => w.labels.includes(label))
+  }, SETTLE_MS)
+  assert.ok(
+    shown,
+    `expected an overlay label ${JSON.stringify(label)}; windows: ${JSON.stringify(last)}`
   )
 })
 

@@ -9,10 +9,10 @@ for `C-*`/`X-*`.
 - **RIM-1 (event) — Overlay signals the active mode and owns input.** When the user runs
   `interactive`, the system shall display a screen-filling borderless window on every Space, above
   every window except the Notification Center panel — which stays on top of it and reachable —
-  tinted and bearing a visible mode label; shall become the active application and hold keyboard
-  focus; and shall keep that overlay visible until interactive mode ends, though focus may leave it
-  when the user interacts with the panel. Keyboard and mouse input shall be received by the overlay
-  and shall **not** reach the windows beneath it; the panel, being above it, is not covered by this.
+  tinted and bearing no text; shall become the active application and hold keyboard focus; and shall
+  keep that overlay visible until interactive mode ends, though focus may leave it when the user
+  interacts with the panel. Keyboard and mouse input shall be received by the overlay and shall
+  **not** reach the windows beneath it; the panel, being above it, is not covered by this.
 
 - **RIM-2 (state) — The overlay is a translucent tint.** While interactive mode is active, the
   overlay shall be translucent rather than opaque, keeping the desktop visible underneath it so the
@@ -92,10 +92,10 @@ for `C-*`/`X-*`.
 
 - **RIM-16 (event) — No notifications left ends the mode.** When no notification is presented while
   interactive mode is active — on entering the mode with an empty panel, or once the last one goes
-  away — the system shall replace the mode label with the text `No more jobs!`, fade the overlay
-  out, and then end interactive mode with the same teardown as [RIM-6](#ending-the-mode): overlay
-  removed, panel closed, exit `0`. While the label is showing, movement and activator keys shall do
-  nothing; Escape and signals shall still end the mode at once. The fade's duration is feature work;
+  away — the system shall show the text `No more jobs!` on the overlay, fade the overlay out, and
+  then end interactive mode with the same teardown as [RIM-6](#ending-the-mode): overlay removed,
+  panel closed, exit `0`. While the label is showing, movement and activator keys shall do nothing;
+  Escape and signals shall still end the mode at once. The fade's duration is feature work;
   acceptance only bounds the whole exit.
 
 - **RIM-17 (unwanted) — Unbound key.** If a key is pressed while the overlay holds focus that is
@@ -166,6 +166,6 @@ for `C-*`/`X-*`.
   a small helper dumping the on-screen window list: `RIM-1`'s panel-above-overlay stacking and
   `RIM-2`'s translucency. `RIM-1`'s "on every Space" clause and the tint color have no practical
   automated check at all and are accepted as visually verified.
-- **Overlay appearance.** Tint color, label text, font, exact opacity, multi-display behavior
+- **Overlay appearance.** Tint color, farewell styling, font, exact opacity, multi-display behavior
   (mirror on every screen vs. main only). Feature-work detail, deliberately not pinned as acceptance
   criteria beyond [RIM-2](#mode-signal)'s "translucent, not opaque".
