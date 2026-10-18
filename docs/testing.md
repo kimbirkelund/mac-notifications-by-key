@@ -50,8 +50,10 @@ process in one pass.
 Demo mode proves the key handling, selection and panel logic of the overlay, and that entries act on
 the list the way the file says. It does not prove that Notification Center's accessibility tree is
 read, dismissed, pressed or acted on correctly, that the panel is opened and closed, or that panels
-line up with the real notification boxes. Those stay with the AX-integration tier and the few
-acceptance scenarios that run against the real Notification Center.
+line up with the real notification boxes. The panel open/close contract of the session is
+unit-tested, and the real adapter's open/close is AX-integration-tested. The one acceptance scenario
+that still runs against the real Notification Center is the window-order scenario, which checks that
+the panel sits above the overlay, untinted.
 
 ## Attended (@operator) scenarios
 

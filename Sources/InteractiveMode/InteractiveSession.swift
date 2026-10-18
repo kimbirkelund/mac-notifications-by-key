@@ -231,6 +231,11 @@ final class Session {
     }
 
     func teardown() {
+        releaseScreen()
+        exit(0)
+    }
+
+    func releaseScreen() {
         guard !tearingDown else { return }
         tearingDown = true
         panelsWindow?.orderOut(nil)
@@ -240,6 +245,5 @@ final class Session {
         } catch {
             Self.reportError(error)
         }
-        exit(0)
     }
 }

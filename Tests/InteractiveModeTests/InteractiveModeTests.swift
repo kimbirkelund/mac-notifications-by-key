@@ -51,6 +51,7 @@ private final class RecordingAccess: NotificationCenterAccess, @unchecked Sendab
         case dismiss(Int)
         case press(Int)
         case perform(String, Int)
+        case setPanelOpen(Bool)
     }
 
     private let lock = NSLock()
@@ -85,7 +86,18 @@ private final class RecordingAccess: NotificationCenterAccess, @unchecked Sendab
     func perform(action displayName: String, index: Int) throws {
         record(.perform(displayName, index))
     }
-    func setPanelOpen(_ open: Bool) throws {}
+    func setPanelOpen(_ open: Bool) throws { record(.setPanelOpen(open)) }
+}
+
+@MainActor @Suite struct SessionReleaseScreenTests {
+    /// RIM-6: the panel is closed exactly once however often the screen is released.
+    @Test func releaseScreenClosesThePanelOnce() {
+        let access = RecordingAccess()
+        let session = Session(access: access)
+        session.releaseScreen()
+        session.releaseScreen()
+        #expect(access.calls == [.setPanelOpen(false)])
+    }
 }
 
 @MainActor @Suite struct SessionKeyDispatchTests {

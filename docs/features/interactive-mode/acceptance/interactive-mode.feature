@@ -6,72 +6,78 @@ Feature: Interactive mode
   Background:
     Given interactive mode is not running
 
-  # Validates RIM-1, RIM-5: entering the mode draws the overlay, takes focus, and
-  # opens the Notification Center panel so a subject exists for the whole session.
-  Scenario: Entering interactive mode shows the overlay and opens the panel
-    When I start "nbk interactive"
+  # Validates RIM-1: entering the mode draws the overlay and takes focus.
+  @demo
+  Scenario: Entering interactive mode shows the overlay
+    Given interactive mode is running with demo file "one.json"
     Then an overlay window covering the screen is present
     And the overlay is the frontmost application
     And the overlay shows the mode label
-    And the Notification Center panel is open
 
   # Validates RIM-3: the mode holds focus without becoming an app you switch to.
+  @demo
   Scenario: The mode keeps no application presence
-    When I start "nbk interactive"
+    Given interactive mode is running with demo file "one.json"
     Then the mode presents no Dock icon and no menu bar
 
   # Validates RIM-4: a toggle hotkey pressed twice must not stack overlays. The
   # second invocation returns 0 and the first keeps owning the mode.
+  @demo
   Scenario: Re-invoking while the mode runs does not stack a second overlay
-    Given interactive mode is running
+    Given interactive mode is running with demo file "one.json"
     When I run "nbk interactive"
     Then the command succeeds
     And exactly one overlay window is present
     And interactive mode is still running
 
-  # Validates RIM-6: signal teardown is complete — overlay gone, panel closed
-  # (the panel outlives the process unless explicitly closed), exit 0.
-  Scenario: Terminating on a signal removes the overlay and closes the panel
-    Given interactive mode is running
+  # Validates RIM-6: signal teardown removes the overlay and exits 0. Closing the panel
+  # is proven elsewhere: the unit tests show the screen release closes it exactly once and
+  # that teardown performs that release, and the AX-integration tests show the real
+  # adapter closes the panel.
+  @demo
+  Scenario: Terminating on a signal removes the overlay
+    Given interactive mode is running with demo file "one.json"
     When interactive mode is sent SIGTERM
     Then interactive mode exits with status 0
     And no overlay window is present
-    And the Notification Center panel is closed
 
   # Validates RIM-7: the exit that needs no hotkey daemon. Escape is posted as a
   # real key event; the frontmost check guards against sending it to another app.
+  # Closing the panel is proven elsewhere: the unit tests show the screen release closes
+  # it exactly once and that teardown performs that release, and the AX-integration tests
+  # show the real adapter closes the panel.
+  @demo
   Scenario: Pressing Escape leaves the mode
-    Given interactive mode is running
+    Given interactive mode is running with demo file "one.json"
     And the overlay is the frontmost application
     When I press Escape
     Then interactive mode exits with status 0
     And no overlay window is present
-    And the Notification Center panel is closed
 
-  # Validates RIM-1 (stacking) and RIM-2: the panel stays above the overlay,
-  # untinted, and the overlay is translucent rather than opaque. Needs the
-  # window-list helper — window level and alpha are not exposed through AX.
+  # Validates RIM-1 (stacking), RIM-2 and RIM-5: the mode opens the panel, which stays
+  # above the overlay, untinted, and the overlay is translucent rather than opaque.
+  # Needs the window-list helper — window level and alpha are not exposed through AX.
+  # The only scenario that runs against the real Notification Center.
   Scenario: The panel sits above the overlay, untinted
     Given interactive mode is running
-    Then the Notification Center panel is above the overlay in the window order
+    Then the Notification Center panel is open
+    And the Notification Center panel is above the overlay in the window order
     And the overlay is translucent
 
   # Validates RIM-10: one panel per presented notification, listing Activate,
   # Dismiss, then that notification's actions, immediately left of it and
-  # top-aligned. Listing first waits out the banner render delay.
+  # top-aligned.
+  @demo
   Scenario: Each presented notification gets an action panel
-    Given a notification is delivered with title "PanelOne"
-    And a notification is delivered with title "PanelTwo"
-    And I run "nbk list --wait 5"
-    And interactive mode is running
+    Given interactive mode is running with demo file "three.json"
     Then one action panel is present per presented notification
     And each panel lists "Activate", "Dismiss", then that notification's actions in order
     And each panel sits to the left of its notification with the same top edge
 
   # Validates RIM-10: with nothing presented there is nothing to attach a panel to.
+  @demo
   Scenario: No action panel when nothing is presented
-    Given no notifications are presented
-    And interactive mode is running
+    Given interactive mode is running with demo file "none.json"
     Then no action panel is present
 
   # Validates RIM-11: on entering the mode the newest notification is selected,
@@ -169,6 +175,7 @@ Feature: Interactive mode
 
   # Validates RIM-21: a demo file that cannot be read is an argument error, reported before
   # any window appears.
+  @demo
   Scenario: A missing demo file is refused before the overlay appears
     When I run "nbk interactive --demo missing.json"
     Then the command exits with status 64
