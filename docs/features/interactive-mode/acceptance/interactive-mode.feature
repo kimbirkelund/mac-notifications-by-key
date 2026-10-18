@@ -59,7 +59,8 @@ Feature: Interactive mode
   # Needs the window-list helper — window level and alpha are not exposed through AX.
   # The only scenario that runs against the real Notification Center.
   Scenario: The panel sits above the overlay, untinted
-    Given interactive mode is running
+    Given a notification is delivered with title "Order"
+    And interactive mode is running
     Then the Notification Center panel is open
     And the Notification Center panel is above the overlay in the window order
     And the overlay is translucent
@@ -74,11 +75,34 @@ Feature: Interactive mode
     And each panel lists "Activate", "Dismiss", then that notification's actions in order
     And each panel sits to the left of its notification with the same top edge
 
-  # Validates RIM-10: with nothing presented there is nothing to attach a panel to.
+  # Validates RIM-10, RIM-16: with nothing presented there is nothing to attach a panel
+  # to, and the mode has nothing left to be the subject of, so it ends.
   @demo
-  Scenario: No action panel when nothing is presented
+  Scenario: Nothing presented on entry ends the mode
     Given interactive mode is running with demo file "none.json"
-    Then no action panel is present
+    Then the overlay shows the label "No more jobs!"
+    And no action panel is present
+    And interactive mode exits with status 0
+    And no overlay window is present
+
+  # Validates RIM-16: dismissing the last notification empties the list and ends the mode.
+  @demo
+  Scenario: Dismissing the last notification ends the mode
+    Given interactive mode is running with demo file "one.json"
+    And the overlay is the frontmost application
+    When I press "d"
+    Then the overlay shows the label "No more jobs!"
+    And no action panel is present
+    And interactive mode exits with status 0
+    And no overlay window is present
+
+  # Validates RIM-16: Escape during the farewell does not wait for the fade.
+  @demo
+  Scenario: Escape during the farewell ends the mode at once
+    Given interactive mode is running with demo file "none.json"
+    And the overlay shows the label "No more jobs!"
+    When I press Escape
+    Then interactive mode exits with status 0
 
   # Validates RIM-11: on entering the mode the newest notification is selected,
   # and only one panel is selected at a time. Fixture notifications, so there is

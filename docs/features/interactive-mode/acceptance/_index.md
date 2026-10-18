@@ -4,7 +4,7 @@ BDD scenarios (Gherkin) specifying interactive mode. These `.feature` files **ar
 acceptance tests: [cucumber-js](https://github.com/cucumber/cucumber-js) runs them against the
 compiled `nbk` binary as a black box, using the step definitions in `acceptance/steps/`.
 
-The seventeen unattended scenarios run in the default acceptance run. All but one run in demo mode
+The nineteen unattended scenarios run in the default acceptance run. All but one run in demo mode
 ([RIM-21](../requirements.md#demo-mode)) and never touch the real Notification Center; the exception
 is the window-order scenario, which needs the real panel. The trust scenario is `@operator` and runs
 only attended.
@@ -18,7 +18,9 @@ only attended.
 | Pressing Escape leaves the mode (demo)                      | RIM-7               | ✅                                             |
 | The panel sits above the overlay, untinted                  | RIM-1, RIM-2, RIM-5 | ✅                                             |
 | Each presented notification gets an action panel (demo)     | RIM-10              | ✅                                             |
-| No action panel when nothing is presented (demo)            | RIM-10              | ✅                                             |
+| Nothing presented on entry ends the mode (demo)             | RIM-10, RIM-16      | ⏳                                             |
+| Dismissing the last notification ends the mode (demo)       | RIM-16              | ⏳                                             |
+| Escape during the farewell ends the mode at once (demo)     | RIM-16              | ⏳                                             |
 | The newest notification is selected on entry (demo)         | RIM-11              | ✅                                             |
 | The selected panel shows lower-case activators (demo)       | RIM-13              | ✅                                             |
 | Moving the selection between notifications (demo)           | RIM-12              | ✅                                             |
@@ -77,6 +79,8 @@ is open always comes from the AX check described in the AX reference.
 - **RIM-6's "closed even if it was already open before entering"** — no tier proves it; the unit
   tests cover only that the screen release closes the panel, and no real-panel scenario enters the
   mode with the panel already open.
+- **RIM-16's "keys are ignored during the farewell"** — the farewell is too brief to probe reliably
+  with real key events. Belongs in the unit tier, against the key handling.
 - **Tint color and exact opacity** — pixel properties. `RIM-2` is asserted only as "not opaque"; the
   rest is [appearance detail](../requirements.md#open-seeds-not-yet-specified).
 

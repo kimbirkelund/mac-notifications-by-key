@@ -15,9 +15,12 @@ signal, the action panels, and selecting a notification.
 - **Invoking it again** — does not stack a second overlay; the already-running mode is brought
   forward and refocused, and the new invocation exits immediately. A toggle hotkey pressed twice
   cannot leave two overlays on screen.
-- **Ending it** — two ways in, two ways out: an interrupt or terminate signal, which is what a
-  hotkey bound to "leave notifications mode" sends, or **Escape** on the overlay itself. Either way
-  the overlay disappears, the panel is closed, input is released, and the process exits `0`.
+- **Ending it** — three ways out: an interrupt or terminate signal, which is what a hotkey bound to
+  "leave notifications mode" sends; **Escape** on the overlay itself; or **no notifications left**,
+  whether the panel was empty on entry or the last notification was just dismissed. In that case the
+  mode label is replaced by `No more jobs!`, the overlay fades out, and the mode ends; Escape while
+  the farewell shows ends it at once, and other keys are ignored. Whichever way it ends, the overlay
+  disappears, the panel is closed, input is released, and the process exits `0`.
 
 ## Mental model
 
@@ -27,9 +30,9 @@ hotkey ──► nbk interactive ──► panel opened, overlay drawn, takes fo
               all keyboard and mouse input goes to the overlay;
               the windows beneath it receive none of it
                                     │
-hotkey ──► signal ──┐
-                    ├──────────► overlay gone, panel closed, input released, exit 0
-Escape on overlay ──┘
+hotkey ──► signal ──────────────────┐
+Escape on overlay ──────────────────┼──► overlay gone, panel closed,
+no notifications left ► farewell ──┘    input released, exit 0
 ```
 
 ## What the overlay is, and is not
@@ -116,10 +119,10 @@ costs nothing.
 ## Scope
 
 In scope: entering the mode, opening the Notification Center panel, the overlay that signals the
-mode and holds focus, re-invoking while it runs, and leaving the mode again by signal or Escape —
-closing the panel on the way out. **Out of scope** (open seeds): `clear-all` / `clear-all-for-app`,
-reacting to notifications arriving while the mode is active (beyond redrawing the action panels),
-and which application regains focus once the overlay closes.
+mode and holds focus, re-invoking while it runs, and leaving the mode again by signal, Escape, or
+the list emptying — closing the panel on the way out. **Out of scope** (open seeds): `clear-all` /
+`clear-all-for-app`, reacting to notifications arriving while the mode is active (beyond redrawing
+the action panels), and which application regains focus once the overlay closes.
 
 ## Conventions
 

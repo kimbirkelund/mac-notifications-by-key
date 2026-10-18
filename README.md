@@ -28,7 +28,8 @@ nbk list [--wait <seconds>]      # JSON of presented notifications, newest first
 nbk dismiss <index>              # dismiss the notification at <index>
 nbk action <index> <name>        # perform a named action (e.g. "Show")
 nbk press <index>                # default activation (open)
-nbk interactive [--demo <file>]  # overlay mode: opens the NC panel; Escape or SIGINT/SIGTERM ends it;
+nbk interactive [--demo <file>]  # overlay mode: opens the NC panel; Escape, SIGINT/SIGTERM, or
+                                 # no notifications left ends it;
                                  # --demo presents the notifications in <file> instead
 nbk doctor                       # report Accessibility trust, NC pid, macOS version
 ```
