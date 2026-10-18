@@ -306,7 +306,7 @@ JSON.stringify(out)`
  * capturing exit code / stdout / stderr for assertions. The clear/poll helpers
  * keep the shared, real Notification Center deterministic across scenarios.
  */
-class NbkWorld extends World {
+export class NbkWorld extends World {
   lastResult = null
 
   interactive = null
@@ -719,14 +719,19 @@ class NbkWorld extends World {
     }
   }
 
-  // Let a closing panel finish first, so the press opens it rather than racing the close.
+  // Let a closing panel finish first, so the press opens it rather than racing the
+  // close. A press can still be swallowed when another app is activating (a scenario
+  // that pressed a notification just activated its sender), so press once more if
+  // the panel still reads closed; never while it reads open.
   async openPanelIfClosed() {
     if (await this.isPanelSettledOpen()) return
-    await this.waitForPanel(false)
-    await this.pressClock('open')
-    if (!(await this.waitForPanel(true))) {
-      throw new Error('the Notification Center panel did not open')
+    for (let attempt = 0; attempt < 2; attempt++) {
+      await this.waitForPanel(false)
+      await this.pressClock('open')
+      if (await this.waitForPanel(true)) return
+      if (await this.isPanelOpen()) return
     }
+    throw new Error('the Notification Center panel did not open')
   }
 
   pollUntil(probe, timeoutMs, intervalMs) {
