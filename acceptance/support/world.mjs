@@ -111,29 +111,6 @@ tell application "System Events"
   return false
 end tell`
 
-// Our overlay windows across every process named like the binary (a re-invocation
-// is a second process), as JSON [{pid, name, x, y, width, height, labels}].
-const OVERLAY_WINDOWS_SCRIPT = `
-const se = Application('System Events')
-const out = []
-for (const p of se.applicationProcesses.whose({ name: ${JSON.stringify(NBK_PROCESS)} })()) {
-  const pid = p.unixId()
-  for (const w of p.windows()) {
-    const [x, y] = w.position()
-    const [width, height] = w.size()
-    let labels = []
-    try {
-      labels = w.staticTexts.value().filter((v) => typeof v === 'string' && v.trim() !== '')
-    } catch (e) {}
-    let name = ''
-    try {
-      name = w.name() ?? ''
-    } catch (e) {}
-    out.push({ pid, name, x, y, width, height, labels })
-  }
-}
-JSON.stringify(out)`
-
 // Notification frames in the NC panel, in tree order (newest first), as JSON
 // [{title, x, y, width, height}]. A notification is an AXGroup exposing AXPress,
 // matched pre-order and descended into, as nbk does (stack members nest);
@@ -549,20 +526,14 @@ class NbkWorld extends World {
   // hung step or an earlier run still owns the screen). Scoped to the interactive
   // subcommand so one-shot nbk commands from other runs are left alone.
   async interactivePids() {
-    try {
-      const { stdout } = await run('pgrep', ['-x', NBK_PROCESS])
-      const pids = stdout.split('\n').filter(Boolean).map(Number)
-      const out = []
-      for (const pid of pids) {
-        try {
-          const { stdout: args } = await run('ps', ['-o', 'args=', '-p', String(pid)])
-          if (/(^|\s)interactive(\s|$)/.test(args.trim())) out.push(pid)
-        } catch {}
-      }
-      return out
-    } catch {
-      return []
+    const out = []
+    for (const pid of await this.nbkPids()) {
+      try {
+        const { stdout: args } = await run('ps', ['-o', 'args=', '-p', String(pid)])
+        if (/(^|\s)interactive(\s|$)/.test(args.trim())) out.push(pid)
+      } catch {}
     }
+    return out
   }
 
   // SIGTERM (so teardown can close the panel), then SIGKILL whatever remains.
@@ -580,8 +551,37 @@ class NbkWorld extends World {
     await pollUntil(async () => (await this.interactivePids()).length === 0, 2000)
   }
 
+  // Our windows across every process named like the binary (a re-invocation is a
+  // second process): [{pid, name, x, y, width, height, labels}], labels being the
+  // non-empty static texts directly under the window.
   async overlayWindows() {
-    return JSON.parse(await osascript(OVERLAY_WINDOWS_SCRIPT, 'JavaScript'))
+    const out = []
+    for (const pid of await this.nbkPids()) {
+      for (const w of await this.axTree(pid)) {
+        const labels = staticTextsOf(w)
+          .map((t) => t.value)
+          .filter((v) => typeof v === 'string' && v.trim() !== '')
+        out.push({
+          pid,
+          name: w.title ?? '',
+          x: w.x,
+          y: w.y,
+          width: w.width,
+          height: w.height,
+          labels
+        })
+      }
+    }
+    return out
+  }
+
+  async nbkPids() {
+    try {
+      const { stdout } = await run('pgrep', ['-x', NBK_PROCESS])
+      return stdout.split('\n').filter(Boolean).map(Number)
+    } catch {
+      return []
+    }
   }
 
   async notificationFrames() {
