@@ -18,9 +18,9 @@ signal, the action panels, and selecting a notification.
 - **Ending it** — three ways out: an interrupt or terminate signal, which is what a hotkey bound to
   "leave notifications mode" sends; **Escape** on the overlay itself; or **no notifications left**,
   whether the panel was empty on entry or the last notification was just dismissed. In that case the
-  mode label is replaced by `No more jobs!`, the overlay fades out, and the mode ends; Escape while
-  the farewell shows ends it at once, and other keys are ignored. Whichever way it ends, the overlay
-  disappears, the panel is closed, input is released, and the process exits `0`.
+  overlay shows `No more jobs!`, the overlay fades out, and the mode ends; Escape while the farewell
+  shows ends it at once, and other keys are ignored. Whichever way it ends, the overlay disappears,
+  the panel is closed, input is released, and the process exits `0`.
 
 ## Mental model
 
@@ -40,7 +40,7 @@ no notifications left ► farewell ──┘    input released, exit 0
 The overlay is **not** a notification list. macOS already draws the notifications, with the app
 icons, text, and animations the user recognizes; a second copy rendered from data read over AX would
 lag the real thing and disagree with it. So the overlay covers the whole screen but shows almost
-nothing: a translucent tint and a label naming the mode.
+nothing: a translucent tint, with no text until the farewell.
 
 That makes its required properties unusually strict, and each one is observable:
 

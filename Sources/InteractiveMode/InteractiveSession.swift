@@ -258,10 +258,7 @@ final class Session {
     private func fadeOut() {
         guard !tearingDown else { return }
         guard let window else { return teardown() }
-        NSAnimationContext.runAnimationGroup { context in
-            context.duration = endingFade
-            window.animator().alphaValue = 0
-        } completionHandler: { [weak self] in
+        window.fadeOut(duration: endingFade) { [weak self] in
             MainActor.assumeIsolated { self?.teardown() }
         }
     }

@@ -12,7 +12,7 @@ Feature: Interactive mode
     Given interactive mode is running with demo file "one.json"
     Then an overlay window covering the screen is present
     And the overlay is the frontmost application
-    And the overlay shows the mode label
+    And the overlay shows no label
 
   # Validates RIM-3: the mode holds focus without becoming an app you switch to.
   @demo

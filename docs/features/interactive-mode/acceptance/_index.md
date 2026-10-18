@@ -41,7 +41,7 @@ notification access uses. None needs a new framework.
   interactive mode never exits on its own. The harness spawns it, retains the handle, and awaits a
   promise for the exit status. Cleanup stops any leftover interactive process and closes the panel.
 - **Overlay introspection.** System Events can enumerate our own AX windows (existence, position,
-  size, and the mode label as static text) with no extra tooling or permission.
+  size, and any label as static text) with no extra tooling or permission.
 - **A real key event.** `osascript -e 'tell application "System Events" to key code 53'` posts
   Escape. Because it goes to whatever holds focus, the step asserts the overlay is frontmost first —
   otherwise a mistimed keystroke lands in the developer's editor and the failure is misleading.
