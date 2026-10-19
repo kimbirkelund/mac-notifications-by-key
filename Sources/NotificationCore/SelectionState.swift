@@ -28,6 +28,29 @@ public struct SelectionState: Equatable, Sendable {
     }
 }
 
+extension NotificationItem {
+    public func sameNotification(as other: NotificationItem) -> Bool {
+        app == other.app && title == other.title && subtitle == other.subtitle
+            && body == other.body && isCollapsedStack == other.isCollapsedStack
+    }
+}
+
+extension SelectionState {
+    public func following(
+        previous: [PresentedNotification], current: [PresentedNotification]
+    ) -> SelectionState {
+        guard let selected = selectedIndex, previous.indices.contains(selected) else {
+            return clamped(to: current.count)
+        }
+        let target = previous[selected].item
+        let nearest = current.indices
+            .filter { current[$0].item.sameNotification(as: target) }
+            .min { abs($0 - selected) < abs($1 - selected) }
+        guard let nearest else { return clamped(to: current.count) }
+        return SelectionState(count: current.count, selectedIndex: nearest)
+    }
+}
+
 public enum SelectionMove: Equatable, Sendable {
     case up, down
 }
