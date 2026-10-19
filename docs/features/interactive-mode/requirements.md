@@ -158,6 +158,13 @@ for `C-*`/`X-*`.
   [RIM-15](#selection-and-actions) covers only the selected notification going away; arrivals and
   removals elsewhere in the list are unspecified. Overlaps the existing watch/daemon seed in
   [notification-access](../notification-access/requirements.md#open-seeds-not-yet-specified).
+- **Launch on unlock.** A daemon mode — a background process that outlives any one `interactive` run
+  — that enters interactive mode when the machine is unlocked, so whatever arrived while the screen
+  was locked is triaged before anything else. Unspecified: how the daemon is started and stopped (a
+  launchd agent is the obvious host), whether it enters the mode only when something is presented,
+  and how it coexists with [RIM-4](#mode-signal)'s re-invocation rule. Overlaps the watch/daemon
+  seed in
+  [notification-access](../notification-access/requirements.md#open-seeds-not-yet-specified).
 - **Window level and opacity assertions.** Most of this feature is acceptance-testable — see the
   [acceptance scenarios](acceptance/_index.md). Two properties are not reachable through AX and need
   a small helper dumping the on-screen window list: `RIM-1`'s panel-above-overlay stacking and
