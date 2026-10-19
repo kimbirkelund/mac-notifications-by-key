@@ -11,11 +11,18 @@ public final class DemoNotificationCenterAccess: NotificationCenterAccess, @unch
     private let lock = NSLock()
     private var notifications: [DemoNotification]
     private let screenFrame: CGRect
+    private let now: () -> Date
+    private let start: Date
 
     /// `screenFrame` is in CG coordinates (top-left origin of the primary display).
-    public init(notifications: [DemoNotification], screenFrame: CGRect) {
+    public init(
+        notifications: [DemoNotification], screenFrame: CGRect,
+        now: @escaping () -> Date = Date.init
+    ) {
         self.notifications = notifications
         self.screenFrame = screenFrame
+        self.now = now
+        self.start = now()
     }
 
     public var isTrusted: Bool { true }
@@ -29,9 +36,9 @@ public final class DemoNotificationCenterAccess: NotificationCenterAccess, @unch
 
     public func readPresented() throws -> [PresentedNotification] {
         lock.withLock {
-            notifications.enumerated().map { index, notification in
+            presentedSlots().enumerated().map { index, slot in
                 PresentedNotification(
-                    item: notification.item(index: index), frame: frame(at: index))
+                    item: slot.notification.item(index: index), frame: frame(at: index))
             }
         }
     }
@@ -41,30 +48,44 @@ public final class DemoNotificationCenterAccess: NotificationCenterAccess, @unch
     }
 
     public func clearAll() throws {
-        lock.withLock { notifications.removeAll() }
+        lock.withLock {
+            let positions = Set(presentedSlots().map(\.position))
+            notifications = notifications.enumerated()
+                .filter { !positions.contains($0.offset) }.map(\.element)
+        }
     }
 
     public func clearAll(forApp index: Int) throws {
         try lock.withLock {
-            guard notifications.indices.contains(index) else {
-                throw NbkError.indexOutOfRange(requested: index, count: notifications.count)
+            let slots = presentedSlots()
+            guard slots.indices.contains(index) else {
+                throw NbkError.indexOutOfRange(requested: index, count: slots.count)
             }
-            let app = notifications[index].app
-            notifications.removeAll { $0.app == app }
+            let app = slots[index].notification.app
+            let positions = Set(slots.filter { $0.notification.app == app }.map(\.position))
+            notifications = notifications.enumerated()
+                .filter { !positions.contains($0.offset) }.map(\.element)
         }
     }
 
     public func expand(index: Int) throws {
         try lock.withLock {
-            guard notifications.indices.contains(index) else {
-                throw NbkError.indexOutOfRange(requested: index, count: notifications.count)
+            let slots = presentedSlots()
+            guard slots.indices.contains(index) else {
+                throw NbkError.indexOutOfRange(requested: index, count: slots.count)
             }
-            let stack = notifications[index]
+            let (position, stack) = slots[index]
             guard stack.isCollapsedStack else {
                 throw NbkError.unknownAction(
                     name: "Expand", available: stack.actions.map(\.name))
             }
-            notifications.replaceSubrange(index...index, with: stack.members)
+            notifications.replaceSubrange(
+                position...position,
+                with: stack.members.map {
+                    var member = $0
+                    member.leavesAfter = stack.leavesAfter
+                    return member
+                })
         }
     }
 
@@ -91,10 +112,21 @@ public final class DemoNotificationCenterAccess: NotificationCenterAccess, @unch
 
     private func removeIf(index: Int, _ closes: (DemoNotification) throws -> Bool) throws {
         try lock.withLock {
-            guard notifications.indices.contains(index) else {
-                throw NbkError.indexOutOfRange(requested: index, count: notifications.count)
+            let slots = presentedSlots()
+            guard slots.indices.contains(index) else {
+                throw NbkError.indexOutOfRange(requested: index, count: slots.count)
             }
-            if try closes(notifications[index]) { notifications.remove(at: index) }
+            let (position, notification) = slots[index]
+            if try closes(notification) { notifications.remove(at: position) }
+        }
+    }
+
+    private func presentedSlots() -> [(position: Int, notification: DemoNotification)] {
+        let elapsed = now().timeIntervalSince(start)
+        return notifications.enumerated().compactMap { position, notification in
+            let arrived = elapsed >= (notification.arrivesAfter ?? 0)
+            let left = notification.leavesAfter.map { elapsed >= $0 } ?? false
+            return arrived && !left ? (position, notification) : nil
         }
     }
 

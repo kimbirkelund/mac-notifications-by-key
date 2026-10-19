@@ -31,6 +31,8 @@ public struct DemoNotification: Equatable, Sendable, Codable {
     public var activateCloses: Bool
     public var actions: [DemoAction]
     public var members: [DemoNotification]
+    public var arrivesAfter: TimeInterval?
+    public var leavesAfter: TimeInterval?
 
     public init(
         app: String? = nil,
@@ -39,7 +41,9 @@ public struct DemoNotification: Equatable, Sendable, Codable {
         body: String? = nil,
         activateCloses: Bool = true,
         actions: [DemoAction] = [],
-        members: [DemoNotification] = []
+        members: [DemoNotification] = [],
+        arrivesAfter: TimeInterval? = nil,
+        leavesAfter: TimeInterval? = nil
     ) {
         self.app = app
         self.title = title
@@ -48,10 +52,12 @@ public struct DemoNotification: Equatable, Sendable, Codable {
         self.activateCloses = activateCloses
         self.actions = actions
         self.members = members
+        self.arrivesAfter = arrivesAfter
+        self.leavesAfter = leavesAfter
     }
 
     private enum CodingKeys: String, CodingKey {
-        case app, title, subtitle, body, activateCloses, actions, members
+        case app, title, subtitle, body, activateCloses, actions, members, arrivesAfter, leavesAfter
     }
 
     public init(from decoder: Decoder) throws {
@@ -63,8 +69,12 @@ public struct DemoNotification: Equatable, Sendable, Codable {
             body: try c.decodeIfPresent(String.self, forKey: .body),
             activateCloses: try c.decodeIfPresent(Bool.self, forKey: .activateCloses) ?? true,
             actions: try c.decodeIfPresent([DemoAction].self, forKey: .actions) ?? [],
-            members: try c.decodeIfPresent([DemoNotification].self, forKey: .members) ?? [])
+            members: try c.decodeIfPresent([DemoNotification].self, forKey: .members) ?? [],
+            arrivesAfter: try c.decodeIfPresent(TimeInterval.self, forKey: .arrivesAfter),
+            leavesAfter: try c.decodeIfPresent(TimeInterval.self, forKey: .leavesAfter))
     }
+
+    public var hasTiming: Bool { arrivesAfter != nil || leavesAfter != nil }
 
     public var isCollapsedStack: Bool { !members.isEmpty }
 
@@ -98,6 +108,19 @@ public struct DemoFile: Equatable, Sendable, Codable {
         }
         if hasNestedMembers {
             throw DemoFileError(description: "nested \"members\" are not supported")
+        }
+        for notification in file.notifications {
+            if [notification.arrivesAfter, notification.leavesAfter].contains(where: {
+                ($0 ?? 0) < 0
+            }) {
+                throw DemoFileError(
+                    description: "\"arrivesAfter\" and \"leavesAfter\" must not be negative")
+            }
+            if notification.members.contains(where: \.hasTiming) {
+                throw DemoFileError(
+                    description:
+                        "\"arrivesAfter\" and \"leavesAfter\" are not supported on \"members\"")
+            }
         }
         return file
     }

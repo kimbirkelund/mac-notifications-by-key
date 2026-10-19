@@ -231,4 +231,118 @@ import Testing
             Issue.record("unexpected \(error)")
         }
     }
+
+    private final class Clock: @unchecked Sendable {
+        var date = Date(timeIntervalSince1970: 1_000)
+        func advance(_ seconds: TimeInterval) { date += seconds }
+    }
+
+    private static func timed(
+        _ notifications: [DemoNotification], clock: Clock
+    ) -> DemoNotificationCenterAccess {
+        DemoNotificationCenterAccess(
+            notifications: notifications, screenFrame: screen, now: { clock.date })
+    }
+
+    @Test func notificationIsNotPresentedBeforeArrivesAfterAndIsAfter() throws {
+        let clock = Clock()
+        let access = Self.timed(
+            [DemoNotification(title: "A"), DemoNotification(title: "B", arrivesAfter: 2)],
+            clock: clock)
+        #expect(try Self.titles(access) == ["A"])
+        clock.advance(1.9)
+        #expect(try Self.titles(access) == ["A"])
+        clock.advance(0.1)
+        #expect(try Self.titles(access) == ["A", "B"])
+    }
+
+    @Test func notificationIsGoneAtLeavesAfter() throws {
+        let clock = Clock()
+        let access = Self.timed(
+            [DemoNotification(title: "A", leavesAfter: 3), DemoNotification(title: "B")],
+            clock: clock)
+        #expect(try Self.titles(access) == ["A", "B"])
+        clock.advance(3)
+        #expect(try Self.titles(access) == ["B"])
+    }
+
+    @Test func dismissAfterAnArrivalRemovesTheItemThePresentedIndexNames() throws {
+        let clock = Clock()
+        let access = Self.timed(
+            [
+                DemoNotification(title: "late-top", arrivesAfter: 1),
+                DemoNotification(title: "A"), DemoNotification(title: "B"),
+            ], clock: clock)
+        #expect(try Self.titles(access) == ["A", "B"])
+        clock.advance(1)
+        #expect(try Self.titles(access) == ["late-top", "A", "B"])
+        try access.dismiss(index: 1)
+        #expect(try Self.titles(access) == ["late-top", "B"])
+    }
+
+    @Test func dismissIndexSkipsNotYetArrivedNotifications() throws {
+        let clock = Clock()
+        let access = Self.timed(
+            [
+                DemoNotification(title: "A"), DemoNotification(title: "later", arrivesAfter: 5),
+                DemoNotification(title: "B"),
+            ], clock: clock)
+        try access.dismiss(index: 1)
+        clock.advance(5)
+        #expect(try Self.titles(access) == ["A", "later"])
+    }
+
+    @Test func expandedMembersLeaveWhenTheStackWould() throws {
+        let clock = Clock()
+        let access = Self.timed(
+            [
+                DemoNotification(
+                    title: "S",
+                    members: [DemoNotification(title: "m1"), DemoNotification(title: "m2")],
+                    leavesAfter: 4),
+                DemoNotification(title: "B"),
+            ], clock: clock)
+        try access.expand(index: 0)
+        #expect(try Self.titles(access) == ["m1", "m2", "B"])
+        clock.advance(4)
+        #expect(try Self.titles(access) == ["B"])
+    }
+
+    @Test func clearAllForAppLeavesANotYetArrivedNotificationOfThatApp() throws {
+        let clock = Clock()
+        let access = Self.timed(
+            [
+                DemoNotification(app: "Mail", title: "A"),
+                DemoNotification(app: "Mail", title: "later", arrivesAfter: 5),
+                DemoNotification(app: "Chat", title: "B"),
+            ], clock: clock)
+        try access.clearAll(forApp: 0)
+        #expect(try Self.titles(access) == ["B"])
+        clock.advance(5)
+        #expect(try Self.titles(access) == ["later", "B"])
+    }
+
+    @Test func clearAllLeavesANotYetArrivedNotification() throws {
+        let clock = Clock()
+        let access = Self.timed(
+            [DemoNotification(title: "A"), DemoNotification(title: "later", arrivesAfter: 5)],
+            clock: clock)
+        try access.clearAll()
+        #expect(try Self.titles(access).isEmpty)
+        clock.advance(5)
+        #expect(try Self.titles(access) == ["later"])
+    }
+
+    @Test func expandAfterAnArrivalExpandsTheStackThePresentedIndexNames() throws {
+        let clock = Clock()
+        let access = Self.timed(
+            [
+                DemoNotification(title: "late", arrivesAfter: 1),
+                DemoNotification(title: "S", members: [DemoNotification(title: "m")]),
+            ], clock: clock)
+        clock.advance(1)
+        #expect(try Self.titles(access) == ["late", "S"])
+        try access.expand(index: 1)
+        #expect(try Self.titles(access) == ["late", "m"])
+    }
 }

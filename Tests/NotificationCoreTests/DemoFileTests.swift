@@ -103,4 +103,37 @@ import Testing
                     index: 3, app: "Mail", title: "t", subtitle: nil, body: "b",
                     actions: ["A", "B"]))
     }
+
+    @Test func timingFieldsDecode() throws {
+        let file = try decode(
+            #"{"notifications":[{"title":"a","arrivesAfter":1.5,"leavesAfter":4},{"title":"b"}]}"#)
+        #expect(file.notifications[0].arrivesAfter == 1.5)
+        #expect(file.notifications[0].leavesAfter == 4)
+        #expect(file.notifications[1].arrivesAfter == nil)
+        #expect(file.notifications[1].leavesAfter == nil)
+    }
+
+    @Test func negativeTimingIsRejected() {
+        #expect(throws: DemoFileError.self) {
+            try decode(#"{"notifications":[{"arrivesAfter":-1}]}"#)
+        }
+        #expect(throws: DemoFileError.self) {
+            try decode(#"{"notifications":[{"leavesAfter":-0.5}]}"#)
+        }
+    }
+
+    @Test func timingOnAStackMemberIsRejected() {
+        #expect(throws: DemoFileError.self) {
+            try decode(#"{"notifications":[{"members":[{"title":"a","arrivesAfter":1}]}]}"#)
+        }
+        #expect(throws: DemoFileError.self) {
+            try decode(#"{"notifications":[{"members":[{"title":"a","leavesAfter":1}]}]}"#)
+        }
+    }
+
+    @Test func timingOnAStackItselfIsAllowed() throws {
+        let file = try decode(
+            #"{"notifications":[{"arrivesAfter":2,"members":[{"title":"a"}]}]}"#)
+        #expect(file.notifications[0].arrivesAfter == 2)
+    }
 }
