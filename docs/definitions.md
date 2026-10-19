@@ -34,10 +34,13 @@ Shared domain vocabulary used across all features.
   [interactive mode](features/interactive-mode/_index.md) presents instead of Notification Center's,
   newest first. Each notification may have an `app`, a `title`, a `subtitle`, a `body`, an
   `activateCloses` flag (default true) saying whether activating it removes it, and `actions`
-  (default none). An action is either a bare name, which removes the notification when performed, or
-  an object with a `name` and a `closes` flag. A notification with a non-empty `members` array (each
-  member a notification of the same shape, newest first) is a collapsed stack presented under its
-  own `app` and `title`: expanding it replaces it with its members, dismissing it removes it with
-  its members, and it cannot be activated. Members cannot themselves have `members`. Unknown keys
-  are ignored. A file that is missing, unreadable or not valid is reported as
-  `nbk: --demo: <reason>` with exit status 64, before any window appears.
+  (default none), and may schedule its `arrivesAfter` (it is absent from the list until that many
+  seconds after entering the mode) and its `leavesAfter` (it is removed after that many seconds). An
+  action is either a bare name, which removes the notification when performed, or an object with a
+  `name` and a `closes` flag. A notification with a non-empty `members` array (each member a
+  notification of the same shape, newest first) is a collapsed stack presented under its own `app`
+  and `title`: expanding it replaces it with its members, dismissing it removes it with its members,
+  and it cannot be activated. Members cannot themselves have `members`, nor `arrivesAfter` or
+  `leavesAfter`; both are non-negative numbers of seconds. Unknown keys are ignored. A file that is
+  missing, unreadable or not valid is reported as `nbk: --demo: <reason>` with exit status 64,
+  before any window appears.

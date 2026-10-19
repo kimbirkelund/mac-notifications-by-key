@@ -242,6 +242,34 @@ Feature: Interactive mode
     And the selected panel shows activator "Space" before "Activate"
     And interactive mode is still running
 
+  # Validates RIM-22, RIM-21: a notification arrives above the selected one; the selection stays
+  # on the same notification, now one position lower.
+  @demo
+  Scenario: An arriving notification leaves the selection on the same notification
+    Given interactive mode is running with demo file "arrival.json"
+    And the overlay is the frontmost application
+    When I press "j"
+    Then the action panel at position 2 is selected
+    And the notification titled "Late" becomes presented
+    And one action panel is present per presented notification
+    And the action panel at position 3 is selected
+    And the selected panel shows activator "s" before "Snooze"
+    And interactive mode is still running
+
+  # Validates RIM-22, RIM-21: a notification above the selected one leaves; the selection stays
+  # on the same notification, now at the top.
+  @demo
+  Scenario: A departing notification leaves the selection on the same notification
+    Given interactive mode is running with demo file "departure.json"
+    And the overlay is the frontmost application
+    When I press "j"
+    Then the action panel at position 2 is selected
+    And the notification titled "First" is no longer presented
+    And one action panel is present per presented notification
+    And the topmost action panel is selected
+    And the selected panel shows activator "s" before "Snooze"
+    And interactive mode is still running
+
   # Validates RIM-21: a demo file that cannot be read is an argument error, reported before
   # any window appears.
   @demo

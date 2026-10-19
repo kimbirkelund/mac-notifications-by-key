@@ -4,37 +4,39 @@ BDD scenarios (Gherkin) specifying interactive mode. These `.feature` files **ar
 acceptance tests: [cucumber-js](https://github.com/cucumber/cucumber-js) runs them against the
 compiled `nbk` binary as a black box, using the step definitions in `acceptance/steps/`.
 
-The twenty-three unattended scenarios run in the default acceptance run. All but one run in demo
-mode ([RIM-21](../requirements.md#demo-mode)) and never touch the real Notification Center; the
-exception is the window-order scenario, which needs the real panel. The trust scenario is
-`@operator` and runs only attended.
+The twenty-five unattended scenarios run in the default acceptance run. All but one run in demo mode
+([RIM-21](../requirements.md#demo-mode)) and never touch the real Notification Center; the exception
+is the window-order scenario, which needs the real panel. The trust scenario is `@operator` and runs
+only attended.
 
-| Scenario                                                      | Validates           | Status                                         |
-| ------------------------------------------------------------- | ------------------- | ---------------------------------------------- |
-| Entering the mode shows the overlay (demo)                    | RIM-1               | ✅                                             |
-| The mode keeps no application presence (demo)                 | RIM-3               | ✅                                             |
-| Re-invoking does not stack a second overlay (demo)            | RIM-4               | ✅                                             |
-| Terminating on a signal removes the overlay (demo)            | RIM-6               | ✅                                             |
-| Pressing Escape leaves the mode (demo)                        | RIM-7               | ✅                                             |
-| The panel sits above the overlay, untinted                    | RIM-1, RIM-2, RIM-5 | ✅                                             |
-| Each presented notification gets an action panel (demo)       | RIM-10              | ✅                                             |
-| Nothing presented on entry ends the mode (demo)               | RIM-10, RIM-16      | ✅                                             |
-| Dismissing the last notification ends the mode (demo)         | RIM-16              | ✅                                             |
-| Escape during the farewell ends the mode at once (demo)       | RIM-16              | ✅                                             |
-| The newest notification is selected on entry (demo)           | RIM-11              | ✅                                             |
-| The selected panel shows lower-case activators (demo)         | RIM-13              | ✅                                             |
-| Moving the selection between notifications (demo)             | RIM-12              | ✅                                             |
-| Unbound keys are ignored (demo)                               | RIM-17              | ✅                                             |
-| Pressing d dismisses the selected notification (demo)         | RIM-14              | ✅                                             |
-| Pressing a named action's key performs it (demo)              | RIM-14              | ✅                                             |
-| An action that does not close keeps the notification (demo)   | RIM-14, RIM-21      | ✅                                             |
-| Pressing Space activates the selected notification (demo)     | RIM-14              | ✅                                             |
-| Pressing X clears every notification and ends the mode (demo) | RIM-20, RIM-16      | ✅                                             |
-| Pressing C clears the selected notification's app only (demo) | RIM-20, RIM-15      | ✅                                             |
-| A collapsed stack offers Expand instead of Activate (demo)    | RIM-18              | ✅                                             |
-| Expanding a stack presents its members in its place (demo)    | RIM-18, RIM-15      | ✅                                             |
-| A missing demo file is refused before the overlay (demo)      | RIM-21              | ✅                                             |
-| Missing Accessibility trust is refused                        | RIM-9               | ✅ `@operator` — attended; last run 2026-09-27 |
+| Scenario                                                                | Validates           | Status                                         |
+| ----------------------------------------------------------------------- | ------------------- | ---------------------------------------------- |
+| Entering the mode shows the overlay (demo)                              | RIM-1               | ✅                                             |
+| The mode keeps no application presence (demo)                           | RIM-3               | ✅                                             |
+| Re-invoking does not stack a second overlay (demo)                      | RIM-4               | ✅                                             |
+| Terminating on a signal removes the overlay (demo)                      | RIM-6               | ✅                                             |
+| Pressing Escape leaves the mode (demo)                                  | RIM-7               | ✅                                             |
+| The panel sits above the overlay, untinted                              | RIM-1, RIM-2, RIM-5 | ✅                                             |
+| Each presented notification gets an action panel (demo)                 | RIM-10              | ✅                                             |
+| Nothing presented on entry ends the mode (demo)                         | RIM-10, RIM-16      | ✅                                             |
+| Dismissing the last notification ends the mode (demo)                   | RIM-16              | ✅                                             |
+| Escape during the farewell ends the mode at once (demo)                 | RIM-16              | ✅                                             |
+| The newest notification is selected on entry (demo)                     | RIM-11              | ✅                                             |
+| The selected panel shows lower-case activators (demo)                   | RIM-13              | ✅                                             |
+| Moving the selection between notifications (demo)                       | RIM-12              | ✅                                             |
+| Unbound keys are ignored (demo)                                         | RIM-17              | ✅                                             |
+| Pressing d dismisses the selected notification (demo)                   | RIM-14              | ✅                                             |
+| Pressing a named action's key performs it (demo)                        | RIM-14              | ✅                                             |
+| An action that does not close keeps the notification (demo)             | RIM-14, RIM-21      | ✅                                             |
+| Pressing Space activates the selected notification (demo)               | RIM-14              | ✅                                             |
+| Pressing X clears every notification and ends the mode (demo)           | RIM-20, RIM-16      | ✅                                             |
+| Pressing C clears the selected notification's app only (demo)           | RIM-20, RIM-15      | ✅                                             |
+| A collapsed stack offers Expand instead of Activate (demo)              | RIM-18              | ✅                                             |
+| Expanding a stack presents its members in its place (demo)              | RIM-18, RIM-15      | ✅                                             |
+| An arriving notification keeps the selection on its notification (demo) | RIM-22, RIM-21      | ✅                                             |
+| A departing notification keeps the selection on its notification (demo) | RIM-22, RIM-21      | ✅                                             |
+| A missing demo file is refused before the overlay (demo)                | RIM-21              | ✅                                             |
+| Missing Accessibility trust is refused                                  | RIM-9               | ✅ `@operator` — attended; last run 2026-09-27 |
 
 ## What the harness adds
 
@@ -56,8 +58,9 @@ notification access uses. None needs a new framework.
   position, size, and the action names they list) from the overlay's accessibility windows. Same
   permission, no new tooling.
 - **Fixtures.** Scenarios that need a controlled set of notifications start the mode with
-  `--demo <file>`, the path relative to `acceptance/fixtures/`. Demo mode draws a placeholder per
-  notification, so the harness reads presented notifications from those placeholders instead of
+  `--demo <file>`, the path relative to `acceptance/fixtures/`; a fixture may time a notification's
+  arrival or departure with `arrivesAfter` / `leavesAfter` seconds. Demo mode draws a placeholder
+  per notification, so the harness reads presented notifications from those placeholders instead of
   Notification Center, and never runs `nbk list` in such a scenario.
 - **Keystrokes.** Movement and activator keys are posted through System Events, each step first
   asserting the overlay is frontmost so a mistimed key cannot reach another app.

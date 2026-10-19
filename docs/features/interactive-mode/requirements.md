@@ -90,6 +90,12 @@ for `C-*`/`X-*`.
   list, or the last one if the list is shorter, and redraw the action panels to match the
   notifications now presented. If none is left, [RIM-16](#selection-and-actions) applies instead.
 
+- **RIM-22 (event) — The selection follows its notification through list changes.** When the set of
+  presented notifications changes while the selected notification is still presented — a
+  notification arrives, or one other than the selected goes away — the system shall redraw the
+  action panels to match within one second and shall keep the selected notification selected at its
+  new position; the newly arrived notification shall not take the selection.
+
 - **RIM-16 (event) — No notifications left ends the mode.** When no notification is presented while
   interactive mode is active — on entering the mode with an empty panel, or once the last one goes
   away — the system shall show the text `No more jobs!` on the overlay, fade the overlay out, and
@@ -125,9 +131,10 @@ for `C-*`/`X-*`.
 - **RIM-21 (optional) — Demo notifications in place of Notification Center's.** Where `interactive`
   is invoked with `--demo <file>`, the system shall present the file's notifications in place of
   Notification Center's, draw a placeholder per notification, open and close no panel, and apply
-  entries to that list according to whether the file says each entry closes its notification;
-  everything else shall behave as without `--demo`. The file's format is the
-  [demo file](../../definitions.md).
+  entries to that list according to whether the file says each entry closes its notification; where
+  the file schedules a notification's arrival or departure, the system shall present it only from
+  its arrival until its departure; everything else shall behave as without `--demo`. The file's
+  format is the [demo file](../../definitions.md).
 
 ## Safe failure
 
@@ -154,10 +161,6 @@ for `C-*`/`X-*`.
 - **Focus on exit.** Nothing is specified about which application becomes frontmost after the
   overlay closes; macOS decides. If landing somewhere unexpected proves annoying in use, restoring
   the application that was frontmost when the mode was entered is the obvious refinement.
-- **Live refresh.** How the overlay reacts to notifications arriving while the mode is active.
-  [RIM-15](#selection-and-actions) covers only the selected notification going away; arrivals and
-  removals elsewhere in the list are unspecified. Overlaps the existing watch/daemon seed in
-  [notification-access](../notification-access/requirements.md#open-seeds-not-yet-specified).
 - **Launch on unlock.** A daemon mode — a background process that outlives any one `interactive` run
   — that enters interactive mode when the machine is unlocked, so whatever arrived while the screen
   was locked is triaged before anything else. Unspecified: how the daemon is started and stopped (a
@@ -165,6 +168,8 @@ for `C-*`/`X-*`.
   and how it coexists with [RIM-4](#mode-signal)'s re-invocation rule. Overlaps the watch/daemon
   seed in
   [notification-access](../notification-access/requirements.md#open-seeds-not-yet-specified).
+- **Arrival cue.** A notification that arrives while the mode is active gets no visual distinction
+  from the others; whether it should is unspecified.
 - **Window level and opacity assertions.** Most of this feature is acceptance-testable — see the
   [acceptance scenarios](acceptance/_index.md). Two properties are not reachable through AX and need
   a small helper dumping the on-screen window list: `RIM-1`'s panel-above-overlay stacking and

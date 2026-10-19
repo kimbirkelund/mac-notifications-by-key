@@ -75,7 +75,8 @@ For each notification the panel presents, the overlay shows a small **action pan
 its left, aligned with the notification's top edge. It lists `Activate`, `Dismiss`, and then the
 names of that notification's own actions, in that order (RIM-10). The panels stay in step with what
 is presented: when a notification arrives or goes away while the mode runs, the panels are redrawn
-to match. Exactly one notification is selected at a time, and on entering the mode it is the newest;
+to match, and the selection stays on the same notification wherever it moves to in the list
+(RIM-22). Exactly one notification is selected at a time, and on entering the mode it is the newest;
 its panel is visibly distinct from the others (RIM-11). Down or `j` moves the selection to the next
 older notification, Up or `k` to the next newer, and it stops at either end rather than wrapping
 (RIM-12). The selected panel shows a key to the left of each entry: Space for `Activate`, `d` for
