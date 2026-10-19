@@ -25,6 +25,26 @@ import Testing
         #expect(ActionPanelLayout.panels(for: [n])[0].entries == ["Activate", "Dismiss"])
     }
 
+    @Test func collapsedStackEntriesAreExpandDismissThenActionsWithoutClearAll() {
+        let item = NotificationItem(
+            index: 0, actions: ["Clear All", "Reply"], isCollapsedStack: true)
+        #expect(ActionPanelLayout.entries(for: item) == ["Expand", "Dismiss", "Reply"])
+    }
+
+    @Test func plainItemEntriesAreActivateDismissThenActions() {
+        let item = NotificationItem(index: 0, actions: ["Reply"])
+        #expect(ActionPanelLayout.entries(for: item) == ["Activate", "Dismiss", "Reply"])
+    }
+
+    @Test func expandIsActivatedBySpace() {
+        let item = NotificationItem(index: 0, actions: ["Clear All"], isCollapsedStack: true)
+        let n = PresentedNotification(
+            item: item, frame: CGRect(x: 1000, y: 50, width: 360, height: 80))
+        let spec = ActionPanelLayout.panels(for: [n], selectedIndex: 0)[0]
+        #expect(spec.entries == ["Expand", "Dismiss"])
+        #expect(spec.activators == ["Space", "d"])
+    }
+
     @Test func panelIsLeftOfAndTopAlignedWithNotification() {
         let n = presented(0, frame: CGRect(x: 1000, y: 50, width: 360, height: 80))
         let frame = ActionPanelLayout.panels(for: [n], width: 200, gap: 10)[0].frame

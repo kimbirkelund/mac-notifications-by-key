@@ -54,6 +54,17 @@ import Testing
         let decoded = try JSONDecoder().decode([NotificationItem].self, from: Data(json.utf8))
         #expect(decoded == items)
     }
+
+    @Test func collapsedStackFlagIsNotSerialized() throws {
+        let stack = NotificationItem(index: 0, actions: ["Clear All"], isCollapsedStack: true)
+        #expect(try !Output.json([stack]).contains("isCollapsedStack"))
+    }
+
+    @Test func decodingWithoutCollapsedStackFlagGivesFalse() throws {
+        let json = #"[{"index":0,"actions":[]}]"#
+        let decoded = try JSONDecoder().decode([NotificationItem].self, from: Data(json.utf8))
+        #expect(decoded[0].isCollapsedStack == false)
+    }
 }
 
 @Suite struct WaitOptionTests {

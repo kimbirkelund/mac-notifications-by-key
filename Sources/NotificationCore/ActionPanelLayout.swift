@@ -20,7 +20,13 @@ public struct ActionPanelSpec: Equatable, Sendable {
 public enum ActionPanelLayout {
     public static let gap: CGFloat = 8
     public static let width: CGFloat = 160
-    public static let builtInEntries = ["Activate", "Dismiss"]
+
+    public static func entries(for item: NotificationItem) -> [String] {
+        if item.isCollapsedStack {
+            return ["Expand", "Dismiss"] + item.actions.filter { $0 != "Clear All" }
+        }
+        return ["Activate", "Dismiss"] + item.actions
+    }
 
     public static func panels(
         for notifications: [PresentedNotification],
@@ -29,7 +35,7 @@ public enum ActionPanelLayout {
         gap: CGFloat = ActionPanelLayout.gap
     ) -> [ActionPanelSpec] {
         notifications.enumerated().map { offset, n in
-            let entries = builtInEntries + n.item.actions
+            let entries = entries(for: n.item)
             let isSelected = offset == selectedIndex
             return ActionPanelSpec(
                 entries: entries,

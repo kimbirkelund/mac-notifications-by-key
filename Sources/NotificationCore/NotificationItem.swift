@@ -9,6 +9,11 @@ public struct NotificationItem: Codable, Equatable, Sendable {
     public var subtitle: String?
     public var body: String?
     public var actions: [String]
+    public var isCollapsedStack: Bool = false
+
+    private enum CodingKeys: String, CodingKey {
+        case index, app, title, subtitle, body, actions
+    }
 
     public init(
         index: Int,
@@ -16,7 +21,8 @@ public struct NotificationItem: Codable, Equatable, Sendable {
         title: String? = nil,
         subtitle: String? = nil,
         body: String? = nil,
-        actions: [String] = []
+        actions: [String] = [],
+        isCollapsedStack: Bool = false
     ) {
         self.index = index
         self.app = app
@@ -24,6 +30,7 @@ public struct NotificationItem: Codable, Equatable, Sendable {
         self.subtitle = subtitle
         self.body = body
         self.actions = actions
+        self.isCollapsedStack = isCollapsedStack
     }
 }
 

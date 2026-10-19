@@ -17,7 +17,7 @@ public enum ClearStep: Equatable, Sendable {
     public static func next(in items: [NotificationItem], app: AppFilter) -> ClearStep? {
         guard let offset = items.firstIndex(where: app.matches) else { return nil }
         let actions = items[offset].actions
-        if actions.contains("Clear All") && !actions.contains("Close") {
+        if CollapsedStack.matches(actions: actions) {
             return .clearAll(offset)
         }
         return .close(offset)

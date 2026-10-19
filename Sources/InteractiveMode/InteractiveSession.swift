@@ -171,7 +171,7 @@ final class Session {
         let item = drawnPresented[selected].item
         guard
             let command = EntryCommand.resolve(
-                key: key, entries: ActionPanelLayout.builtInEntries + item.actions)
+                key: key, entries: ActionPanelLayout.entries(for: item))
         else { return }
         dispatch { access in
             switch command {
