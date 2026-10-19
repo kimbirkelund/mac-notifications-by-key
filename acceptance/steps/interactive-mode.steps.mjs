@@ -54,7 +54,7 @@ Given('interactive mode is running', STEP, async function () {
 // box, so no key can fire before the first redraw.
 Given('interactive mode is running with demo file {string}', STEP, async function (file) {
   this.startDemo(file)
-  const want = this.demoNotifications().length
+  const want = this.demoInitiallyPresented().length
   await waitForOverlay(this)
   let last = null
   const shown = await this.pollUntil(async () => {
@@ -410,8 +410,10 @@ async function demoTitles(world) {
 async function assertGone(world, titles) {
   if (world.demo) {
     world.demoRemoved = [...(world.demoRemoved ?? []), ...titles]
+    const arrived = new Set(world.demoArrived ?? [])
     const want = world
       .demoNotifications()
+      .filter((n) => n.arrivesAfter === 0 || arrived.has(n.title))
       .map((n) => n.title)
       .filter((t) => !world.demoRemoved.includes(t))
     let last = null
@@ -454,6 +456,22 @@ Then(
     await assertGone(this, [first, second])
   }
 )
+
+// Arrivals are observable only under --demo, as departures are.
+Then('the notification titled {string} becomes presented', STEP, async function (title) {
+  assert.ok(this.demo, 'presence is only observable under --demo')
+  let last = null
+  const presented = await this.pollUntil(async () => {
+    const { read, titles } = await demoTitles(this)
+    last = read
+    return titles !== null && titles.includes(title)
+  }, SETTLE_MS)
+  assert.ok(
+    presented,
+    `expected a notification titled ${JSON.stringify(title)} to become presented; last read: ${JSON.stringify(last)}`
+  )
+  this.demoArrived = [...(this.demoArrived ?? []), title]
+})
 
 // Nothing marks a non-closing entry as done, so hold for a window in which a removal would show.
 Then('the notification titled {string} is still presented', STEP, async function (title) {

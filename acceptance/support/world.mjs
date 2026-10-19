@@ -462,7 +462,7 @@ export class NbkWorld extends World {
     return this.startInteractive(['--demo', demoPath])
   }
 
-  // The file's notifications as { title, actions: [name] }, newest first.
+  // The file's notifications as { title, actions: [name], arrivesAfter }, newest first.
   demoNotifications() {
     const notifications = this.demo?.fixture?.notifications
     if (!Array.isArray(notifications)) {
@@ -470,8 +470,14 @@ export class NbkWorld extends World {
     }
     return notifications.map((n) => ({
       title: n.title,
-      actions: (n.actions ?? []).map((a) => (typeof a === 'string' ? a : a.name))
+      actions: (n.actions ?? []).map((a) => (typeof a === 'string' ? a : a.name)),
+      arrivesAfter: n.arrivesAfter ?? 0
     }))
+  }
+
+  // Those presented when the mode starts: a notification with arrivesAfter is absent until then.
+  demoInitiallyPresented() {
+    return this.demoNotifications().filter((n) => n.arrivesAfter === 0)
   }
 
   sendSignal(sig) {
