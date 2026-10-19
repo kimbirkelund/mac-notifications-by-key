@@ -9,8 +9,8 @@ final class DemoDecoration {
         guard let primary = NSScreen.screens.first else { return }
         if window == nil {
             guard let overlay = NSApp.windows.first(where: { $0 is OverlayWindow }) else { return }
-            let created = DemoNotificationsWindow(frame: overlay.frame, level: overlay.level)
-            overlay.addChildWindow(created, ordered: .above)
+            let created = DemoNotificationsWindow(
+                frame: overlay.frame, level: NSWindow.Level(rawValue: overlay.level.rawValue + 1))
             created.orderFront(nil)
             window = created
         }

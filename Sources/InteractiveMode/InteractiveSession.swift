@@ -119,7 +119,6 @@ final class Session {
     private nonisolated static let presentedReadInterval: TimeInterval = 0.15
     private nonisolated static let presentedEmptyAgreement = 2
     private static let refreshInterval: TimeInterval = 0.5
-    private static let panelWidth: CGFloat = 260
 
     /// The panel fills in over several reads and its rows slide into place, so a
     /// non-empty read counts only once the next one agrees with it. An empty read
@@ -282,8 +281,7 @@ final class Session {
             panels.orderFront(nil)
         }
         panels.show(
-            ActionPanelLayout.panels(
-                for: presented, selectedIndex: selection.selectedIndex, width: Self.panelWidth),
+            ActionPanelLayout.panel(for: presented, selectedIndex: selection.selectedIndex),
             primaryScreenHeight: primary.frame.height)
     }
 

@@ -17,7 +17,7 @@ only attended.
 | Terminating on a signal removes the overlay (demo)                      | RIM-6               | ✅                                             |
 | Pressing Escape leaves the mode (demo)                                  | RIM-7               | ✅                                             |
 | The panel sits above the overlay, untinted                              | RIM-1, RIM-2, RIM-5 | ✅                                             |
-| Each presented notification gets an action panel (demo)                 | RIM-10              | ✅                                             |
+| Only the selected notification gets an action panel (demo)              | RIM-10              | ✅                                             |
 | Nothing presented on entry ends the mode (demo)                         | RIM-10, RIM-16      | ✅                                             |
 | Dismissing the last notification ends the mode (demo)                   | RIM-16              | ✅                                             |
 | Escape during the farewell ends the mode at once (demo)                 | RIM-16              | ✅                                             |

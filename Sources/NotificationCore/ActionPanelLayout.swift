@@ -3,23 +3,20 @@ import Foundation
 
 public struct ActionPanelSpec: Equatable, Sendable {
     public var entries: [String]
-    public var frame: CGRect
-    public var isSelected: Bool
-    public var activators: [String]?
+    public var activators: [String]
+    public var anchor: CGRect
 
-    public init(
-        entries: [String], frame: CGRect, isSelected: Bool = false, activators: [String]? = nil
-    ) {
+    public init(entries: [String], activators: [String], anchor: CGRect) {
         self.entries = entries
-        self.frame = frame
-        self.isSelected = isSelected
         self.activators = activators
+        self.anchor = anchor
     }
+
+    public var activatorLabels: [String] { activators.map(ActionPanelLayout.activatorLabel) }
 }
 
 public enum ActionPanelLayout {
     public static let gap: CGFloat = 8
-    public static let width: CGFloat = 160
 
     public static func entries(for item: NotificationItem) -> [String] {
         if item.isCollapsedStack {
@@ -28,24 +25,26 @@ public enum ActionPanelLayout {
         return ["Activate", "Dismiss"] + item.actions
     }
 
-    public static func panels(
-        for notifications: [PresentedNotification],
-        selectedIndex: Int? = nil,
-        width: CGFloat = ActionPanelLayout.width,
-        gap: CGFloat = ActionPanelLayout.gap
-    ) -> [ActionPanelSpec] {
-        notifications.enumerated().map { offset, n in
-            let entries = entries(for: n.item)
-            let isSelected = offset == selectedIndex
-            return ActionPanelSpec(
-                entries: entries,
-                frame: CGRect(
-                    x: n.frame.minX - gap - width,
-                    y: n.frame.minY,
-                    width: width,
-                    height: n.frame.height),
-                isSelected: isSelected,
-                activators: isSelected ? ActivatorAssignment.keys(for: entries) : nil)
-        }
+    public static func activatorLabel(_ activator: String) -> String { activator.lowercased() }
+
+    public static func panel(
+        for notifications: [PresentedNotification], selectedIndex: Int?
+    ) -> ActionPanelSpec? {
+        guard let selectedIndex, notifications.indices.contains(selectedIndex) else { return nil }
+        let selected = notifications[selectedIndex]
+        let entries = entries(for: selected.item)
+        return ActionPanelSpec(
+            entries: entries, activators: ActivatorAssignment.keys(for: entries),
+            anchor: selected.frame)
+    }
+
+    public static func frame(
+        anchor: CGRect, contentSize: CGSize, gap: CGFloat = ActionPanelLayout.gap
+    ) -> CGRect {
+        CGRect(
+            x: anchor.minX - gap - contentSize.width,
+            y: anchor.minY,
+            width: contentSize.width,
+            height: max(contentSize.height, anchor.height))
     }
 }

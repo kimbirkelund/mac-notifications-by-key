@@ -214,8 +214,8 @@ private final class RecordingAccess: NotificationCenterAccess, @unchecked Sendab
 
     /// RIM-18: a collapsed stack's panel offers Expand.
     @Test func collapsedStackPanelCarriesExpand() {
-        let panels = ActionPanelLayout.panels(for: Self.stack(5), selectedIndex: 0)
-        #expect(panels[0].entries == ["Expand", "Dismiss", "Show"])
+        let panel = ActionPanelLayout.panel(for: Self.stack(5), selectedIndex: 0)
+        #expect(panel?.entries == ["Expand", "Dismiss", "Show"])
     }
 
     /// RIM-14: a named action's key performs that action.

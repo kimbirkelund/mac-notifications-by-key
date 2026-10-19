@@ -219,70 +219,84 @@ const TOP_EDGE_TOLERANCE_PX = 2
 // The layout gap is 8 pt; the slack allows for display scaling.
 const MAX_GAP_PX = 20
 
-// Panels settle only after the panel opens, so wait for one per frame.
-async function panelsWithFrames(world) {
+// The one panel settles only after the panel opens, so wait for it.
+async function panelWithFrames(world) {
   let last = { frames: [], panels: [] }
   const paired = await world.pollUntil(async () => {
     const [frames, panels] = [await world.presentedFrames(), await world.actionPanels()]
     last = { frames, panels }
-    return frames.length > 0 && panels.length === frames.length ? last : null
+    return frames.length > 0 && panels.length === 1 ? last : null
   }, SETTLE_MS)
   assert.ok(
     paired,
-    `expected one action panel per presented notification; last read: ${JSON.stringify(last)}`
+    `expected exactly one action panel beside the presented notifications; last read: ${JSON.stringify(last)}`
   )
-  return paired
+  return { frames: paired.frames, panel: paired.panels[0] }
 }
 
-Then('one action panel is present per presented notification', STEP, async function () {
-  await panelsWithFrames(this)
+// The notification the panel belongs to: the one sharing its top edge.
+function alignedFrameIndex(frames, panel) {
+  return frames.findIndex((f) => Math.abs(panel.y - f.y) <= TOP_EDGE_TOLERANCE_PX)
+}
+
+Then('exactly one action panel is present', STEP, async function () {
+  await panelWithFrames(this)
 })
 
 Then(
-  'each panel lists "Activate", "Dismiss", then that notification\'s actions in order',
+  'the panel lists "Activate", "Dismiss", then the selected notification\'s actions in order',
   STEP,
   async function () {
-    const { frames, panels } = await panelsWithFrames(this)
+    const { frames, panel } = await panelWithFrames(this)
+    const frame = frames[alignedFrameIndex(frames, panel)]
+    assert.ok(
+      frame,
+      `no presented notification shares the panel's top edge; panel ${JSON.stringify(panel)}, frames ${JSON.stringify(frames)}`
+    )
     const items = this.demo ? this.demoNotifications() : await this.listJson()
-    frames.forEach((frame, i) => {
-      const item = items.find((n) => n.title === frame.title)
-      assert.ok(
-        item,
-        `no listed notification titled ${JSON.stringify(frame.title)}: ${JSON.stringify(items)}`
-      )
-      assert.deepEqual(
-        panels[i].entries.map((e) => e.name),
-        ['Activate', 'Dismiss', ...item.actions],
-        `panel ${i} does not match notification ${JSON.stringify(frame.title)}`
-      )
-    })
+    const item = items.find((n) => n.title === frame.title)
+    assert.ok(
+      item,
+      `no listed notification titled ${JSON.stringify(frame.title)}: ${JSON.stringify(items)}`
+    )
+    assert.deepEqual(
+      panel.entries.map((e) => e.name),
+      ['Activate', 'Dismiss', ...item.actions],
+      `the panel does not match notification ${JSON.stringify(frame.title)}`
+    )
   }
 )
 
 Then(
-  'each panel sits to the left of its notification with the same top edge',
+  'the panel sits to the left of the selected notification with the same top edge',
   STEP,
   async function () {
-    const { frames, panels } = await panelsWithFrames(this)
-    frames.forEach((frame, i) => {
-      const panel = panels[i]
-      const context = `panel ${JSON.stringify(panel)}, notification ${JSON.stringify(frame)}`
-      assert.ok(
-        panel.x + panel.width <= frame.x,
-        `expected the panel left of its notification; ${context}`
-      )
-      const gap = frame.x - (panel.x + panel.width)
-      assert.ok(
-        gap <= MAX_GAP_PX,
-        `expected the panel immediately left of its notification (gap ${gap} > ${MAX_GAP_PX} px); ${context}`
-      )
-      assert.ok(
-        Math.abs(panel.y - frame.y) <= TOP_EDGE_TOLERANCE_PX,
-        `expected the same top edge (±${TOP_EDGE_TOLERANCE_PX} px); ${context}`
-      )
-    })
+    const { frames, panel } = await panelWithFrames(this)
+    const frame = frames[alignedFrameIndex(frames, panel)]
+    const context = `panel ${JSON.stringify(panel)}, frames ${JSON.stringify(frames)}`
+    assert.ok(frame, `expected a notification sharing the panel's top edge; ${context}`)
+    assert.ok(
+      panel.x + panel.width <= frame.x,
+      `expected the panel left of its notification; ${context}`
+    )
+    const gap = frame.x - (panel.x + panel.width)
+    assert.ok(
+      gap <= MAX_GAP_PX,
+      `expected the panel immediately left of its notification (gap ${gap} > ${MAX_GAP_PX} px); ${context}`
+    )
   }
 )
+
+Then('the panel is at least as tall as the selected notification', STEP, async function () {
+  const { frames, panel } = await panelWithFrames(this)
+  const frame = frames[alignedFrameIndex(frames, panel)]
+  const context = `panel ${JSON.stringify(panel)}, frames ${JSON.stringify(frames)}`
+  assert.ok(frame, `expected a notification sharing the panel's top edge; ${context}`)
+  assert.ok(
+    panel.height + TOP_EDGE_TOLERANCE_PX >= frame.height,
+    `expected the panel at least as tall as its notification; ${context}`
+  )
+})
 
 // Absence has no settle point, so hold it for the window in which panels would be drawn.
 const NO_PANEL_HOLD_MS = 1500
@@ -295,26 +309,31 @@ Then('no action panel is present', STEP, async function () {
   } while (Date.now() < deadline)
 })
 
-// Top-down index of the one selected panel, or null when none or several are.
-function selectedIndex(panels) {
-  const selected = panels.flatMap((p, i) => (p.selected ? [i] : []))
-  return selected.length === 1 ? selected[0] : null
+// Top-down index of the notification the one selected panel sits beside, or null
+// when there is no panel, several, an unselected one, or one beside nothing.
+function selectedIndex(frames, panels) {
+  if (panels.length !== 1 || !panels[0].selected) return null
+  const index = alignedFrameIndex(frames, panels[0])
+  return index === -1 ? null : index
 }
 
-// A settled read: one panel per presented notification, and one of them selected
-// whenever any are presented.
+async function readSelection(world) {
+  const [frames, panels] = [await world.presentedFrames(), await world.actionPanels()]
+  return { frames, panels, index: selectedIndex(frames, panels) }
+}
+
+// A settled read: exactly one selected panel beside a presented notification whenever
+// any are presented, and none otherwise.
 async function settledSelection(world) {
   let last = { frames: [], panels: [] }
   const settled = await world.pollUntil(async () => {
-    const [frames, panels] = [await world.presentedFrames(), await world.actionPanels()]
-    last = { frames, panels }
-    if (panels.length !== frames.length) return null
-    const index = selectedIndex(panels)
-    return frames.length === 0 || index !== null ? { panels, index } : null
+    last = await readSelection(world)
+    if (last.frames.length === 0) return last.panels.length === 0 ? last : null
+    return last.index !== null ? last : null
   }, SETTLE_MS)
   assert.ok(
     settled,
-    `expected one action panel per presented notification with exactly one selected; last read: ${JSON.stringify(last)}`
+    `expected exactly one selected action panel beside a presented notification; last read: ${JSON.stringify(last)}`
   )
   return settled
 }
@@ -327,18 +346,18 @@ async function pressRecordingSelection(world, key) {
 }
 
 async function assertSelectedIndex(world, want, describe) {
-  let last = []
+  let last = { frames: [], panels: [] }
   const ok = await world.pollUntil(async () => {
-    last = await world.actionPanels()
-    return want(last) !== null && selectedIndex(last) === want(last)
+    last = await readSelection(world)
+    return want(last.frames) !== null && last.index === want(last.frames)
   }, SETTLE_MS)
-  assert.ok(ok, `expected ${describe} to be selected; panels: ${JSON.stringify(last)}`)
+  assert.ok(ok, `expected ${describe} to be selected; last read: ${JSON.stringify(last)}`)
 }
 
 async function selectedPanel(world) {
   const { panels, index } = await settledSelection(world)
   assert.notEqual(index, null, `expected a selected panel; panels: ${JSON.stringify(panels)}`)
-  return panels[index]
+  return panels[0]
 }
 
 Then('exactly one action panel is selected', STEP, async function () {
@@ -350,13 +369,21 @@ Then('exactly one action panel is selected', STEP, async function () {
   )
 })
 
-Then('the selected panel is the topmost panel', STEP, async function () {
-  const { panels, index } = await settledSelection(this)
-  assert.equal(index, 0, `expected the topmost panel selected; panels: ${JSON.stringify(panels)}`)
+Then('the panel sits beside the topmost notification', STEP, async function () {
+  const { frames, panels, index } = await settledSelection(this)
+  assert.equal(
+    index,
+    0,
+    `expected the panel beside the topmost notification; frames: ${JSON.stringify(frames)}, panels: ${JSON.stringify(panels)}`
+  )
 })
 
-Then('the topmost action panel is selected', STEP, async function () {
-  await assertSelectedIndex(this, (panels) => (panels.length > 0 ? 0 : null), 'the topmost panel')
+Then('the topmost notification is selected', STEP, async function () {
+  await assertSelectedIndex(
+    this,
+    (frames) => (frames.length > 0 ? 0 : null),
+    'the topmost notification'
+  )
 })
 
 function assertActivator(panel, activator, name) {
@@ -390,11 +417,11 @@ Then('the selection is unchanged', STEP, async function () {
   )
   const deadline = Date.now() + UNCHANGED_HOLD_MS
   do {
-    const panels = await this.actionPanels()
+    const read = await readSelection(this)
     assert.equal(
-      selectedIndex(panels),
+      read.index,
       this.selectionBeforeKey,
-      `expected the selection to stay at ${this.selectionBeforeKey}; panels: ${JSON.stringify(panels)}`
+      `expected the selection to stay at ${this.selectionBeforeKey}; last read: ${JSON.stringify(read)}`
     )
   } while (Date.now() < deadline)
 })
@@ -487,10 +514,10 @@ Then('the notification titled {string} is still presented', STEP, async function
 })
 
 // Positions count top-down from 1, as the scenario reads the stack.
-Then('the action panel at position {int} is selected', STEP, async function (position) {
+Then('the notification at position {int} is selected', STEP, async function (position) {
   await assertSelectedIndex(
     this,
-    (panels) => (position >= 1 && position <= panels.length ? position - 1 : null),
-    `the panel at position ${position}`
+    (frames) => (position >= 1 && position <= frames.length ? position - 1 : null),
+    `the notification at position ${position}`
   )
 })

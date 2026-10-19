@@ -51,31 +51,32 @@ for `C-*`/`X-*`.
 
 ## Selection and actions
 
-- **RIM-10 (state) — An action panel beside each notification.** While interactive mode is active,
-  for each notification presented in the Notification Center panel, the overlay shall show an action
-  panel immediately to the left of that notification and vertically aligned with it. The panel shall
-  list `Activate`, `Dismiss`, and the names of the actions that notification exposes
-  ([RNA-1](../notification-access/requirements.md)), in that order.
+- **RIM-10 (state) — An action panel beside the selected notification.** While interactive mode is
+  active and a notification is selected ([RIM-11](#selection-and-actions)), the overlay shall show
+  exactly one action panel: immediately to the left of the selected notification, its top edge
+  aligned with the notification's, at least as tall as the notification and taller when its entries
+  need the room, and no wider than its entries need. No other presented notification shall have a
+  panel. The panel shall list `Activate`, `Dismiss`, and the names of the actions that notification
+  exposes ([RNA-1](../notification-access/requirements.md)), in that order, one entry per line.
 
 - **RIM-11 (state) — Exactly one notification is selected.** While interactive mode is active and at
   least one notification is presented, exactly one notification shall be selected; on entering the
-  mode the newest is selected. The selected notification's action panel shall be visibly distinct
-  from the others.
+  mode the newest is selected. The action panel ([RIM-10](#selection-and-actions)) shall mark the
+  selected notification: it sits beside that notification and no other.
 
 - **RIM-12 (event) — Move the selection.** When the user presses Down or `j` while the overlay holds
   focus, the system shall select the next older notification; when Up or `k`, the next newer. At
   either end of the list the selection shall stay where it is (clamp, no wrap).
 
-- **RIM-13 (state) — The selected panel shows key activators.** While a notification is selected,
-  its action panel shall show, to the left of each entry, the single key that triggers it; panels of
-  unselected notifications shall show entry names only. Keys are assigned per panel as follows:
-  `Activate` is always Space and `Dismiss` is always `d`. Each remaining entry, in listed order,
-  takes the first letter of its name that is not reserved and not already assigned in that panel —
-  scanning the name left to right, skipping non-letters — and, if no letter of its name is free, the
-  lowest unassigned digit `1`–`9`. Letter activators are **lower case**: they are shown in lower
-  case, and only the unshifted key triggers them — the shifted (upper-case) letter is a different,
-  currently unbound key ([RIM-17](#selection-and-actions)). Reserved keys are `d`, Space, `j`, `k`,
-  Up, Down, and Escape.
+- **RIM-13 (state) — The panel shows key activators.** While a notification is selected, its action
+  panel shall show, to the left of each entry and right-aligned in a column of their own, the single
+  key that triggers it. Keys are assigned per panel as follows: `Activate` is always Space, shown as
+  `space`, and `Dismiss` is always `d`. Each remaining entry, in listed order, takes the first
+  letter of its name that is not reserved and not already assigned in that panel — scanning the name
+  left to right, skipping non-letters — and, if no letter of its name is free, the lowest unassigned
+  digit `1`–`9`. Activators are shown in **lower case**, and only the unshifted key triggers a
+  letter activator — the shifted (upper-case) letter is a different, currently unbound key
+  ([RIM-17](#selection-and-actions)). Reserved keys are `d`, Space, `j`, `k`, Up, Down, and Escape.
 
 - **RIM-14 (event) — Trigger an entry by key.** When the user presses an activator key shown in the
   selected notification's panel while the overlay holds focus, the system shall perform that entry
@@ -156,8 +157,9 @@ for `C-*`/`X-*`.
   free for later slices.
 - **Mouse activation.** Panel entries are keyboard-only by design; clicking an entry does nothing.
   Re-adding clicks would be a new requirement, not a revival of [RIM-19](#selection-and-actions).
-- **Panel appearance.** Size, typography, and how the selected panel is distinguished
-  ([RIM-11](#selection-and-actions)) are feature work; only "visibly distinct" is required.
+- **Panel appearance.** Typography, material, and the outline that joins the panel to its
+  notification are feature work; [RIM-10](#selection-and-actions) fixes only the panel's placement
+  and its minimum size.
 - **Focus on exit.** Nothing is specified about which application becomes frontmost after the
   overlay closes; macOS decides. If landing somewhere unexpected proves annoying in use, restoring
   the application that was frontmost when the mode was entered is the obvious refinement.

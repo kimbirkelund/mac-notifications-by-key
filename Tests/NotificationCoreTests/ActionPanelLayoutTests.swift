@@ -12,17 +12,19 @@ import Testing
             item: NotificationItem(index: index, actions: actions), frame: frame)
     }
 
+    private let anchor = CGRect(x: 1000, y: 50, width: 360, height: 80)
+
     @Test func entriesAreActivateDismissThenActionsInOrder() {
-        let n = presented(
-            0, actions: ["Reply", "Snooze"], frame: CGRect(x: 1000, y: 50, width: 360, height: 80))
-        let specs = ActionPanelLayout.panels(for: [n])
-        #expect(specs.count == 1)
-        #expect(specs[0].entries == ["Activate", "Dismiss", "Reply", "Snooze"])
+        let n = presented(0, actions: ["Reply", "Snooze"], frame: anchor)
+        let spec = ActionPanelLayout.panel(for: [n], selectedIndex: 0)
+        #expect(spec?.entries == ["Activate", "Dismiss", "Reply", "Snooze"])
     }
 
     @Test func entriesWithZeroActionsAreActivateAndDismiss() {
-        let n = presented(0, frame: CGRect(x: 1000, y: 50, width: 360, height: 80))
-        #expect(ActionPanelLayout.panels(for: [n])[0].entries == ["Activate", "Dismiss"])
+        let n = presented(0, frame: anchor)
+        #expect(
+            ActionPanelLayout.panel(for: [n], selectedIndex: 0)?.entries
+                == ["Activate", "Dismiss"])
     }
 
     @Test func collapsedStackEntriesAreExpandDismissThenActionsWithoutClearAll() {
@@ -38,53 +40,60 @@ import Testing
 
     @Test func expandIsActivatedBySpace() {
         let item = NotificationItem(index: 0, actions: ["Clear All"], isCollapsedStack: true)
-        let n = PresentedNotification(
-            item: item, frame: CGRect(x: 1000, y: 50, width: 360, height: 80))
-        let spec = ActionPanelLayout.panels(for: [n], selectedIndex: 0)[0]
-        #expect(spec.entries == ["Expand", "Dismiss"])
-        #expect(spec.activators == ["Space", "d"])
+        let n = PresentedNotification(item: item, frame: anchor)
+        let spec = ActionPanelLayout.panel(for: [n], selectedIndex: 0)
+        #expect(spec?.entries == ["Expand", "Dismiss"])
+        #expect(spec?.activators == ["Space", "d"])
     }
 
-    @Test func panelIsLeftOfAndTopAlignedWithNotification() {
-        let n = presented(0, frame: CGRect(x: 1000, y: 50, width: 360, height: 80))
-        let frame = ActionPanelLayout.panels(for: [n], width: 200, gap: 10)[0].frame
-        #expect(frame == CGRect(x: 790, y: 50, width: 200, height: 80))
+    @Test func onlyTheSelectedNotificationGetsAPanel() {
+        let a = presented(0, actions: ["Reply"], frame: anchor)
+        let b = presented(1, actions: ["Snooze"], frame: anchor.offsetBy(dx: 0, dy: 100))
+        let spec = ActionPanelLayout.panel(for: [a, b], selectedIndex: 1)
+        #expect(spec?.entries == ["Activate", "Dismiss", "Snooze"])
+        #expect(spec?.activators == ["Space", "d", "s"])
+        #expect(spec?.anchor == anchor.offsetBy(dx: 0, dy: 100))
     }
 
-    @Test func defaultsAreEightPointGapAndOneSixtyWidth() {
-        let n = presented(0, frame: CGRect(x: 1000, y: 50, width: 360, height: 80))
-        let frame = ActionPanelLayout.panels(for: [n])[0].frame
-        #expect(frame == CGRect(x: 832, y: 50, width: 160, height: 80))
+    @Test func nilSelectionYieldsNoPanel() {
+        let n = presented(0, frame: anchor)
+        #expect(ActionPanelLayout.panel(for: [n], selectedIndex: nil) == nil)
     }
 
-    @Test func oneSpecPerNotificationInOrder() {
-        let a = presented(0, actions: ["A"], frame: CGRect(x: 1000, y: 50, width: 360, height: 80))
-        let b = presented(1, frame: CGRect(x: 1000, y: 150, width: 360, height: 100))
-        let specs = ActionPanelLayout.panels(for: [a, b])
-        #expect(specs.map(\.entries.count) == [3, 2])
-        #expect(specs[1].frame.minY == 150)
-        #expect(specs[1].frame.height == 100)
+    @Test func selectionOutsideTheListYieldsNoPanel() {
+        let n = presented(0, frame: anchor)
+        #expect(ActionPanelLayout.panel(for: [n], selectedIndex: 1) == nil)
     }
 
-    @Test func emptyInputYieldsNoPanels() {
-        #expect(ActionPanelLayout.panels(for: []).isEmpty)
+    @Test func emptyInputYieldsNoPanel() {
+        #expect(ActionPanelLayout.panel(for: [], selectedIndex: 0) == nil)
     }
 
-    @Test func selectedPanelCarriesActivatorsAndOthersDoNot() {
-        let a = presented(
-            0, actions: ["Reply"], frame: CGRect(x: 1000, y: 50, width: 360, height: 80))
-        let b = presented(
-            1, actions: ["Reply"], frame: CGRect(x: 1000, y: 150, width: 360, height: 80))
-        let specs = ActionPanelLayout.panels(for: [a, b], selectedIndex: 1)
-        #expect(specs.map(\.isSelected) == [false, true])
-        #expect(specs[0].activators == nil)
-        #expect(specs[1].activators == ["Space", "d", "r"])
+    @Test func activatorLabelsAreLowerCase() {
+        let n = presented(0, actions: ["Reply"], frame: anchor)
+        let spec = ActionPanelLayout.panel(for: [n], selectedIndex: 0)
+        #expect(spec?.activatorLabels == ["space", "d", "r"])
     }
 
-    @Test func nilSelectionSelectsNothing() {
-        let n = presented(0, frame: CGRect(x: 1000, y: 50, width: 360, height: 80))
-        let spec = ActionPanelLayout.panels(for: [n], selectedIndex: nil)[0]
-        #expect(!spec.isSelected)
-        #expect(spec.activators == nil)
+    @Test func frameSitsLeftOfAndTopAlignedWithTheNotification() {
+        let frame = ActionPanelLayout.frame(
+            anchor: anchor, contentSize: CGSize(width: 120, height: 40), gap: 10)
+        #expect(frame == CGRect(x: 870, y: 50, width: 120, height: 80))
+    }
+
+    @Test func frameIsAtLeastAsTallAsTheNotificationAndMayBeTaller() {
+        let short = ActionPanelLayout.frame(
+            anchor: anchor, contentSize: CGSize(width: 120, height: 40))
+        let tall = ActionPanelLayout.frame(
+            anchor: anchor, contentSize: CGSize(width: 120, height: 130))
+        #expect(short.height == 80)
+        #expect(tall.height == 130)
+        #expect(tall.minY == anchor.minY)
+    }
+
+    @Test func frameWidthIsTheContentWidthAndTheDefaultGapIsEight() {
+        let frame = ActionPanelLayout.frame(
+            anchor: anchor, contentSize: CGSize(width: 150, height: 40))
+        #expect(frame == CGRect(x: 842, y: 50, width: 150, height: 80))
     }
 }

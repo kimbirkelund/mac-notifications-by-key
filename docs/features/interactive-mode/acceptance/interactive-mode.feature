@@ -65,15 +65,16 @@ Feature: Interactive mode
     And the Notification Center panel is above the overlay in the window order
     And the overlay is translucent
 
-  # Validates RIM-10: one panel per presented notification, listing Activate,
-  # Dismiss, then that notification's actions, immediately left of it and
-  # top-aligned.
+  # Validates RIM-10: one panel, beside the selected notification only, listing
+  # Activate, Dismiss, then that notification's actions, immediately left of it,
+  # top-aligned and no shorter than it.
   @demo
-  Scenario: Each presented notification gets an action panel
+  Scenario: Only the selected notification gets an action panel
     Given interactive mode is running with demo file "three.json"
-    Then one action panel is present per presented notification
-    And each panel lists "Activate", "Dismiss", then that notification's actions in order
-    And each panel sits to the left of its notification with the same top edge
+    Then exactly one action panel is present
+    And the panel lists "Activate", "Dismiss", then the selected notification's actions in order
+    And the panel sits to the left of the selected notification with the same top edge
+    And the panel is at least as tall as the selected notification
 
   # Validates RIM-10, RIM-16: with nothing presented there is nothing to attach a panel
   # to, and the mode has nothing left to be the subject of, so it ends.
@@ -105,20 +106,20 @@ Feature: Interactive mode
     Then interactive mode exits with status 0
 
   # Validates RIM-11: on entering the mode the newest notification is selected,
-  # and only one panel is selected at a time. Fixture notifications, so there is
-  # more than one to choose between.
+  # and the one panel marks it. Fixture notifications, so there is more than one
+  # to choose between.
   @demo
   Scenario: The newest notification is selected on entry
     Given interactive mode is running with demo file "three.json"
     Then exactly one action panel is selected
-    And the selected panel is the topmost panel
+    And the panel sits beside the topmost notification
     And the Notification Center panel is closed
 
-  # Validates RIM-13: the selected panel shows a lower-case key left of each entry.
+  # Validates RIM-13: the panel shows a lower-case key left of each entry.
   @demo
   Scenario: The selected panel shows lower-case activators
     Given interactive mode is running with demo file "one.json"
-    Then the selected panel shows activator "Space" before "Activate"
+    Then the selected panel shows activator "space" before "Activate"
     And the selected panel shows activator "d" before "Dismiss"
     And the selected panel shows activator "a" before "Archive"
     And the selected panel shows activator "n" before "Answer"
@@ -132,15 +133,15 @@ Feature: Interactive mode
     Given interactive mode is running with demo file "three.json"
     And the overlay is the frontmost application
     When I press "j"
-    Then the action panel at position 2 is selected
+    Then the notification at position 2 is selected
     When I press the Down arrow
-    Then the action panel at position 3 is selected
+    Then the notification at position 3 is selected
     When I press "j"
     Then the selection is unchanged
     When I press the Up arrow
-    Then the action panel at position 2 is selected
+    Then the notification at position 2 is selected
     When I press "k"
-    Then the topmost action panel is selected
+    Then the topmost notification is selected
     When I press the Up arrow
     Then the selection is unchanged
 
@@ -161,10 +162,10 @@ Feature: Interactive mode
     Given interactive mode is running with demo file "three.json"
     And the overlay is the frontmost application
     When I press "j"
-    Then the action panel at position 2 is selected
+    Then the notification at position 2 is selected
     When I press "d"
     Then the notification titled "Second" is no longer presented
-    And the action panel at position 2 is selected
+    And the notification at position 2 is selected
     And interactive mode is still running
 
   # Validates RIM-14: a named action's key performs that action and the mode stays.
@@ -216,16 +217,16 @@ Feature: Interactive mode
     When I press "C"
     Then the notifications titled "Inbox one" and "Inbox two" are no longer presented
     And the notification titled "Meeting" is still presented
-    And the topmost action panel is selected
+    And the topmost notification is selected
     And interactive mode is still running
 
   # Validates RIM-18: a collapsed stack offers Expand in place of Activate, on the same key.
   @demo
   Scenario: A collapsed stack offers Expand instead of Activate
     Given interactive mode is running with demo file "stack.json"
-    Then the selected panel shows activator "Space" before "Expand"
+    Then the selected panel shows activator "space" before "Expand"
     And the selected panel shows activator "d" before "Dismiss"
-    And one action panel is present per presented notification
+    And exactly one action panel is present
 
   # Validates RIM-18, RIM-15: Space expands the stack in place; the selection stays at its position,
   # now holding the first member.
@@ -237,9 +238,9 @@ Feature: Interactive mode
     Then the notification titled "Inbox one" is still presented
     And the notification titled "Inbox two" is still presented
     And the notification titled "Meeting" is still presented
-    And one action panel is present per presented notification
-    And the topmost action panel is selected
-    And the selected panel shows activator "Space" before "Activate"
+    And exactly one action panel is present
+    And the topmost notification is selected
+    And the selected panel shows activator "space" before "Activate"
     And interactive mode is still running
 
   # Validates RIM-22, RIM-21: a notification arrives above the selected one; the selection stays
@@ -249,10 +250,10 @@ Feature: Interactive mode
     Given interactive mode is running with demo file "arrival.json"
     And the overlay is the frontmost application
     When I press "j"
-    Then the action panel at position 2 is selected
+    Then the notification at position 2 is selected
     And the notification titled "Late" becomes presented
-    And one action panel is present per presented notification
-    And the action panel at position 3 is selected
+    And exactly one action panel is present
+    And the notification at position 3 is selected
     And the selected panel shows activator "s" before "Snooze"
     And interactive mode is still running
 
@@ -263,10 +264,10 @@ Feature: Interactive mode
     Given interactive mode is running with demo file "departure.json"
     And the overlay is the frontmost application
     When I press "j"
-    Then the action panel at position 2 is selected
+    Then the notification at position 2 is selected
     And the notification titled "First" is no longer presented
-    And one action panel is present per presented notification
-    And the topmost action panel is selected
+    And exactly one action panel is present
+    And the topmost notification is selected
     And the selected panel shows activator "s" before "Snooze"
     And interactive mode is still running
 
