@@ -53,6 +53,8 @@ private final class RecordingAccess: NotificationCenterAccess, @unchecked Sendab
         case dismiss(Int)
         case press(Int)
         case perform(String, Int)
+        case clearAll
+        case clearAllForApp(Int)
         case setPanelOpen(Bool)
     }
 
@@ -88,8 +90,8 @@ private final class RecordingAccess: NotificationCenterAccess, @unchecked Sendab
     func perform(action displayName: String, index: Int) throws {
         record(.perform(displayName, index))
     }
-    func clearAll() throws {}
-    func clearAll(forApp index: Int) throws {}
+    func clearAll() throws { record(.clearAll) }
+    func clearAll(forApp index: Int) throws { record(.clearAllForApp(index)) }
     func setPanelOpen(_ open: Bool) throws { record(.setPanelOpen(open)) }
 }
 
@@ -224,6 +226,57 @@ private final class RecordingAccess: NotificationCenterAccess, @unchecked Sendab
         #expect(access.readPresentedCount == 3)
     }
 
+    @Test func xKeyClearsAll() {
+        let presented = Self.presented(3, 7)
+        let access = RecordingAccess(presented: presented)
+        let (session, queue) = session(access, presented: presented)
+        session.handle(.character("X"))
+        queue.sync {}
+        #expect(access.calls == [.clearAll])
+    }
+
+    @Test func cKeyClearsAllForTheSelectedApp() {
+        let presented = Self.presented(3, 7)
+        let access = RecordingAccess(presented: presented)
+        let (session, queue) = session(access, presented: presented)
+        session.handle(.character("j"))
+        session.handle(.character("C"))
+        queue.sync {}
+        #expect(access.calls == [.clearAllForApp(7)])
+    }
+
+    @Test func cKeyWithNothingPresentedPerformsNothing() {
+        let access = RecordingAccess()
+        let (session, queue) = session(access, presented: [])
+        session.handle(.character("C"))
+        queue.sync {}
+        #expect(access.calls.isEmpty)
+    }
+
+    @Test func globalKeyWhileDispatchingIsIgnored() {
+        let presented = Self.presented(1)
+        let access = RecordingAccess(presented: presented)
+        let (session, queue) = session(access, presented: presented)
+        session.handle(.character("d"))
+        session.handle(.character("X"))
+        queue.sync {}
+        #expect(access.calls == [.dismiss(1)])
+    }
+
+    @Test func globalKeysAreFollowedByExactlyOneImmediateRead() async throws {
+        let presented = Self.presented(1)
+        let access = RecordingAccess(presented: presented)
+        let (session, queue) = session(access, presented: presented)
+        for (expected, key) in ["X", "C"].enumerated() {
+            session.handle(.character(key))
+            queue.sync {}
+            try await waitUntil { access.readPresentedCount >= expected + 1 }
+            #expect(access.readPresentedCount == expected + 1)
+        }
+        try await Task.sleep(for: .milliseconds(1200))
+        #expect(access.readPresentedCount == 2)
+    }
+
     @Test func noSelectionPerformsNothing() {
         let access = RecordingAccess()
         let (session, queue) = session(access, presented: [])
@@ -237,7 +290,7 @@ private final class RecordingAccess: NotificationCenterAccess, @unchecked Sendab
         let presented = Self.presented(1)
         let access = RecordingAccess(presented: presented)
         let (session, queue) = session(access, presented: presented)
-        for key in ["x", "D", "C"] { session.handle(.character(key)) }
+        for key in ["x", "D", "z"] { session.handle(.character(key)) }
         queue.sync {}
         #expect(access.calls.isEmpty)
     }
@@ -310,6 +363,19 @@ private final class RecordingAccess: NotificationCenterAccess, @unchecked Sendab
         queue.sync {}
         #expect(access.calls.isEmpty)
         #expect(decorated == [[], presented])
+        #expect(terminations.count == 0)
+    }
+
+    @Test func globalKeysDoNothingWhileEnding() {
+        let presented = Self.presented(1)
+        let access = RecordingAccess(presented: presented)
+        let queue = DispatchQueue(label: "ending-global-test")
+        let (session, terminations) = session(access, hold: 60, queue: queue)
+        session.drawActionPanels([])
+        session.drawActionPanels(presented)
+        for key in ["X", "C"] { session.handle(.character(key)) }
+        queue.sync {}
+        #expect(access.calls.isEmpty)
         #expect(terminations.count == 0)
     }
 

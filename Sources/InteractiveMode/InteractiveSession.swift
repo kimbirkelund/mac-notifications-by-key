@@ -150,6 +150,11 @@ final class Session {
     func handle(_ key: OverlayKey) {
         if key == .escape { return teardown() }
         guard !ending else { return }
+        if case .character(let character) = key,
+            let global = GlobalCommand.resolve(key: character)
+        {
+            return dispatchGlobal(global)
+        }
         if let move = key.selectionMove {
             let before = selection
             selection.apply(move)
@@ -168,30 +173,45 @@ final class Session {
             let command = EntryCommand.resolve(
                 key: key, entries: ActionPanelLayout.builtInEntries + item.actions)
         else { return }
+        dispatch { access in
+            switch command {
+            case .activate: try access.press(index: item.index)
+            case .dismiss: try access.dismiss(index: item.index)
+            case .action(let name): try access.perform(action: name, index: item.index)
+            }
+        }
+    }
+
+    private func dispatchGlobal(_ command: GlobalCommand) {
+        guard !dispatching else { return }
+        switch command {
+        case .clearAll:
+            dispatch { try $0.clearAll() }
+        case .clearAllForApp:
+            guard let selected = selection.selectedIndex,
+                drawnPresented.indices.contains(selected)
+            else { return }
+            let index = drawnPresented[selected].item.index
+            dispatch { try $0.clearAll(forApp: index) }
+        }
+    }
+
+    private func dispatch(_ work: @escaping (NotificationCenterAccess) throws -> Void) {
         dispatching = true
         nonisolated(unsafe) let access = access
+        nonisolated(unsafe) let work = work
         dispatchQueue.async {
-            Self.run(command, on: item.index, access)
+            do {
+                try work(access)
+            } catch {
+                Self.reportError(error)
+            }
             DispatchQueue.main.async {
                 MainActor.assumeIsolated {
                     self.dispatching = false
                     self.readNow()
                 }
             }
-        }
-    }
-
-    private nonisolated static func run(
-        _ command: EntryCommand, on index: Int, _ access: NotificationCenterAccess
-    ) {
-        do {
-            switch command {
-            case .activate: try access.press(index: index)
-            case .dismiss: try access.dismiss(index: index)
-            case .action(let name): try access.perform(action: name, index: index)
-            }
-        } catch {
-            reportError(error)
         }
     }
 
