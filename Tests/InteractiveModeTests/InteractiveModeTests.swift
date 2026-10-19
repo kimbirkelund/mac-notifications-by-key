@@ -53,6 +53,7 @@ private final class RecordingAccess: NotificationCenterAccess, @unchecked Sendab
     enum Call: Equatable {
         case dismiss(Int)
         case press(Int)
+        case expand(Int)
         case perform(String, Int)
         case clearAll
         case clearAllForApp(Int)
@@ -88,7 +89,7 @@ private final class RecordingAccess: NotificationCenterAccess, @unchecked Sendab
         if let dismissError { throw dismissError }
     }
     func press(index: Int) throws { record(.press(index)) }
-    func expand(index: Int) throws {}
+    func expand(index: Int) throws { record(.expand(index)) }
     func perform(action displayName: String, index: Int) throws {
         record(.perform(displayName, index))
     }
@@ -149,6 +150,42 @@ private final class RecordingAccess: NotificationCenterAccess, @unchecked Sendab
         session.handle(.character(" "))
         queue.sync {}
         #expect(access.calls == [.press(4)])
+    }
+
+    private static func stack(_ index: Int) -> [PresentedNotification] {
+        [
+            PresentedNotification(
+                item: NotificationItem(
+                    index: index, app: "Script Editor", title: "Stack",
+                    actions: ["Clear All", "Show"], isCollapsedStack: true),
+                frame: CGRect(x: 0, y: 0, width: 300, height: 80))
+        ]
+    }
+
+    /// RIM-18: Space on a collapsed stack expands it instead of pressing.
+    @Test func spaceOnACollapsedStackExpandsIt() {
+        let presented = Self.stack(5)
+        let access = RecordingAccess(presented: presented)
+        let (session, queue) = session(access, presented: presented)
+        session.handle(.character(" "))
+        queue.sync {}
+        #expect(access.calls == [.expand(5)])
+    }
+
+    /// RIM-18: d on a collapsed stack dismisses it as a whole.
+    @Test func dKeyOnACollapsedStackDismissesIt() {
+        let presented = Self.stack(5)
+        let access = RecordingAccess(presented: presented)
+        let (session, queue) = session(access, presented: presented)
+        session.handle(.character("d"))
+        queue.sync {}
+        #expect(access.calls == [.dismiss(5)])
+    }
+
+    /// RIM-18: a collapsed stack's panel offers Expand.
+    @Test func collapsedStackPanelCarriesExpand() {
+        let panels = ActionPanelLayout.panels(for: Self.stack(5), selectedIndex: 0)
+        #expect(panels[0].entries == ["Expand", "Dismiss", "Show"])
     }
 
     /// RIM-14: a named action's key performs that action.

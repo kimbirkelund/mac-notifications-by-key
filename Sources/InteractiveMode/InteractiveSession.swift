@@ -175,7 +175,12 @@ final class Session {
         else { return }
         dispatch { access in
             switch command {
-            case .activate: try access.press(index: item.index)
+            case .activate:
+                if item.isCollapsedStack {
+                    try access.expand(index: item.index)
+                } else {
+                    try access.press(index: item.index)
+                }
             case .dismiss: try access.dismiss(index: item.index)
             case .action(let name): try access.perform(action: name, index: item.index)
             }
