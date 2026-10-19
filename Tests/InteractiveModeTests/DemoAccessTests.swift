@@ -183,4 +183,52 @@ import Testing
                 primaryScreenHeight: 982)
         }
     }
+
+    private static func stack() -> DemoNotificationCenterAccess {
+        access([
+            DemoNotification(
+                title: "S",
+                members: [
+                    DemoNotification(title: "m1"), DemoNotification(title: "m2"),
+                ]),
+            DemoNotification(title: "P"),
+        ])
+    }
+
+    @Test func expandSplicesMembersInPlaceAndTheyAreNotStacks() throws {
+        let access = Self.stack()
+        try access.expand(index: 0)
+        let presented = try access.readPresented()
+        #expect(presented.map(\.item.title) == ["m1", "m2", "P"])
+        #expect(presented.map(\.item.index) == [0, 1, 2])
+        #expect(presented.map(\.item.isCollapsedStack) == [false, false, false])
+    }
+
+    @Test func dismissRemovesTheWholeStack() throws {
+        let access = Self.stack()
+        try access.dismiss(index: 0)
+        #expect(try Self.titles(access) == ["P"])
+    }
+
+    @Test func expandOnAPlainItemThrowsUnknownAction() {
+        do {
+            try Self.stack().expand(index: 1)
+            Issue.record("expected throw")
+        } catch NbkError.unknownAction(let name, _) {
+            #expect(name == "Expand")
+        } catch {
+            Issue.record("unexpected \(error)")
+        }
+    }
+
+    @Test func pressOnAStackThrowsUnknownAction() {
+        do {
+            try Self.stack().press(index: 0)
+            Issue.record("expected throw")
+        } catch NbkError.unknownAction(let name, _) {
+            #expect(name == "Activate")
+        } catch {
+            Issue.record("unexpected \(error)")
+        }
+    }
 }

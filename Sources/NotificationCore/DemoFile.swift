@@ -30,6 +30,7 @@ public struct DemoNotification: Equatable, Sendable, Codable {
     public var body: String?
     public var activateCloses: Bool
     public var actions: [DemoAction]
+    public var members: [DemoNotification]
 
     public init(
         app: String? = nil,
@@ -37,7 +38,8 @@ public struct DemoNotification: Equatable, Sendable, Codable {
         subtitle: String? = nil,
         body: String? = nil,
         activateCloses: Bool = true,
-        actions: [DemoAction] = []
+        actions: [DemoAction] = [],
+        members: [DemoNotification] = []
     ) {
         self.app = app
         self.title = title
@@ -45,10 +47,11 @@ public struct DemoNotification: Equatable, Sendable, Codable {
         self.body = body
         self.activateCloses = activateCloses
         self.actions = actions
+        self.members = members
     }
 
     private enum CodingKeys: String, CodingKey {
-        case app, title, subtitle, body, activateCloses, actions
+        case app, title, subtitle, body, activateCloses, actions, members
     }
 
     public init(from decoder: Decoder) throws {
@@ -59,13 +62,16 @@ public struct DemoNotification: Equatable, Sendable, Codable {
             subtitle: try c.decodeIfPresent(String.self, forKey: .subtitle),
             body: try c.decodeIfPresent(String.self, forKey: .body),
             activateCloses: try c.decodeIfPresent(Bool.self, forKey: .activateCloses) ?? true,
-            actions: try c.decodeIfPresent([DemoAction].self, forKey: .actions) ?? [])
+            actions: try c.decodeIfPresent([DemoAction].self, forKey: .actions) ?? [],
+            members: try c.decodeIfPresent([DemoNotification].self, forKey: .members) ?? [])
     }
+
+    public var isCollapsedStack: Bool { !members.isEmpty }
 
     public func item(index: Int) -> NotificationItem {
         NotificationItem(
             index: index, app: app, title: title, subtitle: subtitle, body: body,
-            actions: actions.map(\.name))
+            actions: actions.map(\.name), isCollapsedStack: isCollapsedStack)
     }
 }
 
@@ -81,11 +87,19 @@ public struct DemoFile: Equatable, Sendable, Codable {
     }
 
     public static func decode(from data: Data) throws -> DemoFile {
+        let file: DemoFile
         do {
-            return try JSONDecoder().decode(DemoFile.self, from: data)
+            file = try JSONDecoder().decode(DemoFile.self, from: data)
         } catch let error as DecodingError {
             throw DemoFileError(description: describe(error))
         }
+        let hasNestedMembers = file.notifications.contains {
+            $0.members.contains(where: \.isCollapsedStack)
+        }
+        if hasNestedMembers {
+            throw DemoFileError(description: "nested \"members\" are not supported")
+        }
+        return file
     }
 
     public static func load(from url: URL) throws -> DemoFile {

@@ -54,10 +54,28 @@ public final class DemoNotificationCenterAccess: NotificationCenterAccess, @unch
         }
     }
 
-    public func expand(index: Int) throws {}
+    public func expand(index: Int) throws {
+        try lock.withLock {
+            guard notifications.indices.contains(index) else {
+                throw NbkError.indexOutOfRange(requested: index, count: notifications.count)
+            }
+            let stack = notifications[index]
+            guard stack.isCollapsedStack else {
+                throw NbkError.unknownAction(
+                    name: "Expand", available: stack.actions.map(\.name))
+            }
+            notifications.replaceSubrange(index...index, with: stack.members)
+        }
+    }
 
     public func press(index: Int) throws {
-        try removeIf(index: index) { $0.activateCloses }
+        try removeIf(index: index) { notification in
+            guard !notification.isCollapsedStack else {
+                throw NbkError.unknownAction(
+                    name: "Activate", available: notification.actions.map(\.name))
+            }
+            return notification.activateCloses
+        }
     }
 
     public func perform(action displayName: String, index: Int) throws {

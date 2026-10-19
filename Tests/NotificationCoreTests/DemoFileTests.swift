@@ -44,6 +44,23 @@ import Testing
         #expect(n.actions.isEmpty)
     }
 
+    @Test func membersDecodeAndFlagTheItemAsACollapsedStack() throws {
+        let file = try decode(
+            #"{"notifications":[{"title":"s","members":[{"title":"a"},{"title":"b"}]},{"title":"p"}]}"#
+        )
+        #expect(file.notifications[0].members.map(\.title) == ["a", "b"])
+        #expect(file.notifications[0].item(index: 0).isCollapsedStack)
+        #expect(!file.notifications[1].item(index: 1).isCollapsedStack)
+        #expect(file.notifications[1].members.isEmpty)
+    }
+
+    @Test func nestedMembersAreRejected() {
+        #expect(throws: DemoFileError.self) {
+            try decode(
+                #"{"notifications":[{"members":[{"title":"a","members":[{"title":"b"}]}]}]}"#)
+        }
+    }
+
     @Test func unknownKeysAreIgnored() throws {
         let file = try decode(
             #"{"x":1,"notifications":[{"title":"t","y":2,"actions":[{"name":"A","z":3}]}]}"#)
