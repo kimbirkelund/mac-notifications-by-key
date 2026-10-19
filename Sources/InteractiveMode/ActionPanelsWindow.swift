@@ -18,7 +18,8 @@ enum ScreenGeometry {
 }
 
 final class ActionPanelsWindow: NSWindow {
-    private static let haloInset: CGFloat = 4
+    private static let haloInset: CGFloat = 8
+    private static let tint = NSColor.white.withAlphaComponent(0.22)
     private static let haloRadius: CGFloat = 16
     private static let panelRadius: CGFloat = 12
     private static let mergeSpacing: CGFloat = 12
@@ -51,9 +52,13 @@ final class ActionPanelsWindow: NSWindow {
                 ScreenGeometry.appKitRect(fromCG: cg, primaryScreenHeight: primaryScreenHeight),
                 in: self.frame)
         }
+        let paddedContent = CGSize(
+            width: panelView.contentSize.width,
+            height: panelView.contentSize.height + Self.haloInset)
         let panelFrame = local(
-            ActionPanelLayout.frame(anchor: panel.anchor, contentSize: panelView.contentSize))
+            ActionPanelLayout.frame(anchor: panel.anchor, contentSize: paddedContent))
         let haloFrame = local(panel.anchor).insetBy(dx: -Self.haloInset, dy: -Self.haloInset)
+            .union(CGRect(x: panelFrame.minX, y: panelFrame.maxY, width: 0, height: 0))
 
         if #available(macOS 26, *) {
             let container = NSGlassEffectContainerView(frame: content.bounds)
@@ -63,10 +68,12 @@ final class ActionPanelsWindow: NSWindow {
 
             let halo = NSGlassEffectView(frame: haloFrame)
             halo.cornerRadius = Self.haloRadius
+            halo.tintColor = Self.tint
             host.addSubview(halo)
 
             let glass = NSGlassEffectView(frame: panelFrame)
             glass.cornerRadius = Self.panelRadius
+            glass.tintColor = Self.tint
             panelView.frame = glass.bounds
             glass.contentView = panelView
             host.addSubview(glass)
