@@ -19,7 +19,8 @@ for `C-*`/`X-*`.
 ## Act
 
 - **RNA-4 (event) — Dismiss by index.** When the user runs `dismiss <n>`, the system shall dismiss
-  the notification at index `n` (focusing the element first, per the AX `Close` quirk) and exit `0`.
+  the notification at index `n` (a collapsed stack as a whole), focusing the element first per the
+  AX `Close` quirk, and exit `0`.
 - **RNA-5 (event) — Trigger a named action.** When the user runs `action <n> <name>`, the system
   shall perform the action `<name>` on the notification at index `n`, provided that notification
   exposes it.

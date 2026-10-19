@@ -219,6 +219,29 @@ Feature: Interactive mode
     And the topmost action panel is selected
     And interactive mode is still running
 
+  # Validates RIM-18: a collapsed stack offers Expand in place of Activate, on the same key.
+  @demo
+  Scenario: A collapsed stack offers Expand instead of Activate
+    Given interactive mode is running with demo file "stack.json"
+    Then the selected panel shows activator "Space" before "Expand"
+    And the selected panel shows activator "d" before "Dismiss"
+    And one action panel is present per presented notification
+
+  # Validates RIM-18, RIM-15: Space expands the stack in place; the selection stays at its position,
+  # now holding the first member.
+  @demo
+  Scenario: Expanding a stack presents its members in its place
+    Given interactive mode is running with demo file "stack.json"
+    And the overlay is the frontmost application
+    When I press "Space"
+    Then the notification titled "Inbox one" is still presented
+    And the notification titled "Inbox two" is still presented
+    And the notification titled "Meeting" is still presented
+    And one action panel is present per presented notification
+    And the topmost action panel is selected
+    And the selected panel shows activator "Space" before "Activate"
+    And interactive mode is still running
+
   # Validates RIM-21: a demo file that cannot be read is an argument error, reported before
   # any window appears.
   @demo

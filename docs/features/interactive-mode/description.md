@@ -82,9 +82,11 @@ older notification, Up or `k` to the next newer, and it stops at either end rath
 `Dismiss`, and a lower-case letter for each of the notification's own actions, so `r` and `m` for
 `Reply` and `Mark as Read` (RIM-13). Unselected panels show names only. Pressing a shown key
 performs that entry on the selected notification: `d` dismisses it, Space activates it, and a named
-action's key performs that action. The mode stays running afterwards, so the user can act on the
-next notification (RIM-14). Two upper-case keys act on more than the selected notification: `X`
-clears every presented notification and `C` every one from the selected notification's app.
+action's key performs that action. A collapsed stack's panel offers `Expand` on Space instead of
+`Activate`: expanding puts the stack's members in its place and the selection stays at that position
+(RIM-18); `d` dismisses the stack as a whole. The mode stays running afterwards, so the user can act
+on the next notification (RIM-14). Two upper-case keys act on more than the selected notification:
+`X` clears every presented notification and `C` every one from the selected notification's app.
 Afterwards the selection and the end-of-mode rules apply as usual (RIM-20). Any other key is ignored
 (RIM-17). Entries are triggered by keyboard only: the action panels are display, not controls, and
 clicking one does nothing.

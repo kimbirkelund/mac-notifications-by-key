@@ -102,13 +102,13 @@ for `C-*`/`X-*`.
   none of Escape, a movement key, an activator shown in the selected panel, or a global activator
   ([RIM-20](#selection-and-actions)), then the system shall ignore it.
 
-- **RIM-18 (state, deferred) — A collapsed stack offers `Expand` instead of `Activate`.** While a
-  presented element is a collapsed stack of several notifications from one app, its action panel
-  shall show `Expand` in place of `Activate`, on the same key (Space); when triggered, the system
-  shall expand the stack so that its members become individually presented notifications, and
+- **RIM-18 (state) — A collapsed stack offers `Expand` instead of `Activate`.** While a presented
+  element is a collapsed stack of several notifications from one app, its action panel shall show
+  `Expand` in place of `Activate`, on the same key (Space); when triggered, the system shall expand
+  the stack so that its members become individually presented notifications, and
   [RIM-15](#selection-and-actions) shall then apply — the selection lands on the member now at the
-  stack's position. Deferred: depends on locating the stack container and its expand action over AX,
-  which the [AX reference](../../notification-center-ax-api.md) lists as probed-but-unused.
+  stack's position. When `Dismiss` is triggered on a collapsed stack, the system shall dismiss the
+  stack as a whole.
 
 - **RIM-19 (retired)** — Mouse activation of panel entries was dropped from the design; the ID is
   not reused.

@@ -1,0 +1,33 @@
+{
+  "notifications": [
+    {
+      "app": "Mail",
+      "title": "Inbox",
+      "subtitle": null,
+      "body": null,
+      "members": [
+        {
+          "app": "Mail",
+          "title": "Inbox one",
+          "subtitle": null,
+          "body": null,
+          "actions": ["Archive"]
+        },
+        {
+          "app": "Mail",
+          "title": "Inbox two",
+          "subtitle": null,
+          "body": null,
+          "actions": ["Archive"]
+        }
+      ]
+    },
+    {
+      "app": "Calendar",
+      "title": "Meeting",
+      "subtitle": null,
+      "body": null,
+      "actions": ["Snooze"]
+    }
+  ]
+}

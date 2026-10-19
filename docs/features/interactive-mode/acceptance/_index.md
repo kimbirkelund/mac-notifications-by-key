@@ -4,10 +4,10 @@ BDD scenarios (Gherkin) specifying interactive mode. These `.feature` files **ar
 acceptance tests: [cucumber-js](https://github.com/cucumber/cucumber-js) runs them against the
 compiled `nbk` binary as a black box, using the step definitions in `acceptance/steps/`.
 
-The twenty-one unattended scenarios run in the default acceptance run. All but one run in demo mode
-([RIM-21](../requirements.md#demo-mode)) and never touch the real Notification Center; the exception
-is the window-order scenario, which needs the real panel. The trust scenario is `@operator` and runs
-only attended.
+The twenty-three unattended scenarios run in the default acceptance run. All but one run in demo
+mode ([RIM-21](../requirements.md#demo-mode)) and never touch the real Notification Center; the
+exception is the window-order scenario, which needs the real panel. The trust scenario is
+`@operator` and runs only attended.
 
 | Scenario                                                      | Validates           | Status                                         |
 | ------------------------------------------------------------- | ------------------- | ---------------------------------------------- |
@@ -31,6 +31,8 @@ only attended.
 | Pressing Space activates the selected notification (demo)     | RIM-14              | ✅                                             |
 | Pressing X clears every notification and ends the mode (demo) | RIM-20, RIM-16      | ✅                                             |
 | Pressing C clears the selected notification's app only (demo) | RIM-20, RIM-15      | ✅                                             |
+| A collapsed stack offers Expand instead of Activate (demo)    | RIM-18              | ✅                                             |
+| Expanding a stack presents its members in its place (demo)    | RIM-18, RIM-15      | ✅                                             |
 | A missing demo file is refused before the overlay (demo)      | RIM-21              | ✅                                             |
 | Missing Accessibility trust is refused                        | RIM-9               | ✅ `@operator` — attended; last run 2026-09-27 |
 
@@ -93,7 +95,7 @@ is open always comes from the AX check described in the AX reference.
   collapses into that app's stack. Behavior that needs several notifications, or notifications with
   chosen actions, is therefore covered by the demo scenarios. The one real-Notification-Center
   scenario covers the panel's window order; opening and closing the panel is covered by the unit and
-  AX-integration tiers.
+  AX-integration tiers, and expanding a real stack is proven in the AX-integration tier.
 - `@wip` scenarios are excluded from the default run via `tags` in `cucumber.mjs`; the `operator`
   profile excludes them too, so an unimplemented attended scenario cannot fail an attended run.
 - Scenarios assert observable state — exit status, window presence, panel state — never macOS copy.
