@@ -113,13 +113,12 @@ for `C-*`/`X-*`.
 - **RIM-19 (retired)** — Mouse activation of panel entries was dropped from the design; the ID is
   not reused.
 
-- **RIM-20 (event, deferred) — Clear all by upper-case key.** When the user presses `X` (Shift+`x`)
-  while the overlay holds focus, the system shall clear every presented notification; when `C`
-  (Shift+`c`), every presented notification from the selected notification's app. Both then fall
-  under [RIM-15](#selection-and-actions) or, if nothing is left, [RIM-16](#selection-and-actions).
-  Deferred: builds on `clear-all` ([RNA-11](../notification-access/requirements.md)) and
-  `clear-all-for-app` ([RNA-12](../notification-access/requirements.md)), which exist as operations
-  under [notification-access](../notification-access/_index.md).
+- **RIM-20 (event) — Clear all by upper-case key.** When the user presses `X` (Shift+`x`) while the
+  overlay holds focus, the system shall clear every presented notification; when `C` (Shift+`c`),
+  every presented notification from the selected notification's app. Both then fall under
+  [RIM-15](#selection-and-actions) or, if nothing is left, [RIM-16](#selection-and-actions). The
+  operations performed are `clear-all` ([RNA-11](../notification-access/requirements.md)) and
+  `clear-all-for-app` ([RNA-12](../notification-access/requirements.md)).
 
 ## Demo mode
 
@@ -152,10 +151,6 @@ for `C-*`/`X-*`.
   Re-adding clicks would be a new requirement, not a revival of [RIM-19](#selection-and-actions).
 - **Panel appearance.** Size, typography, and how the selected panel is distinguished
   ([RIM-11](#selection-and-actions)) are feature work; only "visibly distinct" is required.
-- **Cross-cutting actions.** `clear-all` and `clear-all-for-app` exist as one-shot CLI operations
-  ([RNA-11](../notification-access/requirements.md),
-  [RNA-12](../notification-access/requirements.md)); [RIM-20](#selection-and-actions) binds them on
-  the overlay.
 - **Focus on exit.** Nothing is specified about which application becomes frontmost after the
   overlay closes; macOS decides. If landing somewhere unexpected proves annoying in use, restoring
   the application that was frontmost when the mode was entered is the obvious refinement.

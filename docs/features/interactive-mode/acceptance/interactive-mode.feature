@@ -197,6 +197,28 @@ Feature: Interactive mode
     Then the notification titled "First" is no longer presented
     And interactive mode is still running
 
+  # Validates RIM-20, RIM-16: X clears everything presented, which empties the list.
+  @demo
+  Scenario: Pressing X clears every notification and ends the mode
+    Given interactive mode is running with demo file "three.json"
+    And the overlay is the frontmost application
+    When I press "X"
+    Then the overlay shows the label "No more jobs!"
+    And interactive mode exits with status 0
+    And no overlay window is present
+
+  # Validates RIM-20, RIM-15: C clears the selected notification's app only; the selection
+  # lands on what is now topmost.
+  @demo
+  Scenario: Pressing C clears the selected notification's app only
+    Given interactive mode is running with demo file "two-apps.json"
+    And the overlay is the frontmost application
+    When I press "C"
+    Then the notifications titled "Inbox one" and "Inbox two" are no longer presented
+    And the notification titled "Meeting" is still presented
+    And the topmost action panel is selected
+    And interactive mode is still running
+
   # Validates RIM-21: a demo file that cannot be read is an argument error, reported before
   # any window appears.
   @demo

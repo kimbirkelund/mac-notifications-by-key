@@ -9,7 +9,6 @@ never reimplements Notification Center's presentation of notifications; it sits 
 it. Only the first step is specified so far: the overlay that signals the mode is active.
 
 - [Description](description.md) — how it works (prose, mental model).
-- [Requirements](requirements.md) — behavioral requirements (`RIM-*`) and open seeds; selection,
-  per-notification action menus, and clear-all are still seeds.
+- [Requirements](requirements.md) — behavioral requirements (`RIM-*`) and open seeds.
 - [Acceptance scenarios](acceptance/_index.md) — BDD scenarios for the overlay signal; the notes
   there record what the harness adds to drive a long-running, focus-taking process.

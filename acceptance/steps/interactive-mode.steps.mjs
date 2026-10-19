@@ -407,40 +407,53 @@ async function demoTitles(world) {
 }
 
 // A failed or unparsable list proves nothing about absence, so only a successful read counts.
-Then('the notification titled {string} is no longer presented', STEP, async function (title) {
-  if (this.demo) {
-    this.demoRemoved = [...(this.demoRemoved ?? []), title]
-    const want = this.demoNotifications()
+async function assertGone(world, titles) {
+  if (world.demo) {
+    world.demoRemoved = [...(world.demoRemoved ?? []), ...titles]
+    const want = world
+      .demoNotifications()
       .map((n) => n.title)
-      .filter((t) => !this.demoRemoved.includes(t))
+      .filter((t) => !world.demoRemoved.includes(t))
     let last = null
-    const gone = await this.pollUntil(async () => {
-      const { read, titles } = await demoTitles(this)
+    const gone = await world.pollUntil(async () => {
+      const { read, titles: shown } = await demoTitles(world)
       last = read
-      return titles !== null && JSON.stringify(titles) === JSON.stringify(want)
+      return shown !== null && JSON.stringify(shown) === JSON.stringify(want)
     }, SETTLE_MS)
     assert.ok(
       gone,
-      `expected exactly ${JSON.stringify(want)} presented once ${JSON.stringify(title)} is gone; last read: ${JSON.stringify(last)}`
+      `expected exactly ${JSON.stringify(want)} presented once ${JSON.stringify(titles)} are gone; last read: ${JSON.stringify(last)}`
     )
     return
   }
   let last = null
-  const gone = await this.pollUntil(async () => {
-    last = await this.exec(['list'])
+  const gone = await world.pollUntil(async () => {
+    last = await world.exec(['list'])
     if (last.code !== 0) return false
     try {
       const items = JSON.parse(last.stdout)
-      return Array.isArray(items) && !items.some((n) => n.title === title)
+      return Array.isArray(items) && !items.some((n) => titles.includes(n.title))
     } catch {
       return false
     }
   }, SETTLE_MS)
   assert.ok(
     gone,
-    `expected a successful list without a notification titled ${JSON.stringify(title)}; last result: ${JSON.stringify(last)}`
+    `expected a successful list without notifications titled ${JSON.stringify(titles)}; last result: ${JSON.stringify(last)}`
   )
+}
+
+Then('the notification titled {string} is no longer presented', STEP, async function (title) {
+  await assertGone(this, [title])
 })
+
+Then(
+  'the notifications titled {string} and {string} are no longer presented',
+  STEP,
+  async function (first, second) {
+    await assertGone(this, [first, second])
+  }
+)
 
 // Nothing marks a non-closing entry as done, so hold for a window in which a removal would show.
 Then('the notification titled {string} is still presented', STEP, async function (title) {
