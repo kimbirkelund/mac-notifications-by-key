@@ -20,6 +20,8 @@ import Testing
     static let clearSettleDelay: TimeInterval = 0.3
     /// Poll past the ~1s banner render delay (docs/constraints.md C-3) when reading a delivery.
     static let deliveryReadTimeout: TimeInterval = 6
+    /// A delivered banner stays on screen for several seconds before it joins the list.
+    static let bannerRetireTimeout: TimeInterval = 15
 
     let nc = NotificationCenterAccessFactory.make()
 
@@ -91,6 +93,64 @@ import Testing
         #expect(stacked, "delivered pair did not present as a collapsed stack")
         try nc.clearAll()
         #expect(try nc.read(wait: 0).isEmpty)
+    }
+
+    @Test(.enabled(if: NotificationAXIntegrationTests.available))
+    func collapsedStackExpandsIntoItsMembers() throws {
+        defer {
+            try? nc.clearAll()
+            try? nc.setPanelOpen(false)
+        }
+        let stack = try presentScriptEditorStack()
+        try nc.expand(index: stack.index)
+        let expanded = try poll { () -> [NotificationItem]? in
+            let members = try scriptEditorItems()
+            return members.count == 2 && !members.contains(where: \.isCollapsedStack)
+                ? members : nil
+        }
+        #expect(expanded != nil, "collapsed stack did not expand into its two members")
+    }
+
+    @Test(.enabled(if: NotificationAXIntegrationTests.available))
+    func collapsedStackDismissesAsAWhole() throws {
+        defer {
+            try? nc.clearAll()
+            try? nc.setPanelOpen(false)
+        }
+        let stack = try presentScriptEditorStack()
+        try nc.dismiss(index: stack.index)
+        let emptied = try poll { try scriptEditorItems().isEmpty ? true : nil }
+        #expect(emptied != nil, "dismissing the collapsed stack left Script Editor items behind")
+    }
+
+    func scriptEditorItems() throws -> [NotificationItem] {
+        try nc.read(wait: 0).filter { $0.app == "Script Editor" }
+    }
+
+    /// Empties the open panel, delivers two notifications and returns their single collapsed
+    /// stack. While their banners are on screen the open panel lists them beside the stack, so
+    /// this waits for the banners to retire.
+    func presentScriptEditorStack() throws -> NotificationItem {
+        try nc.setPanelOpen(true)
+        try nc.clearAll()
+        #expect(deliver(title: "StackProbe A"))
+        #expect(deliver(title: "StackProbe B"))
+        return try #require(
+            poll(timeout: Self.bannerRetireTimeout) { () -> NotificationItem? in
+                let members = try scriptEditorItems()
+                return members.count == 1 && members[0].isCollapsedStack ? members[0] : nil
+            }, "delivered pair did not present as a single collapsed stack")
+    }
+
+    func poll<T>(
+        timeout: TimeInterval = deliveryReadTimeout, _ attempt: () throws -> T?
+    ) rethrows -> T? {
+        let deadline = Date().addingTimeInterval(timeout)
+        while true {
+            if let found = try attempt() { return found }
+            guard Date() < deadline else { return nil }
+            Thread.sleep(forTimeInterval: 0.2)
+        }
     }
 
     @Test(.enabled(if: NotificationAXIntegrationTests.available))

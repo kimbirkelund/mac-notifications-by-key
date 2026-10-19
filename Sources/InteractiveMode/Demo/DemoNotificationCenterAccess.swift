@@ -54,6 +54,8 @@ public final class DemoNotificationCenterAccess: NotificationCenterAccess, @unch
         }
     }
 
+    public func expand(index: Int) throws {}
+
     public func press(index: Int) throws {
         try removeIf(index: index) { $0.activateCloses }
     }

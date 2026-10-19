@@ -89,14 +89,19 @@ public struct DefaultNotificationCenterAX: NotificationCenterAccess {
     // MARK: Act
 
     public func dismiss(index n: Int) throws {
-        try close(try elementAt(n))
+        let element = try elementAt(n)
+        if CollapsedStack.matches(actions: displayActions(element)) {
+            try close(element, with: "Clear All")
+        } else {
+            try close(element)
+        }
     }
 
-    private func close(_ element: AXUIElement) throws {
+    private func close(_ element: AXUIElement, with action: String = "Close") throws {
         // Focus-before-close: required, else Close silently no-ops.
         AXUIElementSetAttributeValue(element, kAXFocusedAttribute as CFString, kCFBooleanTrue)
         Thread.sleep(forTimeInterval: 0.3)
-        try perform(displayName: "Close", on: element)
+        try perform(displayName: action, on: element)
         // Close is asynchronous in Notification Center: it returns before the banner
         // leaves the tree. Wait (bounded) until it's gone so a subsequent `list`
         // reflects the dismissal.
@@ -113,6 +118,17 @@ public struct DefaultNotificationCenterAX: NotificationCenterAccess {
         let element = try elementAt(n)
         let r = AXUIElementPerformAction(element, kAXPressAction as CFString)
         if r != .success { throw NbkError.actionFailed(name: "AXPress") }
+    }
+
+    public func expand(index n: Int) throws {
+        let element = try elementAt(n)
+        let actions = displayActions(element)
+        guard CollapsedStack.matches(actions: actions) else {
+            throw NbkError.unknownAction(name: "Expand", available: actions)
+        }
+        if AXUIElementPerformAction(element, kAXPressAction as CFString) != .success {
+            throw NbkError.actionFailed(name: "Expand")
+        }
     }
 
     public func perform(action displayName: String, index n: Int) throws {
@@ -283,12 +299,17 @@ public struct DefaultNotificationCenterAX: NotificationCenterAccess {
         let app = (attr(element, kAXDescriptionAttribute as String) as? String)?
             .split(separator: ",").first
             .map { $0.trimmingCharacters(in: .whitespaces) }
-        let actions = axActions(element)
+        let actions = displayActions(element)
+        return NotificationItem(
+            index: index, app: app, title: title, subtitle: subtitle, body: body, actions: actions,
+            isCollapsedStack: CollapsedStack.matches(actions: actions)
+        )
+    }
+
+    private func displayActions(_ element: AXUIElement) -> [String] {
+        axActions(element)
             .map(ActionName.display(fromAXAction:))
             .filter { $0 != (kAXPressAction as String) }
-        return NotificationItem(
-            index: index, app: app, title: title, subtitle: subtitle, body: body, actions: actions
-        )
     }
 
     // MARK: AX primitives

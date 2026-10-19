@@ -236,7 +236,7 @@ additional named actions — the set is per-notification, so always enumerate ra
 
 1. sets `kAXFocusedAttribute` true on the element,
 2. settles briefly,
-3. performs `Close`,
+3. performs `Close`, or `Clear All` on a collapsed stack (§5),
 4. polls (bounded) until the element leaves the tree — `Close` is async and returns before the
    banner actually disappears.
 
@@ -247,24 +247,15 @@ additional named actions — the set is per-notification, so always enumerate ra
 macOS groups multiple notifications from one app into a **stack** (a collapsed pile you click to
 expand). What this means for the AX surface:
 
-- **What `nbk` does today:** nothing stack-aware. The tree is flattened, returning _every_
-  `AXGroup`-with-`AXPress` in tree order. When a stack is **expanded** each member is a separate
-  matched element with its own index. When **collapsed**, typically only the front notification is a
-  live element — members behind it are not addressable until expanded.
-- **The stack container itself** is a parent `AXGroup` wrapping the member groups. It is _not_
-  matched as a notification unless it happens to expose `AXPress`. This is the natural place to hang
-  stack-level operations, and is worth probing before building stack UI:
-  - Enumerate its `kAXChildrenAttribute` to get members.
-  - Look for a `Show`/`Expand`-style action on the container (_standard AX_ — verify the exact
-    name).
-  - `kAXDescriptionAttribute` on the container often carries a count / "App, N notifications"
-    summary.
-- **"Clear All" / per-app clear** buttons appear when the panel is open — as `AXButton` elements
-  (see §6). These are the fastest path to bulk dismissal but are **not** wired up today.
-
-> To build stack features: open the panel, dump the container subtree once, and pin down (a) the
-> container role, (b) its expand action name, (c) whether collapsed members are present-but-hidden
-> or absent. Do it behind the structural-matching discipline of [C-3](constraints.md).
+- **Collapsed vs. expanded (probe-verified on macOS 27.0, panel open):** a collapsed stack is a
+  single matched element — the front notification. Its actions include `Clear All` and not `Close`;
+  that pair is the detection rule. Members behind it are not matched as notifications.
+- **Expanding:** pressing the collapsed stack (`AXPress`) expands it in place. Each member then
+  becomes its own matched element with its own index, and no element shows `Clear All` without
+  `Close` any more.
+- **Dismissing a collapsed stack:** `Close` is not offered on it, so `dismiss` performs `Clear All`
+  instead, which removes the whole stack.
+- **Expanding anything that is not a collapsed stack** is rejected as an unknown `Expand` action.
 
 ---
 
@@ -346,9 +337,9 @@ foundation for any "custom UI that mirrors Notification Center live" work.
 `AXUIElementSetAttributeValue`; attributes `Windows`, `Children`, `Role`, `Identifier`, `Value`,
 `Description`, `Focused`, `Subrole`, `Position`, `Size` (a notification's on-screen frame); roles
 `AXGroup`, `AXStaticText`, `AXButton` (the panel's "Edit Widgets" button, to tell the panel from a
-banner); actions `AXPress`, `Close`, `Show`, `Show Details`; the menu bar clock extra for opening
-and closing the panel (§1).
+banner); actions `AXPress` (also expands a collapsed stack), `Close`, `Clear All`, `Show`,
+`Show Details`; the menu bar clock extra for opening and closing the panel (§1).
 
 **Available but unused (probe before relying):** `AXUIElementCopyAttributeNames`, `AXObserver*`
 (live events); attributes `Frame`, `Enabled`, `Help`, `Parent`, `TopLevelUIElement`; action buttons
-as `AXButton`; stack-container children/expand action and panel-level `Clear All`.
+as `AXButton`; stack-container children.

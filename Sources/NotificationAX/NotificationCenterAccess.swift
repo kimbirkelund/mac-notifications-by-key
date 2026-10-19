@@ -15,6 +15,7 @@ public protocol NotificationCenterAccess {
     func readPresented() throws -> [PresentedNotification]
     func dismiss(index: Int) throws
     func press(index: Int) throws
+    func expand(index: Int) throws
     func perform(action displayName: String, index: Int) throws
     func clearAll() throws
     func clearAll(forApp index: Int) throws
