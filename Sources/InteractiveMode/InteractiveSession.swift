@@ -265,9 +265,9 @@ final class Session {
     }
 
     func drawActionPanels(_ presented: [PresentedNotification]) {
+        selection = selection.following(previous: drawnPresented, current: presented)
         drawnPresented = presented
         hasDrawn = true
-        selection = selection.clamped(to: presented.count)
         presentedDecorator?(presented)
         if presented.isEmpty, !ending, !tearingDown { beginEnding() }
         guard let window, let primary = NSScreen.screens.first else { return }

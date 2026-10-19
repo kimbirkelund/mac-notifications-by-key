@@ -113,6 +113,10 @@ private final class RecordingAccess: NotificationCenterAccess, @unchecked Sendab
     private static let scriptEditorActions = ["Show Details", "Show", "Close"]
 
     private static func presented(_ indices: Int...) -> [PresentedNotification] {
+        presented(indices)
+    }
+
+    private static func presented(_ indices: [Int]) -> [PresentedNotification] {
         indices.enumerated().map { offset, index in
             PresentedNotification(
                 item: NotificationItem(
@@ -140,6 +144,32 @@ private final class RecordingAccess: NotificationCenterAccess, @unchecked Sendab
         session.handle(.character("d"))
         queue.sync {}
         #expect(access.calls == [.dismiss(7)])
+    }
+
+    private func dismissedAfterRedraw(drawn: [Int], selecting moves: Int, redrawn: [Int])
+        -> [RecordingAccess.Call]
+    {
+        let first = Self.presented(drawn)
+        let access = RecordingAccess(presented: first)
+        let (session, queue) = session(access, presented: first)
+        for _ in 0..<moves { session.handle(.character("j")) }
+        session.drawActionPanels(Self.presented(redrawn))
+        session.handle(.character("d"))
+        queue.sync {}
+        return access.calls
+    }
+
+    @Test func redrawWithAnArrivalAboveKeepsTheSelectionOnTheSameNotification() {
+        #expect(
+            dismissedAfterRedraw(drawn: [1, 2], selecting: 1, redrawn: [0, 1, 2]) == [.dismiss(2)])
+    }
+
+    @Test func redrawWithTheAboveNotificationGoneKeepsTheSelectionOnTheSameNotification() {
+        #expect(dismissedAfterRedraw(drawn: [1, 2], selecting: 1, redrawn: [2]) == [.dismiss(2)])
+    }
+
+    @Test func redrawWithTheSelectedNotificationGoneSelectsByPosition() {
+        #expect(dismissedAfterRedraw(drawn: [1, 2], selecting: 1, redrawn: [1]) == [.dismiss(1)])
     }
 
     /// RIM-14: Space performs the default activation.
@@ -341,6 +371,10 @@ private final class RecordingAccess: NotificationCenterAccess, @unchecked Sendab
     }
 
     private static func presented(_ indices: Int...) -> [PresentedNotification] {
+        presented(indices)
+    }
+
+    private static func presented(_ indices: [Int]) -> [PresentedNotification] {
         indices.enumerated().map { offset, index in
             PresentedNotification(
                 item: NotificationItem(
