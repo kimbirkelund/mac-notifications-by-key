@@ -38,6 +38,17 @@ import Testing
         #expect(ActionPanelLayout.entries(for: item) == ["Activate", "Dismiss", "Reply"])
     }
 
+    @Test func plainItemEntriesOmitClose() {
+        let item = NotificationItem(index: 0, actions: ["Close", "Reply"])
+        #expect(ActionPanelLayout.entries(for: item) == ["Activate", "Dismiss", "Reply"])
+    }
+
+    @Test func collapsedStackEntriesOmitCloseAndClearAll() {
+        let item = NotificationItem(
+            index: 0, actions: ["Close", "Clear All", "Reply"], isCollapsedStack: true)
+        #expect(ActionPanelLayout.entries(for: item) == ["Expand", "Dismiss", "Reply"])
+    }
+
     @Test func expandIsActivatedBySpace() {
         let item = NotificationItem(index: 0, actions: ["Clear All"], isCollapsedStack: true)
         let n = PresentedNotification(item: item, frame: anchor)

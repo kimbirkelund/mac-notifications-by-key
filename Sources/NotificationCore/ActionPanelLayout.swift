@@ -26,10 +26,11 @@ public enum ActionPanelLayout {
     public static let collapsedStackExtent: CGFloat = 14
 
     public static func entries(for item: NotificationItem) -> [String] {
+        let actions = item.actions.filter { $0 != "Close" }
         if item.isCollapsedStack {
-            return ["Expand", "Dismiss"] + item.actions.filter { $0 != "Clear All" }
+            return ["Expand", "Dismiss"] + actions.filter { $0 != "Clear All" }
         }
-        return ["Activate", "Dismiss"] + item.actions
+        return ["Activate", "Dismiss"] + actions
     }
 
     public static func activatorLabel(_ activator: String) -> String { activator.lowercased() }

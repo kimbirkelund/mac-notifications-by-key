@@ -8,11 +8,11 @@ struct GlobalCommandTests {
         #expect(GlobalCommand.resolve(key: "X") == .clearAll)
     }
 
-    @Test func upperCaseCClearsAllForApp() {
-        #expect(GlobalCommand.resolve(key: "C") == .clearAllForApp)
+    @Test func upperCaseDDismissesAllForApp() {
+        #expect(GlobalCommand.resolve(key: "D") == .dismissAllForApp)
     }
 
-    @Test("other keys resolve to nil", arguments: ["x", "c", "d", "Space", "", "XX"])
+    @Test("other keys resolve to nil", arguments: ["x", "C", "c", "d", "Space", "", "XX"])
     func unknown(key: String) {
         #expect(GlobalCommand.resolve(key: key) == nil)
     }

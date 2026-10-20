@@ -191,7 +191,7 @@ final class Session {
         switch command {
         case .clearAll:
             dispatch { try $0.clearAll() }
-        case .clearAllForApp:
+        case .dismissAllForApp:
             guard let selected = selection.selectedIndex,
                 drawnPresented.indices.contains(selected)
             else { return }
