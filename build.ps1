@@ -117,6 +117,80 @@ function Invoke-Checked($file, [string[]]$argv)
   if ($LASTEXITCODE -ne 0) { throw "$file $($argv -join ' ') exited $LASTEXITCODE" }
 }
 
+# Invoke-ScriptAnalyzer in-process intermittently throws a rule-level NRE and then leaves
+# pwsh hanging on leaked runspace-pool threads, so run it in a child and retry crashes and
+# hangs until an overall deadline. The child publishes its result via an atomic rename; the
+# parent takes it as soon as it appears and kills the child, since the child may never exit.
+function Invoke-ScriptAnalyzerIsolated([string[]]$Paths, [string]$Settings)
+{
+  if (-not $Paths) { return @() }
+  $timeoutSec = 120
+  $childScript = @'
+$ErrorActionPreference = 'Stop'
+$result = $env:NBK_SA_RESULT
+try
+{
+  $paths = @($env:NBK_SA_PATHS | ConvertFrom-Json)
+  # The first analysis in a fresh process hits a startup race (NRE in UseCorrectCasing) ~1 in 5;
+  # a throwaway pass absorbs it so the real one almost never sees it.
+  try { $null = Invoke-ScriptAnalyzer -Path $paths[0] -Settings $env:NBK_SA_SETTINGS -ErrorAction Stop }
+  catch { }
+  $findings = @($paths | ForEach-Object { Invoke-ScriptAnalyzer -Path $_ -Settings $env:NBK_SA_SETTINGS -ErrorAction Stop } |
+    Select-Object RuleName, @{ N = 'Severity'; E = { [string]$_.Severity } }, ScriptPath, Line, Message)
+  $json = if ($findings.Count -eq 0) { '[]' } else { ConvertTo-Json -InputObject $findings -Depth 4 -AsArray }
+  Set-Content -LiteralPath "$result.tmp" -Value $json -Encoding utf8
+  Move-Item -LiteralPath "$result.tmp" -Destination "$result.ok"
+}
+catch
+{
+  Set-Content -LiteralPath "$result.tmp" -Value ($_ | Out-String) -Encoding utf8
+  Move-Item -LiteralPath "$result.tmp" -Destination "$result.err"
+}
+[Environment]::Exit(0)
+'@
+  $encoded = [Convert]::ToBase64String([Text.Encoding]::Unicode.GetBytes($childScript))
+  $deadline = [DateTime]::UtcNow.AddSeconds($timeoutSec)
+  $lastError = ''
+  for ($attempt = 1; ; $attempt++)
+  {
+    $base = (New-TemporaryFile).FullName
+    $errFile = "$base.stderr"
+    $env:NBK_SA_PATHS = ConvertTo-Json -InputObject @($Paths) -Compress
+    $env:NBK_SA_SETTINGS = $Settings
+    $env:NBK_SA_RESULT = $base
+    $proc = $null
+    try
+    {
+      $proc = Start-Process ([Environment]::ProcessPath) -ArgumentList @('-NoProfile', '-NonInteractive', '-EncodedCommand', $encoded) `
+        -RedirectStandardOutput "$base.stdout" -RedirectStandardError $errFile -PassThru -NoNewWindow
+      while (-not (Test-Path -LiteralPath "$base.ok") -and -not (Test-Path -LiteralPath "$base.err") -and
+        -not $proc.HasExited -and [DateTime]::UtcNow -lt $deadline)
+      {
+        Start-Sleep -Milliseconds 100
+      }
+      if (Test-Path -LiteralPath "$base.ok")
+      {
+        $json = Get-Content -Raw -LiteralPath "$base.ok"
+        return @(ConvertFrom-Json -InputObject $json)
+      }
+      $stderr = if (Test-Path -LiteralPath $errFile) { Get-Content -Raw -LiteralPath $errFile } else { '' }
+      if (Test-Path -LiteralPath "$base.err") { $lastError = Get-Content -Raw -LiteralPath "$base.err" }
+      elseif ($proc.HasExited) { $lastError = "exit code $($proc.ExitCode): $stderr" }
+      else { $lastError = "no result before the ${timeoutSec}s deadline: $stderr" }
+    }
+    finally
+    {
+      if ($proc -and -not $proc.HasExited) { $proc.Kill($true) }
+      Remove-Item "$base*" -ErrorAction SilentlyContinue
+      Remove-Item Env:NBK_SA_PATHS, Env:NBK_SA_SETTINGS, Env:NBK_SA_RESULT -ErrorAction SilentlyContinue
+    }
+    if ([DateTime]::UtcNow -ge $deadline) { break }
+    $remaining = [int]($deadline - [DateTime]::UtcNow).TotalSeconds
+    Write-Host "--- retry: PSScriptAnalyzer attempt $attempt failed, ${remaining}s left ($lastError)" -ForegroundColor Yellow
+  }
+  throw "PSScriptAnalyzer failed for ${timeoutSec}s: $lastError"
+}
+
 # --- release orchestration helpers (-DoPrepareRelease / -DoFinalizeRelease) ---
 
 function Confirm-GhReady
@@ -403,7 +477,7 @@ if ($DoLint)
     Write-Step 'prettier (check docs)'
     Invoke-Checked $prettier @('--check', '.')
     Write-Step 'PSScriptAnalyzer (lint)'
-    $findings = $psFiles | ForEach-Object { Invoke-ScriptAnalyzer -Path $_.FullName -Settings $psSettings }
+    $findings = Invoke-ScriptAnalyzerIsolated -Paths $psFiles.FullName -Settings $psSettings
     if ($findings)
     {
       $findings |
