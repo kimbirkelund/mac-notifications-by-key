@@ -1,5 +1,6 @@
 import AppKit
 import NotificationCore
+import SwiftUI
 
 enum ScreenGeometry {
     static func appKitRect(fromCG rect: CGRect, primaryScreenHeight: CGFloat) -> CGRect {
@@ -21,8 +22,8 @@ final class ActionPanelsWindow: NSWindow {
     private static let haloInset: CGFloat = 8
     private static let tint = NSColor.white.withAlphaComponent(0.22)
     private static let haloRadius: CGFloat = 16
-    private static let panelRadius: CGFloat = 12
-    private static let mergeSpacing: CGFloat = 12
+    private static let panelRadius: CGFloat = 10
+    private static let fillet: CGFloat = 8
 
     init(frame: CGRect, level: NSWindow.Level) {
         super.init(contentRect: frame, styleMask: .borderless, backing: .buffered, defer: false)
@@ -52,33 +53,39 @@ final class ActionPanelsWindow: NSWindow {
                 ScreenGeometry.appKitRect(fromCG: cg, primaryScreenHeight: primaryScreenHeight),
                 in: self.frame)
         }
-        let paddedContent = CGSize(
-            width: panelView.contentSize.width,
-            height: panelView.contentSize.height + Self.haloInset)
-        let panelFrame = local(
-            ActionPanelLayout.frame(anchor: panel.anchor, contentSize: paddedContent))
-        let haloFrame = local(panel.anchor).insetBy(dx: -Self.haloInset, dy: -Self.haloInset)
-            .union(CGRect(x: panelFrame.minX, y: panelFrame.maxY, width: 0, height: 0))
+        let size = panelView.contentSize
+        let overflows = size.height > panel.coveredHeight
+        let bend = Self.fillet + Self.panelRadius
+        let panelHeight =
+            overflows
+            ? max(size.height + Self.haloInset, panel.coveredHeight + bend)
+            : size.height
+        let haloBottom =
+            overflows
+            ? min(
+                max(panelHeight - bend, panel.coveredHeight), panel.coveredHeight + Self.haloInset)
+            : panel.coveredHeight + Self.haloInset
+        let panelCG = ActionPanelLayout.frame(
+            anchor: panel.anchor, contentSize: CGSize(width: size.width, height: panelHeight))
+        let haloRight = panel.anchor.insetBy(dx: -Self.haloInset, dy: -Self.haloInset)
+        let haloCG = CGRect(
+            x: panelCG.minX, y: haloRight.minY, width: haloRight.maxX - panelCG.minX,
+            height: haloBottom + Self.haloInset)
+        let panelFrame = local(panelCG)
+        let haloFrame = local(haloCG)
 
         if #available(macOS 26, *) {
-            let container = NSGlassEffectContainerView(frame: content.bounds)
-            container.spacing = Self.mergeSpacing
-            let host = NSView(frame: content.bounds)
-            container.contentView = host
-
-            let halo = NSGlassEffectView(frame: haloFrame)
-            halo.cornerRadius = Self.haloRadius
-            halo.tintColor = Self.tint
-            host.addSubview(halo)
-
-            let glass = NSGlassEffectView(frame: panelFrame)
-            glass.cornerRadius = Self.panelRadius
-            glass.tintColor = Self.tint
-            panelView.frame = glass.bounds
-            glass.contentView = panelView
-            host.addSubview(glass)
-
-            content.addSubview(container)
+            let union = haloCG.union(panelCG)
+            let shape = GlassOutlineShape(
+                halo: haloCG.offsetBy(dx: -union.minX, dy: -union.minY),
+                panel: panelCG.offsetBy(dx: -union.minX, dy: -union.minY),
+                haloRadius: Self.haloRadius, panelRadius: Self.panelRadius, fillet: Self.fillet)
+            let hosting = NSHostingView(
+                rootView: GlassOutlineView(shape: shape, tint: Color(nsColor: Self.tint)))
+            hosting.frame = local(union)
+            content.addSubview(hosting)
+            panelView.frame = local(panelCG)
+            content.addSubview(panelView)
         } else {
             let halo = NSView(frame: haloFrame)
             halo.wantsLayer = true

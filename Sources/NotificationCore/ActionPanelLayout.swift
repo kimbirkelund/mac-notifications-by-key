@@ -5,18 +5,25 @@ public struct ActionPanelSpec: Equatable, Sendable {
     public var entries: [String]
     public var activators: [String]
     public var anchor: CGRect
+    public var coveredExtent: CGFloat
 
-    public init(entries: [String], activators: [String], anchor: CGRect) {
+    public init(
+        entries: [String], activators: [String], anchor: CGRect, coveredExtent: CGFloat = 0
+    ) {
         self.entries = entries
         self.activators = activators
         self.anchor = anchor
+        self.coveredExtent = coveredExtent
     }
+
+    public var coveredHeight: CGFloat { anchor.height + coveredExtent }
 
     public var activatorLabels: [String] { activators.map(ActionPanelLayout.activatorLabel) }
 }
 
 public enum ActionPanelLayout {
     public static let gap: CGFloat = 8
+    public static let collapsedStackExtent: CGFloat = 14
 
     public static func entries(for item: NotificationItem) -> [String] {
         if item.isCollapsedStack {
@@ -35,7 +42,8 @@ public enum ActionPanelLayout {
         let entries = entries(for: selected.item)
         return ActionPanelSpec(
             entries: entries, activators: ActivatorAssignment.keys(for: entries),
-            anchor: selected.frame)
+            anchor: selected.frame,
+            coveredExtent: selected.item.isCollapsedStack ? collapsedStackExtent : 0)
     }
 
     public static func frame(
