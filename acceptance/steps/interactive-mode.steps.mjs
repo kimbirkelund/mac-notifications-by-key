@@ -244,7 +244,7 @@ Then('exactly one action panel is present', STEP, async function () {
 })
 
 Then(
-  'the panel lists "Activate", "Dismiss", then the selected notification\'s actions in order',
+  'the panel lists "Activate", "Dismiss this \\/ app \\/ all", then the selected notification\'s actions in order',
   STEP,
   async function () {
     const { frames, panel } = await panelWithFrames(this)
@@ -261,7 +261,7 @@ Then(
     )
     assert.deepEqual(
       panel.entries.map((e) => e.name),
-      ['Activate', 'Dismiss', ...item.actions],
+      ['Activate', 'Dismiss this / app / all', ...item.actions],
       `the panel does not match notification ${JSON.stringify(frame.title)}`
     )
   }
@@ -413,6 +413,27 @@ Then('the selected panel does not list {string}', STEP, async function (name) {
     !panel.entries.some((e) => e.name === name),
     `expected no entry ${JSON.stringify(name)} in the selected panel: ${JSON.stringify(panel)}`
   )
+})
+
+async function assertHint(world, hint, shown) {
+  let panel
+  await world.pollUntil(async () => {
+    panel = await selectedPanel(world)
+    return panel.hints.includes(hint) === shown
+  }, SETTLE_MS)
+  assert.equal(
+    panel.hints.includes(hint),
+    shown,
+    `expected ${shown ? '' : 'no '}hint ${JSON.stringify(hint)} in the selected panel: ${JSON.stringify(panel)}`
+  )
+}
+
+Then('the panel shows the {string} hint', STEP, async function (hint) {
+  await assertHint(this, hint, true)
+})
+
+Then('the panel does not show the {string} hint', STEP, async function (hint) {
+  await assertHint(this, hint, false)
 })
 
 // Nothing marks a key as handled, so hold for a window in which a move would show.

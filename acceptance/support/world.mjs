@@ -158,7 +158,7 @@ function rowMajor(texts) {
 }
 
 function pairEntries(texts) {
-  const names = rowMajor(texts.filter((t) => t.id !== 'activator'))
+  const names = rowMajor(texts.filter((t) => t.id !== 'activator' && t.id !== 'hint'))
   const entries = names.map((t) => ({ activator: null, name: t.value }))
   for (const a of texts.filter((t) => t.id === 'activator')) {
     let best = -1
@@ -188,7 +188,8 @@ function textsOf(node, depth) {
 // failing that any AXGroup holding static texts. Entries are the non-activator
 // texts in row-major order (within 2 px of a row's top share it); each text
 // identified "activator" belongs to the nearest entry to its right whose vertical
-// span overlaps it, so entries without one carry activator null.
+// span overlaps it, so entries without one carry activator null. Texts identified "hint" are not entries;
+// their values are the panel's hints in reading order.
 // The demo window holds placeholders, not panels, so it is skipped.
 function panelsIn(windows) {
   const out = []
@@ -204,7 +205,8 @@ function panelsIn(windows) {
           width: g.width,
           height: g.height,
           selected: g.selected === true,
-          entries: pairEntries(texts)
+          entries: pairEntries(texts),
+          hints: rowMajor(texts.filter((t) => t.id === 'hint')).map((t) => t.value)
         })
       } else {
         walk(g, depth + 1)
