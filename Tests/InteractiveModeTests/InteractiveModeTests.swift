@@ -924,3 +924,27 @@ private final class PanelLog: @unchecked Sendable {
         #expect(script.count == Int((Self.cap / Self.interval).rounded(.up)) + 1)
     }
 }
+
+@Suite struct GlassOutlineShapeTests {
+    @available(macOS 26, *)
+    private func shape(halo: CGRect, panel: CGRect) -> GlassOutlineShape {
+        GlassOutlineShape(halo: halo, panel: panel, haloRadius: 12, panelRadius: 8, fillet: 6)
+    }
+
+    @available(macOS 26, *)
+    @Test func animatableDataMidpointYieldsMidpointRects() {
+        let from = shape(
+            halo: CGRect(x: 0, y: 0, width: 100, height: 40),
+            panel: CGRect(x: 0, y: 0, width: 60, height: 80))
+        let to = shape(
+            halo: CGRect(x: 20, y: 10, width: 140, height: 60),
+            panel: CGRect(x: 20, y: 10, width: 100, height: 120))
+        var mid = from
+        var delta = to.animatableData
+        delta -= from.animatableData
+        delta.scale(by: 0.5)
+        mid.animatableData = from.animatableData + delta
+        #expect(mid.halo == CGRect(x: 10, y: 5, width: 120, height: 50))
+        #expect(mid.panel == CGRect(x: 10, y: 5, width: 80, height: 100))
+    }
+}

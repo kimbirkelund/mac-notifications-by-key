@@ -9,6 +9,14 @@ struct GlassOutlineShape: Shape {
     var panelRadius: CGFloat
     var fillet: CGFloat
 
+    var animatableData: AnimatablePair<CGRect.AnimatableData, CGRect.AnimatableData> {
+        get { AnimatablePair(halo.animatableData, panel.animatableData) }
+        set {
+            halo.animatableData = newValue.first
+            panel.animatableData = newValue.second
+        }
+    }
+
     func path(in rect: CGRect) -> Path {
         var path = Path()
         let bottom = halo.maxY
