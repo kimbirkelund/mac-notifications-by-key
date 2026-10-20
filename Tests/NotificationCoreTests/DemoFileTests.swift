@@ -113,6 +113,12 @@ import Testing
         #expect(file.notifications[1].leavesAfter == nil)
     }
 
+    @Test func takesDecodesAndDefaultsToNil() throws {
+        let file = try decode(#"{"notifications":[{"title":"a","takes":3},{"title":"b"}]}"#)
+        #expect(file.notifications[0].takes == 3)
+        #expect(file.notifications[1].takes == nil)
+    }
+
     @Test func negativeTimingIsRejected() {
         #expect(throws: DemoFileError.self) {
             try decode(#"{"notifications":[{"arrivesAfter":-1}]}"#)

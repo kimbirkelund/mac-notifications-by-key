@@ -139,6 +139,26 @@ import Testing
         #expect(try Self.titles(access) == ["A"])
     }
 
+    @Test func dismissOnANotificationThatTakesTimeReturnsOnlyAfterItsDelay() throws {
+        let access = Self.access([
+            DemoNotification(title: "A", takes: 0.3), DemoNotification(title: "B"),
+        ])
+        let started = Date()
+        try access.dismiss(index: 0)
+        #expect(Date().timeIntervalSince(started) >= 0.3)
+        #expect(try Self.titles(access) == ["B"])
+    }
+
+    @Test func thePresentedListIsReadableWhileAnEntryTakesTime() async throws {
+        let access = Self.access([DemoNotification(title: "A", takes: 0.5)])
+        nonisolated(unsafe) let slow = access
+        let dismissal = Task.detached { try slow.dismiss(index: 0) }
+        try await Task.sleep(for: .milliseconds(100))
+        #expect(try Self.titles(access) == ["A"])
+        try await dismissal.value
+        #expect(try Self.titles(access) == [])
+    }
+
     @Test func outOfRangeIndexThrows() {
         let access = Self.access([DemoNotification(title: "A")])
         #expect {

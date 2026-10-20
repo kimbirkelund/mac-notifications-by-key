@@ -53,11 +53,14 @@ final class Session {
     private var ending = false
     private var terminated = false
     private var dispatching = false
+    private var panelHidden = false
+    private var dispatchGeneration = 0
     private var hasDrawn = false
     private let endingHold: TimeInterval
     private let endingFade: TimeInterval
     private let terminate: () -> Void
     var presentedDecorator: (@MainActor (_ presented: [PresentedNotification]) -> Void)?
+    var panelDecorator: (@MainActor (_ panel: ActionPanelSpec?) -> Void)?
 
     static let endingHold: TimeInterval = 1
     static let endingFade: TimeInterval = 0.5
@@ -157,14 +160,14 @@ final class Session {
         if let move = key.selectionMove {
             let before = selection
             selection.apply(move)
-            if selection != before { drawActionPanels(drawnPresented) }
+            if selection != before, !panelHidden { drawActionPanels(drawnPresented) }
         } else if case .character(let character) = key {
             dispatchEntry(forKey: character)
         }
     }
 
     private func dispatchEntry(forKey key: String) {
-        guard !dispatching, let selected = selection.selectedIndex,
+        guard !dispatching, !panelHidden, let selected = selection.selectedIndex,
             drawnPresented.indices.contains(selected)
         else { return }
         let item = drawnPresented[selected].item
@@ -172,7 +175,8 @@ final class Session {
             let command = EntryCommand.resolve(
                 key: key, entries: ActionPanelLayout.entries(for: item))
         else { return }
-        dispatch { access in
+        dispatch(hidingPanel: command.hidesPanel(onCollapsedStack: item.isCollapsedStack)) {
+            access in
             switch command {
             case .activate:
                 if item.isCollapsedStack {
@@ -187,21 +191,24 @@ final class Session {
     }
 
     private func dispatchGlobal(_ command: GlobalCommand) {
-        guard !dispatching else { return }
+        guard !dispatching, !panelHidden else { return }
         switch command {
         case .clearAll:
-            dispatch { try $0.clearAll() }
+            dispatch(hidingPanel: command.hidesPanel) { try $0.clearAll() }
         case .dismissAllForApp:
             guard let selected = selection.selectedIndex,
                 drawnPresented.indices.contains(selected)
             else { return }
             let index = drawnPresented[selected].item.index
-            dispatch { try $0.clearAll(forApp: index) }
+            dispatch(hidingPanel: command.hidesPanel) { try $0.clearAll(forApp: index) }
         }
     }
 
-    private func dispatch(_ work: @escaping (NotificationCenterAccess) throws -> Void) {
+    private func dispatch(
+        hidingPanel: Bool, _ work: @escaping (NotificationCenterAccess) throws -> Void
+    ) {
         dispatching = true
+        if hidingPanel { hidePanel() }
         nonisolated(unsafe) let access = access
         nonisolated(unsafe) let work = work
         dispatchQueue.async {
@@ -213,6 +220,7 @@ final class Session {
             DispatchQueue.main.async {
                 MainActor.assumeIsolated {
                     self.dispatching = false
+                    self.dispatchGeneration += 1
                     self.readNow()
                 }
             }
@@ -233,14 +241,21 @@ final class Session {
     }
 
     private func redraw(with presented: [PresentedNotification]?) {
-        if let presented = presented.map(PresentedNotification.topDown),
-            presented != drawnPresented || !hasDrawn
-        {
+        guard !dispatching, let presented = presented.map(PresentedNotification.topDown) else {
+            return
+        }
+        if panelHidden || presented != drawnPresented || !hasDrawn {
             drawActionPanels(presented)
         }
     }
 
-    private func scheduleRead() {
+    private func hidePanel() {
+        panelHidden = true
+        panelDecorator?(nil)
+        panelsWindow?.show(nil, primaryScreenHeight: NSScreen.screens.first?.frame.height ?? 0)
+    }
+
+    func scheduleRead() {
         read { $0.refreshActionPanels(with: $1) }
     }
 
@@ -255,10 +270,13 @@ final class Session {
         guard !tearingDown, !ending else { return }
         nonisolated(unsafe) let access = access
         nonisolated(unsafe) let apply = apply
+        let generation = dispatchGeneration
         DispatchQueue.global(qos: .userInitiated).async {
             let presented = try? access.readPresented()
             DispatchQueue.main.async {
-                MainActor.assumeIsolated { apply(self, presented) }
+                MainActor.assumeIsolated {
+                    apply(self, generation == self.dispatchGeneration ? presented : nil)
+                }
             }
         }
     }
@@ -267,7 +285,10 @@ final class Session {
         selection = selection.following(previous: drawnPresented, current: presented)
         drawnPresented = presented
         hasDrawn = true
+        panelHidden = false
+        let panel = ActionPanelLayout.panel(for: presented, selectedIndex: selection.selectedIndex)
         presentedDecorator?(presented)
+        panelDecorator?(panel)
         if presented.isEmpty, !ending, !tearingDown { beginEnding() }
         guard let window, let primary = NSScreen.screens.first else { return }
         let panels: ActionPanelsWindow
@@ -280,9 +301,7 @@ final class Session {
             window.addChildWindow(panels, ordered: .above)
             panels.orderFront(nil)
         }
-        panels.show(
-            ActionPanelLayout.panel(for: presented, selectedIndex: selection.selectedIndex),
-            primaryScreenHeight: primary.frame.height)
+        panels.show(panel, primaryScreenHeight: primary.frame.height)
     }
 
     private func beginEnding() {
@@ -328,4 +347,18 @@ final class Session {
             DispatchQueue.main.async { MainActor.assumeIsolated { completion() } }
         }
     }
+}
+
+extension EntryCommand {
+    fileprivate func hidesPanel(onCollapsedStack: Bool) -> Bool {
+        switch self {
+        case .activate: !onCollapsedStack
+        case .dismiss: true
+        case .action: true
+        }
+    }
+}
+
+extension GlobalCommand {
+    fileprivate var hidesPanel: Bool { true }
 }

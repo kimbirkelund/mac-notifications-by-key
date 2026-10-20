@@ -33,6 +33,7 @@ public struct DemoNotification: Equatable, Sendable, Codable {
     public var members: [DemoNotification]
     public var arrivesAfter: TimeInterval?
     public var leavesAfter: TimeInterval?
+    public var takes: TimeInterval?
 
     public init(
         app: String? = nil,
@@ -43,7 +44,8 @@ public struct DemoNotification: Equatable, Sendable, Codable {
         actions: [DemoAction] = [],
         members: [DemoNotification] = [],
         arrivesAfter: TimeInterval? = nil,
-        leavesAfter: TimeInterval? = nil
+        leavesAfter: TimeInterval? = nil,
+        takes: TimeInterval? = nil
     ) {
         self.app = app
         self.title = title
@@ -54,10 +56,12 @@ public struct DemoNotification: Equatable, Sendable, Codable {
         self.members = members
         self.arrivesAfter = arrivesAfter
         self.leavesAfter = leavesAfter
+        self.takes = takes
     }
 
     private enum CodingKeys: String, CodingKey {
-        case app, title, subtitle, body, activateCloses, actions, members, arrivesAfter, leavesAfter
+        case app, title, subtitle, body, activateCloses, actions, members
+        case arrivesAfter, leavesAfter, takes
     }
 
     public init(from decoder: Decoder) throws {
@@ -71,7 +75,8 @@ public struct DemoNotification: Equatable, Sendable, Codable {
             actions: try c.decodeIfPresent([DemoAction].self, forKey: .actions) ?? [],
             members: try c.decodeIfPresent([DemoNotification].self, forKey: .members) ?? [],
             arrivesAfter: try c.decodeIfPresent(TimeInterval.self, forKey: .arrivesAfter),
-            leavesAfter: try c.decodeIfPresent(TimeInterval.self, forKey: .leavesAfter))
+            leavesAfter: try c.decodeIfPresent(TimeInterval.self, forKey: .leavesAfter),
+            takes: try c.decodeIfPresent(TimeInterval.self, forKey: .takes))
     }
 
     public var hasTiming: Bool { arrivesAfter != nil || leavesAfter != nil }

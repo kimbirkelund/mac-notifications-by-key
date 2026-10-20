@@ -90,6 +90,14 @@ for `C-*`/`X-*`.
   ([RNA-6](../notification-access/requirements.md)), and a named action as `action <n> <name>` does
   ([RNA-5](../notification-access/requirements.md)). Interactive mode shall stay active afterwards.
 
+- **RIM-24 (event) — The panel is hidden while an entry is performed.** When the user triggers
+  `Activate` on a notification that is not a stack, `Dismiss`, any named action, `D` or `X`
+  ([RIM-14](#selection-and-actions), [RIM-20](#selection-and-actions)), the system shall remove the
+  action panel from the overlay before performing the entry, and shall redraw it
+  ([RIM-15](#selection-and-actions), [RIM-22](#selection-and-actions)) once the entry has completed
+  and the notifications presented have been read again, even if none changed. When the user triggers
+  `Expand` on a collapsed stack, the system shall keep the action panel.
+
 - **RIM-15 (event) — Selection survives the selected notification going away.** When the selected
   notification is no longer presented — after an entry was performed on it, or because it was
   dismissed elsewhere — the system shall select the notification now at the same position in the
@@ -149,8 +157,10 @@ for `C-*`/`X-*`.
   Notification Center's, draw a placeholder per notification, open and close no panel, and apply
   entries to that list according to whether the file says each entry closes its notification; where
   the file schedules a notification's arrival or departure, the system shall present it only from
-  its arrival until its departure; everything else shall behave as without `--demo`. The file's
-  format is the [demo file](../../definitions.md).
+  its arrival until its departure, and where the file says an entry on a notification takes some
+  seconds, the system shall complete that entry's removal of the notification only after that delay;
+  everything else shall behave as without `--demo`. The file's format is the
+  [demo file](../../definitions.md).
 
 ## Safe failure
 

@@ -301,6 +301,11 @@ Then('the panel is at least as tall as the selected notification', STEP, async f
 // Absence has no settle point, so hold it for the window in which panels would be drawn.
 const NO_PANEL_HOLD_MS = 1500
 
+Then('the action panel is removed', STEP, async function () {
+  const removed = await this.pollUntil(async () => (await this.actionPanels()).length === 0, 2000)
+  assert.ok(removed, 'expected the action panel to be removed after the key press')
+})
+
 Then('no action panel is present', STEP, async function () {
   const deadline = Date.now() + NO_PANEL_HOLD_MS
   do {

@@ -182,6 +182,19 @@ Feature: Interactive mode
     And the notification at position 2 is selected
     And interactive mode is still running
 
+  # Validates RIM-24, RIM-21: the panel is gone while a slow entry removes its notification
+  # and is drawn again once it has finished.
+  @demo
+  Scenario: The panel hides while an entry removes its notification
+    Given interactive mode is running with demo file "slow-dismiss.json"
+    And the overlay is the frontmost application
+    When I press "d"
+    Then the action panel is removed
+    And no action panel is present
+    And the notification titled "First" is no longer presented
+    And exactly one action panel is present
+    And interactive mode is still running
+
   # Validates RIM-14: a named action's key performs that action and the mode stays.
   @demo
   Scenario: Pressing a named action's key performs it
