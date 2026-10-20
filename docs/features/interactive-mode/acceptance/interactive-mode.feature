@@ -208,17 +208,26 @@ Feature: Interactive mode
     And interactive mode exits with status 0
     And no overlay window is present
 
-  # Validates RIM-20, RIM-15: C clears the selected notification's app only; the selection
+  # Validates RIM-20, RIM-15: D dismisses the selected notification's app only; the selection
   # lands on what is now topmost.
   @demo
-  Scenario: Pressing C clears the selected notification's app only
+  Scenario: Pressing D dismisses the selected notification's app only
     Given interactive mode is running with demo file "two-apps.json"
     And the overlay is the frontmost application
-    When I press "C"
+    When I press "D"
     Then the notifications titled "Inbox one" and "Inbox two" are no longer presented
     And the notification titled "Meeting" is still presented
     And the topmost notification is selected
     And interactive mode is still running
+
+  # Validates RIM-10: Close is performed by Dismiss, so it is not a separate entry.
+  @demo
+  Scenario: Close is not listed as an entry
+    Given interactive mode is running with demo file "close-action.json"
+    Then the selected panel shows activator "space" before "Activate"
+    And the selected panel shows activator "d" before "Dismiss"
+    And the selected panel shows activator "a" before "Archive"
+    And the selected panel does not list "Close"
 
   # Validates RIM-18: a collapsed stack offers Expand in place of Activate, on the same key.
   @demo

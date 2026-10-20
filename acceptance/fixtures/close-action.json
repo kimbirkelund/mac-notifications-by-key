@@ -1,0 +1,11 @@
+{
+  "notifications": [
+    {
+      "app": "Mail",
+      "title": "Ticket",
+      "subtitle": null,
+      "body": null,
+      "actions": ["Close", "Archive"]
+    }
+  ]
+}

@@ -4,7 +4,7 @@ BDD scenarios (Gherkin) specifying interactive mode. These `.feature` files **ar
 acceptance tests: [cucumber-js](https://github.com/cucumber/cucumber-js) runs them against the
 compiled `nbk` binary as a black box, using the step definitions in `acceptance/steps/`.
 
-The twenty-five unattended scenarios run in the default acceptance run. All but one run in demo mode
+The twenty-six unattended scenarios run in the default acceptance run. All but one run in demo mode
 ([RIM-21](../requirements.md#demo-mode)) and never touch the real Notification Center; the exception
 is the window-order scenario, which needs the real panel. The trust scenario is `@operator` and runs
 only attended.
@@ -30,7 +30,8 @@ only attended.
 | An action that does not close keeps the notification (demo)             | RIM-14, RIM-21      | ✅                                             |
 | Pressing Space activates the selected notification (demo)               | RIM-14              | ✅                                             |
 | Pressing X clears every notification and ends the mode (demo)           | RIM-20, RIM-16      | ✅                                             |
-| Pressing C clears the selected notification's app only (demo)           | RIM-20, RIM-15      | ✅                                             |
+| Pressing D dismisses the selected notification's app only (demo)        | RIM-20, RIM-15      | ✅                                             |
+| Close is not listed as an entry (demo)                                  | RIM-10              | ✅                                             |
 | A collapsed stack offers Expand instead of Activate (demo)              | RIM-18              | ✅                                             |
 | Expanding a stack presents its members in its place (demo)              | RIM-18, RIM-15      | ✅                                             |
 | An arriving notification keeps the selection on its notification (demo) | RIM-22, RIM-21      | ✅                                             |
