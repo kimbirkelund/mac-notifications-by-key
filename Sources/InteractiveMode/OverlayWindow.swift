@@ -52,7 +52,7 @@ final class FarewellWindow: NSWindow {
         title = "Farewell"
 
         label.font = .systemFont(ofSize: 64, weight: .semibold)
-        label.textColor = NSColor(red: 0.1, green: 0.65, blue: 0.25, alpha: 1)
+        label.textColor = .modeGreen
         label.translatesAutoresizingMaskIntoConstraints = false
 
         let box = NSView()
@@ -138,4 +138,8 @@ final class OverlayWindow: NSWindow {
     override func cancelOperation(_ sender: Any?) {
         onKey?(.escape)
     }
+}
+
+extension NSColor {
+    static let modeGreen = NSColor(red: 0.1, green: 0.65, blue: 0.25, alpha: 1)
 }

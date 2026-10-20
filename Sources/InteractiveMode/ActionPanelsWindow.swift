@@ -120,7 +120,7 @@ private final class ActionPanelView: NSView {
     init(spec: ActionPanelSpec) {
         rows = zip(spec.activatorLabels, spec.entries).map { label, entry in
             (
-                activator: Self.label(label, identifier: "activator", color: .controlAccentColor),
+                activator: Self.label(label, identifier: "activator", color: .modeGreen),
                 entry: Self.label(entry, identifier: "entry")
             )
         }
