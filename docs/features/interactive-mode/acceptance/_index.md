@@ -4,7 +4,7 @@ BDD scenarios (Gherkin) specifying interactive mode. These `.feature` files **ar
 acceptance tests: [cucumber-js](https://github.com/cucumber/cucumber-js) runs them against the
 compiled `nbk` binary as a black box, using the step definitions in `acceptance/steps/`.
 
-The twenty-seven unattended scenarios run in the default acceptance run. All but one run in demo
+The twenty-eight unattended scenarios run in the default acceptance run. All but one run in demo
 mode ([RIM-21](../requirements.md#demo-mode)) and never touch the real Notification Center; the
 exception is the window-order scenario, which needs the real panel. The trust scenario is
 `@operator` and runs only attended.
@@ -27,6 +27,7 @@ exception is the window-order scenario, which needs the real panel. The trust sc
 | Movement hints show only where a move is possible (demo)                | RIM-23, RIM-12      | ✅                                             |
 | Unbound keys are ignored (demo)                                         | RIM-17              | ✅                                             |
 | Pressing d dismisses the selected notification (demo)                   | RIM-14              | ✅                                             |
+| The panel hides while an entry removes its notification (demo)          | RIM-24, RIM-21      | ✅                                             |
 | Pressing a named action's key performs it (demo)                        | RIM-14              | ✅                                             |
 | An action that does not close keeps the notification (demo)             | RIM-14, RIM-21      | ✅                                             |
 | Pressing Space activates the selected notification (demo)               | RIM-14              | ✅                                             |

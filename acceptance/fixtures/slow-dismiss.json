@@ -1,0 +1,6 @@
+{
+  "notifications": [
+    { "app": "Mail", "title": "First", "takes": 3 },
+    { "app": "Mail", "title": "Second" }
+  ]
+}
