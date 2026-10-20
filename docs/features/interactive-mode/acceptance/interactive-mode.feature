@@ -72,7 +72,7 @@ Feature: Interactive mode
   Scenario: Only the selected notification gets an action panel
     Given interactive mode is running with demo file "three.json"
     Then exactly one action panel is present
-    And the panel lists "Activate", "Dismiss", then the selected notification's actions in order
+    And the panel lists "Activate", "Dismiss this / app / all", then the selected notification's actions in order
     And the panel sits to the left of the selected notification with the same top edge
     And the panel is at least as tall as the selected notification
 
@@ -120,7 +120,7 @@ Feature: Interactive mode
   Scenario: The selected panel shows lower-case activators
     Given interactive mode is running with demo file "one.json"
     Then the selected panel shows activator "space" before "Activate"
-    And the selected panel shows activator "d" before "Dismiss"
+    And the selected panel shows activator "d / D / X" before "Dismiss this / app / all"
     And the selected panel shows activator "a" before "Archive"
     And the selected panel shows activator "n" before "Answer"
     And the selected panel shows activator "e" before "Delete"
@@ -144,6 +144,20 @@ Feature: Interactive mode
     Then the topmost notification is selected
     When I press the Up arrow
     Then the selection is unchanged
+
+  # Validates RIM-23: a hint shows only where the move would change the selection.
+  @demo
+  Scenario: Movement hints show only where a move is possible
+    Given interactive mode is running with demo file "three.json"
+    And the overlay is the frontmost application
+    Then the panel does not show the "k" hint
+    And the panel shows the "j" hint
+    When I press "j"
+    Then the panel shows the "k" hint
+    And the panel shows the "j" hint
+    When I press "j"
+    Then the panel shows the "k" hint
+    And the panel does not show the "j" hint
 
   # Validates RIM-17: a key that is bound to nothing does nothing.
   @demo
@@ -225,7 +239,7 @@ Feature: Interactive mode
   Scenario: Close is not listed as an entry
     Given interactive mode is running with demo file "close-action.json"
     Then the selected panel shows activator "space" before "Activate"
-    And the selected panel shows activator "d" before "Dismiss"
+    And the selected panel shows activator "d / D / X" before "Dismiss this / app / all"
     And the selected panel shows activator "a" before "Archive"
     And the selected panel does not list "Close"
 
@@ -234,7 +248,7 @@ Feature: Interactive mode
   Scenario: A collapsed stack offers Expand instead of Activate
     Given interactive mode is running with demo file "stack.json"
     Then the selected panel shows activator "space" before "Expand"
-    And the selected panel shows activator "d" before "Dismiss"
+    And the selected panel shows activator "d / D / X" before "Dismiss this / app / all"
     And exactly one action panel is present
 
   # Validates RIM-18, RIM-15: Space expands the stack in place; the selection stays at its position,

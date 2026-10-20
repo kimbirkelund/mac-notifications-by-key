@@ -55,10 +55,11 @@ for `C-*`/`X-*`.
   active and a notification is selected ([RIM-11](#selection-and-actions)), the overlay shall show
   exactly one action panel: immediately to the left of the selected notification, its top edge
   aligned with the notification's, at least as tall as the notification and taller when its entries
-  need the room, and no wider than its entries need. No other presented notification shall have a
-  panel. The panel shall list `Activate`, `Dismiss`, and the names of the actions that notification
-  exposes ([RNA-1](../notification-access/requirements.md)), in that order, one entry per line. The
-  panel shall not list `Close`, which `Dismiss` already performs.
+  or movement hints need the room, and no wider than its entries need. No other presented
+  notification shall have a panel. The panel shall list `Activate`, `Dismiss` (labelled
+  `Dismiss this / app / all`), and the names of the actions that notification exposes
+  ([RNA-1](../notification-access/requirements.md)), in that order, one entry per line. The panel
+  shall not list `Close`, which the `Dismiss` entry already performs.
 
 - **RIM-11 (state) — Exactly one notification is selected.** While interactive mode is active and at
   least one notification is presented, exactly one notification shall be selected; on entering the
@@ -70,14 +71,17 @@ for `C-*`/`X-*`.
   either end of the list the selection shall stay where it is (clamp, no wrap).
 
 - **RIM-13 (state) — The panel shows key activators.** While a notification is selected, its action
-  panel shall show, to the left of each entry and right-aligned in a column of their own, the single
-  key that triggers it. Keys are assigned per panel as follows: `Activate` is always Space, shown as
-  `space`, and `Dismiss` is always `d`. Each remaining entry, in listed order, takes the first
-  letter of its name that is not reserved and not already assigned in that panel — scanning the name
-  left to right, skipping non-letters — and, if no letter of its name is free, the lowest unassigned
-  digit `1`–`9`. Activators are shown in **lower case**, and only the unshifted key triggers a
-  letter activator — the shifted (upper-case) letter is a different, currently unbound key
-  ([RIM-17](#selection-and-actions)). Reserved keys are `d`, Space, `j`, `k`, Up, Down, and Escape.
+  panel shall show, to the left of each entry and right-aligned in a column of their own, the key
+  that triggers it — a single key, except on the `Dismiss` row. Keys are assigned per panel as
+  follows: `Activate` is always Space, shown as `space`, and `Dismiss` is always `d`, shown as
+  `d / D / X` together with the app-wide and global keys of [RIM-20](#selection-and-actions). Each
+  remaining entry, in listed order, takes the first letter of its name that is not reserved and not
+  already assigned in that panel — scanning the name left to right, skipping non-letters — and, if
+  no letter of its name is free, the lowest unassigned digit `1`–`9`. Apart from the `Dismiss` row's
+  `D` and `X`, activators are shown in **lower case**, and only the unshifted key triggers a letter
+  activator — the shifted (upper-case) letter is a different, currently unbound key
+  ([RIM-17](#selection-and-actions)), except `D` and `X`, which [RIM-20](#selection-and-actions)
+  binds. Reserved keys are `d`, Space, `j`, `k`, Up, Down, and Escape.
 
 - **RIM-14 (event) — Trigger an entry by key.** When the user presses an activator key shown in the
   selected notification's panel while the overlay holds focus, the system shall perform that entry
@@ -127,7 +131,16 @@ for `C-*`/`X-*`.
   notification's app. Both then fall under [RIM-15](#selection-and-actions) or, if nothing is left,
   [RIM-16](#selection-and-actions). The operations performed are `clear-all`
   ([RNA-11](../notification-access/requirements.md)) and `clear-all-for-app`
-  ([RNA-12](../notification-access/requirements.md)).
+  ([RNA-12](../notification-access/requirements.md)). Both keys are shown on the panel's `Dismiss`
+  row.
+
+- **RIM-23 (state) — The panel shows which moves are possible.** While a notification is selected,
+  its action panel shall show, in a column between the entries and the notification, an up-pointing
+  mark with `k` beneath it at the top of the panel when a newer notification is presented, and `j`
+  with a down-pointing mark beneath it level with the bottom of the selected notification, or just
+  below the `k` hint when both are shown and the notification is too short to hold both, when an
+  older one is presented; a hint shall be absent whenever the corresponding move
+  ([RIM-12](#selection-and-actions)) would leave the selection where it is.
 
 ## Demo mode
 

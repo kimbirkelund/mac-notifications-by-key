@@ -4,10 +4,10 @@ BDD scenarios (Gherkin) specifying interactive mode. These `.feature` files **ar
 acceptance tests: [cucumber-js](https://github.com/cucumber/cucumber-js) runs them against the
 compiled `nbk` binary as a black box, using the step definitions in `acceptance/steps/`.
 
-The twenty-six unattended scenarios run in the default acceptance run. All but one run in demo mode
-([RIM-21](../requirements.md#demo-mode)) and never touch the real Notification Center; the exception
-is the window-order scenario, which needs the real panel. The trust scenario is `@operator` and runs
-only attended.
+The twenty-seven unattended scenarios run in the default acceptance run. All but one run in demo
+mode ([RIM-21](../requirements.md#demo-mode)) and never touch the real Notification Center; the
+exception is the window-order scenario, which needs the real panel. The trust scenario is
+`@operator` and runs only attended.
 
 | Scenario                                                                | Validates           | Status                                         |
 | ----------------------------------------------------------------------- | ------------------- | ---------------------------------------------- |
@@ -24,6 +24,7 @@ only attended.
 | The newest notification is selected on entry (demo)                     | RIM-11              | ✅                                             |
 | The selected panel shows lower-case activators (demo)                   | RIM-13              | ✅                                             |
 | Moving the selection between notifications (demo)                       | RIM-12              | ✅                                             |
+| Movement hints show only where a move is possible (demo)                | RIM-23, RIM-12      | ✅                                             |
 | Unbound keys are ignored (demo)                                         | RIM-17              | ✅                                             |
 | Pressing d dismisses the selected notification (demo)                   | RIM-14              | ✅                                             |
 | Pressing a named action's key performs it (demo)                        | RIM-14              | ✅                                             |
@@ -56,8 +57,8 @@ notification access uses. None needs a new framework.
   asks the workspace for the active application instead.
 - **Notification and panel frames.** The action-panel scenarios read each presented notification's
   position and size from the demo window's placeholders, and our own action-panel groups (their
-  position, size, and the action names they list) from the overlay's accessibility windows. Same
-  permission, no new tooling.
+  position, size, the action names they list, and the texts of their movement hints) from the
+  overlay's accessibility windows. Same permission, no new tooling.
 - **Fixtures.** Scenarios that need a controlled set of notifications start the mode with
   `--demo <file>`, the path relative to `acceptance/fixtures/`; a fixture may time a notification's
   arrival or departure with `arrivesAfter` / `leavesAfter` seconds. Demo mode draws a placeholder
