@@ -1,7 +1,8 @@
-# mac-notifications-by-key
+# macOS Notifications by Key
 
 [![CI](https://github.com/kimbirkelund/mac-notifications-by-key/actions/workflows/ci.yml/badge.svg)](https://github.com/kimbirkelund/mac-notifications-by-key/actions/workflows/ci.yml)
 [![Release](https://github.com/kimbirkelund/mac-notifications-by-key/actions/workflows/release.yml/badge.svg)](https://github.com/kimbirkelund/mac-notifications-by-key/actions/workflows/release.yml)
+[![Developed with AI](https://img.shields.io/badge/developed%20with-AI-8A2BE2?logo=claude&logoColor=white)](https://claude.com/claude-code)
 
 A keyboard-driven tool for interacting with macOS notifications. It reads the notifications macOS is
 currently presenting and acts on a designated one — dismiss, trigger a named action, or activate —
@@ -14,6 +15,27 @@ act on another app's notifications, and the AX surface exposes notifications as 
 with readable text and named actions. No screenshots/OCR, no fixed-coordinate mouse simulation, no
 private frameworks. Requires Accessibility permission for the host process and is only supported on
 recent versions of macOS.
+
+## How to install
+
+Homebrew, from a personal tap:
+
+```sh
+brew install kimbirkelund/tap/nbk        # stable
+brew install kimbirkelund/tap/nbk-beta   # prerelease (release candidates)
+```
+
+Or download `nbk-<version>-macos-universal.tar.gz` from the
+[latest release](https://github.com/kimbirkelund/mac-notifications-by-key/releases/latest), unpack
+it, and put `nbk` on your `PATH`. The binary is unsigned, so clear the download quarantine first:
+
+```sh
+xattr -d com.apple.quarantine nbk
+```
+
+Then grant Accessibility permission to whatever process runs `nbk` (your terminal, or the hotkey
+daemon) under System Settings → Privacy & Security → Accessibility. `nbk doctor` reports whether it
+is granted. Only recent versions of macOS are supported.
 
 ## Development flow
 
