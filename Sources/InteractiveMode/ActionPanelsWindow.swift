@@ -24,6 +24,8 @@ final class ActionPanelsWindow: NSWindow {
     private static let haloRadius: CGFloat = 16
     private static let panelRadius: CGFloat = 10
     private static let fillet: CGFloat = 8
+    static let fade: TimeInterval = 0.05
+    static let move: TimeInterval = 0.1
     private var glassHost: NSView?
     private var panelView: ActionPanelView?
     private var haloView: NSView?
@@ -53,6 +55,12 @@ final class ActionPanelsWindow: NSWindow {
             return
         }
 
+        let duration =
+            content.subviews.isEmpty
+            ? 0
+            : Self.duration(
+                Self.move,
+                reduceMotion: NSWorkspace.shared.accessibilityDisplayShouldReduceMotion)
         let panelView: ActionPanelView
         if let existing = self.panelView {
             panelView = existing
@@ -88,7 +96,9 @@ final class ActionPanelsWindow: NSWindow {
             let hosting: NSHostingView<GlassOutlineView>
             if let existing = glassHost as? NSHostingView<GlassOutlineView> {
                 hosting = existing
-                hosting.rootView = outline
+                withAnimation(duration > 0 ? .linear(duration: duration) : nil) {
+                    hosting.rootView = outline
+                }
             } else {
                 hosting = NSHostingView(rootView: outline)
                 hosting.sizingOptions = []
@@ -96,24 +106,40 @@ final class ActionPanelsWindow: NSWindow {
             }
             hosting.frame = content.bounds
             if hosting.superview == nil { content.addSubview(hosting) }
-            panelView.frame = panelFrame
+            Self.animate(duration) { panelView.frame = panelFrame }
             if panelView.superview == nil {
                 content.addSubview(panelView, positioned: .above, relativeTo: hosting)
             }
         } else {
             let halo = haloView ?? Self.makeHaloView()
             haloView = halo
-            halo.frame = haloFrame
             if halo.superview == nil { content.addSubview(halo) }
 
             let blur = blurView ?? Self.makeBlurView()
             blurView = blur
-            blur.frame = panelFrame
-            panelView.frame = blur.bounds
+            Self.animate(duration) {
+                halo.frame = haloFrame
+                blur.frame = panelFrame
+                panelView.frame = CGRect(origin: .zero, size: panelFrame.size)
+            }
             if panelView.superview == nil { blur.addSubview(panelView) }
             if blur.superview == nil {
                 content.addSubview(blur, positioned: .above, relativeTo: halo)
             }
+        }
+    }
+
+    static func duration(_ duration: TimeInterval, reduceMotion: Bool) -> TimeInterval {
+        reduceMotion ? 0 : duration
+    }
+
+    private static func animate(_ duration: TimeInterval, _ changes: () -> Void) {
+        guard duration > 0 else { return changes() }
+        NSAnimationContext.runAnimationGroup { context in
+            context.duration = duration
+            context.allowsImplicitAnimation = true
+            context.timingFunction = CAMediaTimingFunction(name: .linear)
+            changes()
         }
     }
 
@@ -203,6 +229,13 @@ private final class ActionPanelView: NSView {
     }
 
     private func place() {
+        NSAnimationContext.runAnimationGroup { context in
+            context.allowsImplicitAnimation = false
+            layOut()
+        }
+    }
+
+    private func layOut() {
         let hintX = bounds.width - Self.padding - hintWidth
         var top = bounds.height - Self.verticalPadding
         for row in rows {

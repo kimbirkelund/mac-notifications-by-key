@@ -948,3 +948,16 @@ private final class PanelLog: @unchecked Sendable {
         #expect(mid.panel == CGRect(x: 10, y: 5, width: 80, height: 100))
     }
 }
+
+@Suite struct ActionPanelsWindowDurationTests {
+    @Test func durationIsKeptWithoutReduceMotion() {
+        #expect(
+            ActionPanelsWindow.duration(ActionPanelsWindow.move, reduceMotion: false)
+                == ActionPanelsWindow.move)
+    }
+
+    @Test func reduceMotionMakesEveryDurationZero() {
+        #expect(ActionPanelsWindow.duration(ActionPanelsWindow.move, reduceMotion: true) == 0)
+        #expect(ActionPanelsWindow.duration(ActionPanelsWindow.fade, reduceMotion: true) == 0)
+    }
+}
