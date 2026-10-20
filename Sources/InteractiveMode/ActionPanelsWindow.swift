@@ -25,6 +25,9 @@ final class ActionPanelsWindow: NSWindow {
     private static let panelRadius: CGFloat = 10
     private static let fillet: CGFloat = 8
     private var glassHost: NSView?
+    private var panelView: ActionPanelView?
+    private var haloView: NSView?
+    private var blurView: NSVisualEffectView?
 
     init(frame: CGRect, level: NSWindow.Level) {
         super.init(contentRect: frame, styleMask: .borderless, backing: .buffered, defer: false)
@@ -45,13 +48,19 @@ final class ActionPanelsWindow: NSWindow {
 
     func show(_ panel: ActionPanelSpec?, primaryScreenHeight: CGFloat) {
         guard let content = contentView else { return }
-        for view in content.subviews where view !== glassHost { view.removeFromSuperview() }
         guard let panel else {
-            glassHost?.removeFromSuperview()
+            for view in content.subviews { view.removeFromSuperview() }
             return
         }
 
-        let panelView = ActionPanelView(spec: panel)
+        let panelView: ActionPanelView
+        if let existing = self.panelView {
+            panelView = existing
+            panelView.apply(spec: panel)
+        } else {
+            panelView = ActionPanelView(spec: panel)
+            self.panelView = panelView
+        }
         let local = { (cg: CGRect) in
             ScreenGeometry.local(
                 ScreenGeometry.appKitRect(fromCG: cg, primaryScreenHeight: primaryScreenHeight),
@@ -70,10 +79,10 @@ final class ActionPanelsWindow: NSWindow {
         let haloFrame = local(haloCG)
 
         if #available(macOS 26, *) {
-            let union = haloCG.union(panelCG)
+            let windowTop = primaryScreenHeight - frame.maxY
             let shape = GlassOutlineShape(
-                halo: haloCG.offsetBy(dx: -union.minX, dy: -union.minY),
-                panel: panelCG.offsetBy(dx: -union.minX, dy: -union.minY),
+                halo: haloCG.offsetBy(dx: -frame.minX, dy: -windowTop),
+                panel: panelCG.offsetBy(dx: -frame.minX, dy: -windowTop),
                 haloRadius: Self.haloRadius, panelRadius: Self.panelRadius, fillet: Self.fillet)
             let outline = GlassOutlineView(shape: shape, tint: Color(nsColor: Self.tint))
             let hosting: NSHostingView<GlassOutlineView>
@@ -85,29 +94,47 @@ final class ActionPanelsWindow: NSWindow {
                 hosting.sizingOptions = []
                 glassHost = hosting
             }
-            hosting.frame = local(union)
+            hosting.frame = content.bounds
             if hosting.superview == nil { content.addSubview(hosting) }
-            panelView.frame = local(panelCG)
-            content.addSubview(panelView, positioned: .above, relativeTo: hosting)
+            panelView.frame = panelFrame
+            if panelView.superview == nil {
+                content.addSubview(panelView, positioned: .above, relativeTo: hosting)
+            }
         } else {
-            let halo = NSView(frame: haloFrame)
-            halo.wantsLayer = true
-            halo.layer?.cornerRadius = Self.haloRadius
-            halo.layer?.borderWidth = 1
-            halo.layer?.borderColor = NSColor.white.withAlphaComponent(0.5).cgColor
-            content.addSubview(halo)
+            let halo = haloView ?? Self.makeHaloView()
+            haloView = halo
+            halo.frame = haloFrame
+            if halo.superview == nil { content.addSubview(halo) }
 
-            let blur = NSVisualEffectView(frame: panelFrame)
-            blur.material = .hudWindow
-            blur.blendingMode = .behindWindow
-            blur.state = .active
-            blur.wantsLayer = true
-            blur.layer?.cornerRadius = Self.panelRadius
-            blur.layer?.masksToBounds = true
+            let blur = blurView ?? Self.makeBlurView()
+            blurView = blur
+            blur.frame = panelFrame
             panelView.frame = blur.bounds
-            blur.addSubview(panelView)
-            content.addSubview(blur)
+            if panelView.superview == nil { blur.addSubview(panelView) }
+            if blur.superview == nil {
+                content.addSubview(blur, positioned: .above, relativeTo: halo)
+            }
         }
+    }
+
+    private static func makeHaloView() -> NSView {
+        let halo = NSView()
+        halo.wantsLayer = true
+        halo.layer?.cornerRadius = haloRadius
+        halo.layer?.borderWidth = 1
+        halo.layer?.borderColor = NSColor.white.withAlphaComponent(0.5).cgColor
+        return halo
+    }
+
+    private static func makeBlurView() -> NSVisualEffectView {
+        let blur = NSVisualEffectView()
+        blur.material = .hudWindow
+        blur.blendingMode = .behindWindow
+        blur.state = .active
+        blur.wantsLayer = true
+        blur.layer?.cornerRadius = panelRadius
+        blur.layer?.masksToBounds = true
+        return blur
     }
 }
 
@@ -119,15 +146,28 @@ private final class ActionPanelView: NSView {
     private static let hintGap: CGFloat = 8
     private static let hintGlyphs = ["▲", "▼", "j", "k"]
 
-    private let rows: [(activator: NSTextField, entry: NSTextField)]
-    private let topHints: [NSTextField]
-    private let bottomHints: [NSTextField]
-    private let activatorWidth: CGFloat
-    private let hintWidth: CGFloat
-    private let coveredHeight: CGFloat
-    let contentSize: CGSize
+    private var rows: [(activator: NSTextField, entry: NSTextField)] = []
+    private var topHints: [NSTextField] = []
+    private var bottomHints: [NSTextField] = []
+    private var activatorWidth: CGFloat = 0
+    private var hintWidth: CGFloat = 0
+    private var coveredHeight: CGFloat = 0
+    private(set) var contentSize: CGSize = .zero
 
     init(spec: ActionPanelSpec) {
+        super.init(frame: .zero)
+        setAccessibilityElement(true)
+        setAccessibilityRole(.group)
+        setAccessibilityIdentifier("action-panel")
+        setAccessibilitySelected(true)
+        apply(spec: spec)
+        frame = CGRect(origin: .zero, size: contentSize)
+    }
+
+    required init?(coder: NSCoder) { nil }
+
+    func apply(spec: ActionPanelSpec) {
+        for view in subviews { view.removeFromSuperview() }
         coveredHeight = spec.coveredHeight
         rows = spec.rowLabels.map { labels in
             (
@@ -150,19 +190,13 @@ private final class ActionPanelView: NSView {
                 + max(
                     rowHeights.reduce(0, +) + CGFloat(max(rows.count - 1, 0)) * Self.rowSpacing,
                     hintHeight))
-        super.init(frame: CGRect(origin: .zero, size: contentSize))
-        setAccessibilityElement(true)
-        setAccessibilityRole(.group)
-        setAccessibilityIdentifier("action-panel")
-        setAccessibilitySelected(true)
         for row in rows {
             addSubview(row.activator)
             addSubview(row.entry)
         }
         for hint in topHints + bottomHints { addSubview(hint) }
+        place()
     }
-
-    required init?(coder: NSCoder) { nil }
 
     override var frame: NSRect {
         didSet { place() }
