@@ -1,0 +1,12 @@
+{
+  "notifications": [
+    {
+      "app": "Mail",
+      "title": "Slow",
+      "subtitle": null,
+      "body": null,
+      "actions": [{ "name": "Open", "closes": true }],
+      "takes": 2
+    }
+  ]
+}
