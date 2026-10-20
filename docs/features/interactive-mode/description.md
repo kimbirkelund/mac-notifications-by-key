@@ -105,6 +105,10 @@ and the end-of-mode rules apply as usual (RIM-20). Any other key is ignored (RIM
 triggered by keyboard only: the action panels are display, not controls, and clicking it does
 nothing.
 
+The panel and the sheet hugging the notification fade in as they appear and out as they disappear,
+and slide and resize from one notification to the next as the selection moves, unless Reduce Motion
+is on, in which case they change at once.
+
 ## Why the mode opens the panel
 
 Notification Center's Accessibility surface exists only while a banner is on screen or the panel is
