@@ -109,6 +109,8 @@ param(
 $ErrorActionPreference = 'Stop'
 Set-Location $PSScriptRoot
 
+$PSScriptAnalyzerVersion = '1.25.0'
+
 function Write-Step($msg) { if (-not $Quiet) { Write-Host "==> $msg" -ForegroundColor Cyan } }
 function Write-Skip($msg) { Write-Host "--- skipped: $msg" -ForegroundColor Yellow }
 function Invoke-Checked($file, [string[]]$argv)
@@ -128,6 +130,14 @@ function Invoke-ScriptAnalyzerIsolated([string[]]$Paths, [string]$Settings)
   $childScript = @'
 $ErrorActionPreference = 'Stop'
 $result = $env:NBK_SA_RESULT
+Import-Module PSScriptAnalyzer -RequiredVersion $env:NBK_SA_VERSION -ErrorAction SilentlyContinue -ErrorVariable importError
+if (-not (Get-Module PSScriptAnalyzer))
+{
+  $installed = (Get-Module -ListAvailable PSScriptAnalyzer).Version -join ', '
+  Set-Content -LiteralPath "$result.tmp" -Value "installed: $(if ($installed) { $installed } else { 'none' }); $($importError[0].Exception.Message)" -Encoding utf8
+  Move-Item -LiteralPath "$result.tmp" -Destination "$result.fatal"
+  [Environment]::Exit(0)
+}
 try
 {
   $paths = @($env:NBK_SA_PATHS | ConvertFrom-Json)
@@ -157,6 +167,7 @@ catch
     $errFile = "$base.stderr"
     $env:NBK_SA_PATHS = ConvertTo-Json -InputObject @($Paths) -Compress
     $env:NBK_SA_SETTINGS = $Settings
+    $env:NBK_SA_VERSION = $PSScriptAnalyzerVersion
     $env:NBK_SA_RESULT = $base
     $proc = $null
     try
@@ -164,6 +175,7 @@ catch
       $proc = Start-Process ([Environment]::ProcessPath) -ArgumentList @('-NoProfile', '-NonInteractive', '-EncodedCommand', $encoded) `
         -RedirectStandardOutput "$base.stdout" -RedirectStandardError $errFile -PassThru -NoNewWindow
       while (-not (Test-Path -LiteralPath "$base.ok") -and -not (Test-Path -LiteralPath "$base.err") -and
+        -not (Test-Path -LiteralPath "$base.fatal") -and
         -not $proc.HasExited -and [DateTime]::UtcNow -lt $deadline)
       {
         Start-Sleep -Milliseconds 100
@@ -172,6 +184,14 @@ catch
       {
         $json = Get-Content -Raw -LiteralPath "$base.ok"
         return @(ConvertFrom-Json -InputObject $json)
+      }
+      if (Test-Path -LiteralPath "$base.fatal")
+      {
+        $detail = (Get-Content -Raw -LiteralPath "$base.fatal").Trim()
+        throw ("PSScriptAnalyzer $PSScriptAnalyzerVersion could not be loaded ($detail). The isolation/warm-up/retry " +
+          'workaround in Invoke-ScriptAnalyzerIsolated targets the first-call NRE in UseCorrectCasing in that exact version; ' +
+          'check whether upstream fixed it before bumping $PSScriptAnalyzerVersion, and drop the workaround if so. ' +
+          "To install the pinned version: Install-Module PSScriptAnalyzer -RequiredVersion $PSScriptAnalyzerVersion -Scope CurrentUser")
       }
       $stderr = if (Test-Path -LiteralPath $errFile) { Get-Content -Raw -LiteralPath $errFile } else { '' }
       if (Test-Path -LiteralPath "$base.err") { $lastError = Get-Content -Raw -LiteralPath "$base.err" }
@@ -182,7 +202,7 @@ catch
     {
       if ($proc -and -not $proc.HasExited) { $proc.Kill($true) }
       Remove-Item "$base*" -ErrorAction SilentlyContinue
-      Remove-Item Env:NBK_SA_PATHS, Env:NBK_SA_SETTINGS, Env:NBK_SA_RESULT -ErrorAction SilentlyContinue
+      Remove-Item Env:NBK_SA_PATHS, Env:NBK_SA_SETTINGS, Env:NBK_SA_RESULT, Env:NBK_SA_VERSION -ErrorAction SilentlyContinue
     }
     if ([DateTime]::UtcNow -ge $deadline) { break }
     $remaining = [int]($deadline - [DateTime]::UtcNow).TotalSeconds
