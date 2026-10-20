@@ -52,6 +52,7 @@ final class Session {
     private var tearingDown = false
     private var ending = false
     private var terminated = false
+    private var screenClosed = false
     private var dispatching = false
     private var panelHidden = false
     private var dispatchGeneration = 0
@@ -151,7 +152,7 @@ final class Session {
 
     func handle(_ key: OverlayKey) {
         if key == .escape { return teardown() }
-        guard !ending else { return }
+        guard !tearingDown, !ending else { return }
         if case .character(let character) = key,
             let global = GlobalCommand.resolve(key: character)
         {
@@ -282,6 +283,7 @@ final class Session {
     }
 
     func drawActionPanels(_ presented: [PresentedNotification]) {
+        guard !tearingDown else { return }
         selection = selection.following(previous: drawnPresented, current: presented)
         drawnPresented = presented
         hasDrawn = true
@@ -334,6 +336,19 @@ final class Session {
     func releaseScreen(then completion: @escaping () -> Void = {}) {
         guard !tearingDown else { return completion() }
         tearingDown = true
+        guard let panelsWindow else { return closeScreen(then: completion) }
+        panelsWindow.show(nil, primaryScreenHeight: NSScreen.screens.first?.frame.height ?? 0) {
+            self.closeScreen(then: completion)
+        }
+        nonisolated(unsafe) let completion = completion
+        DispatchQueue.main.asyncAfter(deadline: .now() + ActionPanelsWindow.fade + 0.5) {
+            MainActor.assumeIsolated { self.closeScreen(then: completion) }
+        }
+    }
+
+    private func closeScreen(then completion: @escaping () -> Void) {
+        guard !screenClosed else { return }
+        screenClosed = true
         panelsWindow?.orderOut(nil)
         window?.orderOut(nil)
         nonisolated(unsafe) let access = access

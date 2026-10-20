@@ -961,3 +961,45 @@ private final class PanelLog: @unchecked Sendable {
         #expect(ActionPanelsWindow.duration(ActionPanelsWindow.fade, reduceMotion: true) == 0)
     }
 }
+
+@Suite struct PanelVisibilityTests {
+    @Test func firstShowReportsItWasHidden() {
+        var visibility = PanelVisibility()
+        #expect(visibility.show() == false)
+        #expect(visibility.show() == true)
+    }
+
+    @Test func hidingWhileHiddenStartsNoFade() {
+        var visibility = PanelVisibility()
+        #expect(visibility.hide() == nil)
+    }
+
+    @Test func aHideIsStillInForceUntilTheNextShow() throws {
+        var visibility = PanelVisibility()
+        _ = visibility.show()
+        let pending = visibility.hide()
+        let hide = try #require(pending)
+        #expect(visibility.isStillHidden(since: hide))
+    }
+
+    @Test func aShowDuringTheFadeOutCancelsTheRemoval() throws {
+        var visibility = PanelVisibility()
+        _ = visibility.show()
+        let pending = visibility.hide()
+        let hide = try #require(pending)
+        #expect(visibility.show() == false)
+        #expect(!visibility.isStillHidden(since: hide))
+    }
+
+    @Test func onlyTheLatestHideRemoves() throws {
+        var visibility = PanelVisibility()
+        _ = visibility.show()
+        let firstPending = visibility.hide()
+        let first = try #require(firstPending)
+        _ = visibility.show()
+        let secondPending = visibility.hide()
+        let second = try #require(secondPending)
+        #expect(!visibility.isStillHidden(since: first))
+        #expect(visibility.isStillHidden(since: second))
+    }
+}

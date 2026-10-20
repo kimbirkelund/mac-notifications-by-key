@@ -18,18 +18,42 @@ enum ScreenGeometry {
     }
 }
 
+struct PanelVisibility {
+    private(set) var isShown = false
+    private var generation = 0
+
+    mutating func show() -> Bool {
+        defer { isShown = true }
+        generation += 1
+        return isShown
+    }
+
+    mutating func hide() -> Int? {
+        guard isShown else { return nil }
+        isShown = false
+        generation += 1
+        return generation
+    }
+
+    func isStillHidden(since hide: Int) -> Bool {
+        hide == generation
+    }
+}
+
 final class ActionPanelsWindow: NSWindow {
     private static let haloInset: CGFloat = 8
     private static let tint = NSColor.white.withAlphaComponent(0.22)
     private static let haloRadius: CGFloat = 16
     private static let panelRadius: CGFloat = 10
     private static let fillet: CGFloat = 8
-    static let fade: TimeInterval = 0.05
+    static let fade: TimeInterval = 0.2
     static let move: TimeInterval = 0.1
     private var glassHost: NSView?
     private var panelView: ActionPanelView?
     private var haloView: NSView?
     private var blurView: NSVisualEffectView?
+    private var visibility = PanelVisibility()
+    private var fadeOutWaiters: [() -> Void] = []
 
     init(frame: CGRect, level: NSWindow.Level) {
         super.init(contentRect: frame, styleMask: .borderless, backing: .buffered, defer: false)
@@ -48,19 +72,32 @@ final class ActionPanelsWindow: NSWindow {
     override var canBecomeKey: Bool { false }
     override var canBecomeMain: Bool { false }
 
-    func show(_ panel: ActionPanelSpec?, primaryScreenHeight: CGFloat) {
-        guard let content = contentView else { return }
+    func show(
+        _ panel: ActionPanelSpec?, primaryScreenHeight: CGFloat,
+        then completion: @escaping () -> Void = {}
+    ) {
+        guard let content = contentView else { return completion() }
         guard let panel else {
-            for view in content.subviews { view.removeFromSuperview() }
+            guard let hide = visibility.hide() else {
+                if content.subviews.isEmpty { return completion() }
+                return fadeOutWaiters.append(completion)
+            }
+            panelView?.isWithdrawn = true
+            fadeOutWaiters.append(completion)
+            fadeAlpha(to: 0) { [weak self] in
+                guard let self, visibility.isStillHidden(since: hide) else { return }
+                for view in content.subviews { view.removeFromSuperview() }
+                let waiters = fadeOutWaiters
+                fadeOutWaiters = []
+                for waiter in waiters { waiter() }
+            }
             return
         }
 
-        let duration =
-            content.subviews.isEmpty
-            ? 0
-            : Self.duration(
-                Self.move,
-                reduceMotion: NSWorkspace.shared.accessibilityDisplayShouldReduceMotion)
+        let attached = !content.subviews.isEmpty
+        if !attached { alphaValue = 0 }
+        let duration = attached ? Self.duration(Self.move, reduceMotion: Self.reduceMotion) : 0
+        let wasShown = visibility.show()
         let panelView: ActionPanelView
         if let existing = self.panelView {
             panelView = existing
@@ -69,6 +106,7 @@ final class ActionPanelsWindow: NSWindow {
             panelView = ActionPanelView(spec: panel)
             self.panelView = panelView
         }
+        panelView.isWithdrawn = false
         let local = { (cg: CGRect) in
             ScreenGeometry.local(
                 ScreenGeometry.appKitRect(fromCG: cg, primaryScreenHeight: primaryScreenHeight),
@@ -127,6 +165,24 @@ final class ActionPanelsWindow: NSWindow {
                 content.addSubview(blur, positioned: .above, relativeTo: halo)
             }
         }
+        if !wasShown { fadeAlpha(to: 1) }
+    }
+
+    private static var reduceMotion: Bool {
+        NSWorkspace.shared.accessibilityDisplayShouldReduceMotion
+    }
+
+    private func fadeAlpha(to alpha: CGFloat, then completion: @escaping () -> Void = {}) {
+        let duration = Self.duration(Self.fade, reduceMotion: Self.reduceMotion)
+        guard duration > 0 else {
+            alphaValue = alpha
+            return completion()
+        }
+        NSAnimationContext.runAnimationGroup(
+            { context in
+                context.duration = duration
+                self.animator().alphaValue = alpha
+            }, completionHandler: completion)
     }
 
     static func duration(_ duration: TimeInterval, reduceMotion: Bool) -> TimeInterval {
@@ -191,6 +247,14 @@ private final class ActionPanelView: NSView {
     }
 
     required init?(coder: NSCoder) { nil }
+
+    var isWithdrawn = false {
+        didSet { setAccessibilityElement(!isWithdrawn) }
+    }
+
+    override func accessibilityChildren() -> [Any]? {
+        isWithdrawn ? [] : super.accessibilityChildren()
+    }
 
     func apply(spec: ActionPanelSpec) {
         for view in subviews { view.removeFromSuperview() }
