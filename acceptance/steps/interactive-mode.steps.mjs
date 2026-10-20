@@ -407,6 +407,14 @@ Then(
   }
 )
 
+Then('the selected panel does not list {string}', STEP, async function (name) {
+  const panel = await selectedPanel(this)
+  assert.ok(
+    !panel.entries.some((e) => e.name === name),
+    `expected no entry ${JSON.stringify(name)} in the selected panel: ${JSON.stringify(panel)}`
+  )
+})
+
 // Nothing marks a key as handled, so hold for a window in which a move would show.
 const UNCHANGED_HOLD_MS = 1000
 
