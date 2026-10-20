@@ -91,7 +91,7 @@ is open always comes from the AX check described in the AX reference.
 - **RIM-16's "keys are ignored during the farewell"** — the farewell is too brief to probe reliably
   with real key events. Belongs in the unit tier, against the key handling.
 - **Tint color and exact opacity** — pixel properties. `RIM-2` is asserted only as "not opaque"; the
-  rest is [appearance detail](../requirements.md#open-seeds-not-yet-specified).
+  rest is appearance detail, accepted as visually verified.
 
 ## Notes
 

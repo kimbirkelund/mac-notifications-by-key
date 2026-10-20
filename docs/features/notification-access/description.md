@@ -48,8 +48,8 @@ one act command against index `0` (the newest notification).
 
 In scope: reading presented notifications, acting on a single designated one by index, and clearing
 all presented notifications or all from one app. **Out of scope** (open seeds): a long-running
-daemon/watch mode, selecting by app/content rather than index, replying inline, and reading the
-historical notification list from the persistent panel beyond what is currently presented.
+daemon mode, selecting by app/content rather than index, replying inline, and opening the panel from
+one-shot commands so its uncleared list is reachable without a banner up.
 
 ## Conventions
 

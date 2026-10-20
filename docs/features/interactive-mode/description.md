@@ -140,8 +140,7 @@ In scope: entering the mode, opening the Notification Center panel, the overlay 
 mode and holds focus, re-invoking while it runs, and leaving the mode again by signal, Escape, or
 the list emptying — closing the panel on the way out — and clearing every notification (`X`) or
 dismissing every one from the selected notification's app (`D`). **Out of scope** (open seeds):
-reacting to notifications arriving while the mode is active (beyond redrawing the action panels),
-and which application regains focus once the overlay closes.
+collapsing an expanded stack again, and a daemon that enters the mode when the machine is unlocked.
 
 ## Conventions
 

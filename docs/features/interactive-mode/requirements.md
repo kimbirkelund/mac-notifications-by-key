@@ -167,31 +167,6 @@ for `C-*`/`X-*`.
 
 - **Collapsing a stack.** [RIM-18](#selection-and-actions) expands a stack from the overlay;
   collapsing it again is not specified.
-- **Upper-case activators.** Shifted letters are left unbound by [RIM-13](#selection-and-actions) as
-  a second layer of activators; [RIM-20](#selection-and-actions) takes `X` and `D`, the rest are
-  free for later slices.
-- **Mouse activation.** Panel entries are keyboard-only by design; clicking an entry does nothing.
-  Re-adding clicks would be a new requirement, not a revival of [RIM-19](#selection-and-actions).
-- **Panel appearance.** Typography, material, and the outline that joins the panel to its
-  notification are feature work; [RIM-10](#selection-and-actions) fixes only the panel's placement
-  and its minimum size.
-- **Focus on exit.** Nothing is specified about which application becomes frontmost after the
-  overlay closes; macOS decides. If landing somewhere unexpected proves annoying in use, restoring
-  the application that was frontmost when the mode was entered is the obvious refinement.
-- **Launch on unlock.** A daemon mode — a background process that outlives any one `interactive` run
-  — that enters interactive mode when the machine is unlocked, so whatever arrived while the screen
-  was locked is triaged before anything else. Unspecified: how the daemon is started and stopped (a
-  launchd agent is the obvious host), whether it enters the mode only when something is presented,
-  and how it coexists with [RIM-4](#mode-signal)'s re-invocation rule. Overlaps the watch/daemon
-  seed in
-  [notification-access](../notification-access/requirements.md#open-seeds-not-yet-specified).
-- **Arrival cue.** A notification that arrives while the mode is active gets no visual distinction
-  from the others; whether it should is unspecified.
-- **Window level and opacity assertions.** Most of this feature is acceptance-testable — see the
-  [acceptance scenarios](acceptance/_index.md). Two properties are not reachable through AX and need
-  a small helper dumping the on-screen window list: `RIM-1`'s panel-above-overlay stacking and
-  `RIM-2`'s translucency. `RIM-1`'s "on every Space" clause and the tint color have no practical
-  automated check at all and are accepted as visually verified.
-- **Overlay appearance.** Tint color, farewell styling, font, exact opacity, multi-display behavior
-  (mirror on every screen vs. main only). Feature-work detail, deliberately not pinned as acceptance
-  criteria beyond [RIM-2](#mode-signal)'s "translucent, not opaque".
+- **Launch on unlock.** Entering the mode when the machine is unlocked is part of the daemon seed in
+  [notification-access](../notification-access/requirements.md#open-seeds-not-yet-specified); open
+  there is how it coexists with [RIM-4](#mode-signal)'s re-invocation rule.

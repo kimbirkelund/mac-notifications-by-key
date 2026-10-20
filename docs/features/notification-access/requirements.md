@@ -58,10 +58,16 @@ for `C-*`/`X-*`.
 
 ## Open seeds (not yet specified)
 
-- **Watch/daemon mode** — a long-running mode that reacts to notifications as they arrive, rather
-  than one-shot invocations.
+- **Daemon mode** — a background process that outlives any one invocation. It reacts to
+  notifications as they arrive, and enters [interactive mode](../interactive-mode/_index.md) when
+  the machine is unlocked so whatever arrived while the screen was locked is triaged first.
+  Unspecified: how it is started and stopped (a launchd agent is the obvious host), whether it
+  enters the mode only when something is presented, and how it coexists with interactive mode's
+  re-invocation rule.
 - **Selection by app/content** — designating a notification by matching app or text instead of by
   index.
-- **Persistent-panel history** — reading dismissed/older notifications from the Notification Center
-  panel beyond what is currently presented.
+- **Reaching the panel's list from one-shot commands** — with no banner up and the panel closed,
+  `list` sees nothing even when the panel holds uncleared notifications. Only `interactive` opens
+  the panel today. Unspecified: an `open-panel`/`close-panel` pair, a flag on the read/act commands,
+  or both.
 - **Inline reply** — using a notification's reply action to send text.
