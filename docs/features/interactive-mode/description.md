@@ -96,8 +96,10 @@ lower-case letter for each of the notification's own actions, so `r` and `m` for
 dismisses it, Space activates it, and a named action's key performs that action. A collapsed stack's
 panel offers `Expand` on Space instead of `Activate`: expanding puts the stack's members in its
 place and the selection stays at that position (RIM-18); `d` dismisses the stack as a whole. The
-mode stays running afterwards, so the user can act on the next notification (RIM-14). Two upper-case
-keys act on more than the selected notification: `X` clears every presented notification and `D`
+mode stays running afterwards, so the user can act on the next notification (RIM-14). The panel
+disappears as soon as an entry that removes its notification is triggered, and comes back once the
+entry has finished and the list has been read again; `Expand` keeps it (RIM-24). Two upper-case keys
+act on more than the selected notification: `X` clears every presented notification and `D`
 dismisses every one from the selected notification's app, and both keys are shown on the panel's
 `Dismiss` row. Afterwards the selection and the end-of-mode rules apply as usual (RIM-20). Any other
 key is ignored (RIM-17). Entries are triggered by keyboard only: the action panels are display, not

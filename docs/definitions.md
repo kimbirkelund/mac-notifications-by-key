@@ -35,7 +35,8 @@ Shared domain vocabulary used across all features.
   newest first. Each notification may have an `app`, a `title`, a `subtitle`, a `body`, an
   `activateCloses` flag (default true) saying whether activating it removes it, and `actions`
   (default none), and may schedule its `arrivesAfter` (it is absent from the list until that many
-  seconds after entering the mode) and its `leavesAfter` (it is removed after that many seconds). An
+  seconds after entering the mode) and its `leavesAfter` (it is removed after that many seconds),
+  and may give a `takes` delay, the seconds that any entry removing it waits before it does. An
   action is either a bare name, which removes the notification when performed, or an object with a
   `name` and a `closes` flag. A notification with a non-empty `members` array (each member a
   notification of the same shape, newest first) is a collapsed stack presented under its own `app`
