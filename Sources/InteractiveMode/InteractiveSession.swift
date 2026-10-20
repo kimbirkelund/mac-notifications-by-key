@@ -354,12 +354,8 @@ extension EntryCommand {
         switch self {
         case .activate: !onCollapsedStack
         case .dismiss: true
-        case .action: hidesPanelForActions
+        case .action: true
         }
-    }
-
-    private var hidesPanelForActions: Bool {
-        ProcessInfo.processInfo.environment["NBK_HIDE_PANEL_FOR_ACTIONS"] != "0"
     }
 }
 

@@ -90,8 +90,8 @@ for `C-*`/`X-*`.
   ([RNA-6](../notification-access/requirements.md)), and a named action as `action <n> <name>` does
   ([RNA-5](../notification-access/requirements.md)). Interactive mode shall stay active afterwards.
 
-- **RIM-24 (event) — The panel is hidden while an entry removes its notification.** When the user
-  triggers `Activate` on a notification that is not a stack, `Dismiss`, a named action, `D` or `X`
+- **RIM-24 (event) — The panel is hidden while an entry is performed.** When the user triggers
+  `Activate` on a notification that is not a stack, `Dismiss`, any named action, `D` or `X`
   ([RIM-14](#selection-and-actions), [RIM-20](#selection-and-actions)), the system shall remove the
   action panel from the overlay before performing the entry, and shall redraw it
   ([RIM-15](#selection-and-actions), [RIM-22](#selection-and-actions)) once the entry has completed
