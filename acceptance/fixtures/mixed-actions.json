@@ -1,0 +1,39 @@
+{
+  "notifications": [
+    {
+      "app": "Mail",
+      "title": "Invoice 4821 from Nordlys AS",
+      "subtitle": "Payment due Friday",
+      "body": "Please review the attached invoice and confirm the payment reference before the end of the week.",
+      "actions": ["Reply", "Archive", "Mark as Read", "Move to Folder", "Flag", "Delete"]
+    },
+    {
+      "app": "Messages",
+      "title": "Sofie",
+      "subtitle": null,
+      "body": "Running 10 min late, start without me.",
+      "actions": ["Reply"]
+    },
+    {
+      "app": "Calendar",
+      "title": "Quarterly planning",
+      "subtitle": "Room 3.14, starts in 15 minutes",
+      "body": "Agenda: roadmap review, staffing, budget outlook.",
+      "actions": ["Accept", "Decline", "Tentative", "Snooze 5 min", "Open in Calendar"]
+    },
+    {
+      "app": "Reminders",
+      "title": "Renew parking permit",
+      "subtitle": null,
+      "body": null,
+      "actions": ["Complete", "Remind Me Tomorrow"]
+    },
+    {
+      "app": "Slack",
+      "title": "#release-train",
+      "subtitle": null,
+      "body": "Build 1482 is green.",
+      "actions": []
+    }
+  ]
+}
