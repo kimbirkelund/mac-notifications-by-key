@@ -116,25 +116,40 @@ private final class ActionPanelView: NSView {
     private static let verticalPadding: CGFloat = 4
     private static let rowSpacing: CGFloat = 2
     private static let activatorGap: CGFloat = 6
+    private static let hintGap: CGFloat = 8
+    private static let hintGlyphs = ["▲", "▼", "j", "k"]
 
     private let rows: [(activator: NSTextField, entry: NSTextField)]
+    private let topHints: [NSTextField]
+    private let bottomHints: [NSTextField]
     private let activatorWidth: CGFloat
+    private let hintWidth: CGFloat
+    private let coveredHeight: CGFloat
     let contentSize: CGSize
 
     init(spec: ActionPanelSpec) {
-        rows = zip(spec.activatorLabels, spec.entries).map { label, entry in
+        coveredHeight = spec.coveredHeight
+        rows = spec.rowLabels.map { labels in
             (
-                activator: Self.label(label, identifier: "activator", color: .modeGreen),
-                entry: Self.label(entry, identifier: "entry")
+                activator: Self.label(labels.activator, identifier: "activator", color: .modeGreen),
+                entry: Self.label(labels.entry, identifier: "entry")
             )
         }
+        topHints = spec.canMoveUp ? Self.hints("▲", "k") : []
+        bottomHints = spec.canMoveDown ? Self.hints("j", "▼") : []
         activatorWidth = rows.map(\.activator.fittingSize.width).max() ?? 0
+        hintWidth = Self.hintGlyphs.map { Self.hint($0).fittingSize.width }.max() ?? 0
         let entryWidth = rows.map(\.entry.fittingSize.width).max() ?? 0
         let rowHeights = rows.map(Self.rowHeight)
+        let hintHeight = (topHints + bottomHints).map { $0.fittingSize.height + Self.rowSpacing }
+            .reduce(0, +)
         contentSize = CGSize(
-            width: 2 * Self.padding + activatorWidth + Self.activatorGap + entryWidth,
-            height: 2 * Self.verticalPadding + rowHeights.reduce(0, +)
-                + CGFloat(max(rows.count - 1, 0)) * Self.rowSpacing)
+            width: 2 * Self.padding + activatorWidth + Self.activatorGap + entryWidth
+                + Self.hintGap + hintWidth,
+            height: 2 * Self.verticalPadding
+                + max(
+                    rowHeights.reduce(0, +) + CGFloat(max(rows.count - 1, 0)) * Self.rowSpacing,
+                    hintHeight))
         super.init(frame: CGRect(origin: .zero, size: contentSize))
         setAccessibilityElement(true)
         setAccessibilityRole(.group)
@@ -144,6 +159,7 @@ private final class ActionPanelView: NSView {
             addSubview(row.activator)
             addSubview(row.entry)
         }
+        for hint in topHints + bottomHints { addSubview(hint) }
     }
 
     required init?(coder: NSCoder) { nil }
@@ -153,6 +169,7 @@ private final class ActionPanelView: NSView {
     }
 
     private func place() {
+        let hintX = bounds.width - Self.padding - hintWidth
         var top = bounds.height - Self.verticalPadding
         for row in rows {
             let height = Self.rowHeight(row)
@@ -161,13 +178,41 @@ private final class ActionPanelView: NSView {
                 x: Self.padding, y: top, width: activatorWidth, height: height)
             let entryX = Self.padding + activatorWidth + Self.activatorGap
             row.entry.frame = NSRect(
-                x: entryX, y: top, width: bounds.width - entryX - Self.padding, height: height)
+                x: entryX, y: top, width: hintX - Self.hintGap - entryX, height: height)
             top -= Self.rowSpacing
+        }
+
+        top = bounds.height - Self.verticalPadding
+        for hint in topHints {
+            let height = hint.fittingSize.height
+            top -= height
+            hint.frame = NSRect(x: hintX, y: top, width: hintWidth, height: height)
+            top -= Self.rowSpacing
+        }
+
+        let stacked = bottomHints.map { $0.fittingSize.height + Self.rowSpacing }.reduce(0, +)
+        var bottom = min(
+            bounds.height - coveredHeight + Self.verticalPadding,
+            top + Self.rowSpacing - stacked)
+        for hint in bottomHints.reversed() {
+            let height = hint.fittingSize.height
+            hint.frame = NSRect(x: hintX, y: bottom, width: hintWidth, height: height)
+            bottom += height + Self.rowSpacing
         }
     }
 
     private static func rowHeight(_ row: (activator: NSTextField, entry: NSTextField)) -> CGFloat {
         max(row.activator.fittingSize.height, row.entry.fittingSize.height)
+    }
+
+    private static func hints(_ glyphs: String...) -> [NSTextField] {
+        glyphs.map(hint)
+    }
+
+    private static func hint(_ glyph: String) -> NSTextField {
+        let hint = label(glyph, identifier: "hint", color: .modeGreen)
+        hint.alignment = .center
+        return hint
     }
 
     private static func label(
