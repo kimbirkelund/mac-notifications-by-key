@@ -56,15 +56,9 @@ final class ActionPanelsWindow: NSWindow {
         let size = panelView.contentSize
         let overflows = size.height > panel.coveredHeight
         let bend = Self.fillet + Self.panelRadius
+        let haloBottom = panel.coveredHeight + Self.haloInset
         let panelHeight =
-            overflows
-            ? max(size.height + Self.haloInset, panel.coveredHeight + bend)
-            : size.height
-        let haloBottom =
-            overflows
-            ? min(
-                max(panelHeight - bend, panel.coveredHeight), panel.coveredHeight + Self.haloInset)
-            : panel.coveredHeight + Self.haloInset
+            overflows ? max(size.height + Self.haloInset, haloBottom + bend) : size.height
         let panelCG = ActionPanelLayout.frame(
             anchor: panel.anchor, contentSize: CGSize(width: size.width, height: panelHeight))
         let haloRight = panel.anchor.insetBy(dx: -Self.haloInset, dy: -Self.haloInset)

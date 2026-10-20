@@ -82,7 +82,10 @@ public struct DefaultNotificationCenterAX: NotificationCenterAccess {
         let pid = try requirePID()
         return notificationElements(pid).enumerated().compactMap { offset, element in
             guard let frame = frame(of: element) else { return nil }
-            return PresentedNotification(item: item(from: element, index: offset), frame: frame)
+            let item = item(from: element, index: offset)
+            return PresentedNotification(
+                item: item, frame: frame,
+                extentBelow: item.isCollapsedStack ? stackExtent(of: element, frame: frame) : 0)
         }
     }
 
@@ -318,6 +321,27 @@ public struct DefaultNotificationCenterAX: NotificationCenterAccess {
         var value: CFTypeRef?
         return AXUIElementCopyAttributeValue(element, name as CFString, &value) == .success
             ? value : nil
+    }
+
+    /// The layers of a collapsed stack have no element of their own, but they take up
+    /// room in the list, so the space before the next element reveals them.
+    private func stackExtent(of element: AXUIElement, frame: CGRect) -> CGFloat {
+        guard let parent = attr(element, kAXParentAttribute as String),
+            CFGetTypeID(parent) == AXUIElementGetTypeID()
+        else { return 0 }
+        let container = unsafeDowncast(parent, to: AXUIElement.self)
+        let below = axChildren(container).compactMap { sibling -> (CGFloat, Bool)? in
+            guard let rect = self.frame(of: sibling), rect.minY >= frame.maxY else { return nil }
+            let role = axRole(sibling)
+            let heading = role == (kAXHeadingRole as String) || role == (kAXButtonRole as String)
+            return (rect.minY, heading)
+        }
+        if let next = below.min(by: { $0.0 < $1.0 }) {
+            return StackExtent.below(
+                frame: frame, nextEdge: next.0, following: next.1 ? .heading : .row)
+        }
+        guard let containerFrame = self.frame(of: container) else { return 0 }
+        return StackExtent.below(frame: frame, nextEdge: containerFrame.maxY, following: .end)
     }
 
     private func frame(of element: AXUIElement) -> CGRect? {

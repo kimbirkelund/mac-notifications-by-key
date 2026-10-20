@@ -66,12 +66,12 @@ import Testing
         #expect(spec?.anchor == anchor.offsetBy(dx: 0, dy: 100))
     }
 
-    @Test func collapsedStackCoversTheLayersBeneathItsFrontCard() {
+    @Test func panelCoversWhatThePresentedNotificationReachesBelowItsFrame() {
         let item = NotificationItem(index: 0, actions: ["Clear All"], isCollapsedStack: true)
-        let n = PresentedNotification(item: item, frame: anchor)
+        let n = PresentedNotification(item: item, frame: anchor, extentBelow: 16)
         let spec = ActionPanelLayout.panel(for: [n], selectedIndex: 0)
-        #expect(spec?.coveredExtent == ActionPanelLayout.collapsedStackExtent)
-        #expect(spec?.coveredHeight == anchor.height + ActionPanelLayout.collapsedStackExtent)
+        #expect(spec?.coveredExtent == 16)
+        #expect(spec?.coveredHeight == anchor.height + 16)
     }
 
     @Test func plainNotificationCoversOnlyItsOwnFrame() {

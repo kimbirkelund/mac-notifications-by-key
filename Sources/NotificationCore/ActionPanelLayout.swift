@@ -23,7 +23,6 @@ public struct ActionPanelSpec: Equatable, Sendable {
 
 public enum ActionPanelLayout {
     public static let gap: CGFloat = 8
-    public static let collapsedStackExtent: CGFloat = 14
 
     public static func entries(for item: NotificationItem) -> [String] {
         let actions = item.actions.filter { $0 != "Close" }
@@ -43,8 +42,7 @@ public enum ActionPanelLayout {
         let entries = entries(for: selected.item)
         return ActionPanelSpec(
             entries: entries, activators: ActivatorAssignment.keys(for: entries),
-            anchor: selected.frame,
-            coveredExtent: selected.item.isCollapsedStack ? collapsedStackExtent : 0)
+            anchor: selected.frame, coveredExtent: selected.extentBelow)
     }
 
     public static func frame(
