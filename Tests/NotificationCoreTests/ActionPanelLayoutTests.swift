@@ -14,6 +14,40 @@ import Testing
 
     private let anchor = CGRect(x: 1000, y: 50, width: 360, height: 80)
 
+    @Test(arguments: [
+        (0, 3, false, true), (1, 3, true, true), (2, 3, true, false), (0, 1, false, false),
+    ])
+    func movementHintsFollowSelectedIndexAndCount(
+        index: Int, count: Int, up: Bool, down: Bool
+    ) {
+        let list = (0..<count).map { presented($0, frame: anchor) }
+        let spec = ActionPanelLayout.panel(for: list, selectedIndex: index)
+        #expect(spec?.canMoveUp == up)
+        #expect(spec?.canMoveDown == down)
+    }
+
+    @Test func dismissRowLabelShowsAllThreeVariantsForPlainItem() {
+        let n = presented(0, actions: ["Reply"], frame: anchor)
+        let spec = ActionPanelLayout.panel(for: [n], selectedIndex: 0)
+        #expect(spec?.rowLabels.count == 3)
+        #expect(spec?.rowLabels[1].activator == "d / D / X")
+        #expect(spec?.rowLabels[1].entry == "Dismiss this / app / all")
+        #expect(spec?.rowLabels[0].activator == "space")
+        #expect(spec?.rowLabels[0].entry == "Activate")
+        #expect(spec?.rowLabels[2].entry == "Reply")
+        #expect(spec?.rowLabels[2].activator == spec?.activatorLabels[2])
+    }
+
+    @Test func dismissRowLabelShowsAllThreeVariantsForStack() {
+        let item = NotificationItem(index: 0, actions: [], isCollapsedStack: true)
+        let n = PresentedNotification(item: item, frame: anchor)
+        let spec = ActionPanelLayout.panel(for: [n], selectedIndex: 0)
+        #expect(spec?.rowLabels[0].activator == "space")
+        #expect(spec?.rowLabels[0].entry == "Expand")
+        #expect(spec?.rowLabels[1].activator == "d / D / X")
+        #expect(spec?.rowLabels[1].entry == "Dismiss this / app / all")
+    }
+
     @Test func entriesAreActivateDismissThenActionsInOrder() {
         let n = presented(0, actions: ["Reply", "Snooze"], frame: anchor)
         let spec = ActionPanelLayout.panel(for: [n], selectedIndex: 0)
