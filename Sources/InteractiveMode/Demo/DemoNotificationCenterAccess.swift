@@ -111,14 +111,17 @@ public final class DemoNotificationCenterAccess: NotificationCenterAccess, @unch
     }
 
     private func removeIf(index: Int, _ closes: (DemoNotification) throws -> Bool) throws {
-        try lock.withLock {
+        let removal = try lock.withLock { () -> (position: Int, takes: TimeInterval)? in
             let slots = presentedSlots()
             guard slots.indices.contains(index) else {
                 throw NbkError.indexOutOfRange(requested: index, count: slots.count)
             }
             let (position, notification) = slots[index]
-            if try closes(notification) { notifications.remove(at: position) }
+            return try closes(notification) ? (position, notification.takes ?? 0) : nil
         }
+        guard let removal else { return }
+        if removal.takes > 0 { Thread.sleep(forTimeInterval: removal.takes) }
+        lock.withLock { _ = notifications.remove(at: removal.position) }
     }
 
     private func presentedSlots() -> [(position: Int, notification: DemoNotification)] {
