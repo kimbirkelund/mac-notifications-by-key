@@ -304,19 +304,28 @@ final class Session {
     func teardown() {
         guard !terminated else { return }
         terminated = true
-        releaseScreen()
-        terminate()
+        releaseScreen(then: terminate)
     }
 
-    func releaseScreen() {
-        guard !tearingDown else { return }
+    /// The overlay and panel are hidden first, and the Notification Center panel is
+    /// closed off the main thread: closing it blocks while the panel animates, and
+    /// window ordering changes are committed only once the main thread is free, so
+    /// closing it on the main thread would leave the overlay on screen while the
+    /// panel visibly disappears.
+    func releaseScreen(then completion: @escaping () -> Void = {}) {
+        guard !tearingDown else { return completion() }
         tearingDown = true
         panelsWindow?.orderOut(nil)
         window?.orderOut(nil)
-        do {
-            try access.setPanelOpen(false)
-        } catch {
-            Self.reportError(error)
+        nonisolated(unsafe) let access = access
+        nonisolated(unsafe) let completion = completion
+        dispatchQueue.async {
+            do {
+                try access.setPanelOpen(false)
+            } catch {
+                Self.reportError(error)
+            }
+            DispatchQueue.main.async { MainActor.assumeIsolated { completion() } }
         }
     }
 }

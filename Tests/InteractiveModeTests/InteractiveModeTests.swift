@@ -100,11 +100,22 @@ private final class RecordingAccess: NotificationCenterAccess, @unchecked Sendab
 
 @MainActor @Suite struct SessionReleaseScreenTests {
     /// RIM-6: the panel is closed exactly once however often the screen is released.
-    @Test func releaseScreenClosesThePanelOnce() {
+    @Test func releaseScreenClosesThePanelOnce() async throws {
         let access = RecordingAccess()
         let session = Session(access: access)
         session.releaseScreen()
         session.releaseScreen()
+        try await Task.sleep(for: .milliseconds(100))
+        #expect(access.calls == [.setPanelOpen(false)])
+    }
+
+    /// The overlay is hidden before the panel is closed, never the other way round.
+    @Test func releaseScreenClosesThePanelOnlyAfterTheCurrentPass() async throws {
+        let access = RecordingAccess()
+        let session = Session(access: access)
+        session.releaseScreen()
+        #expect(access.calls.isEmpty)
+        try await Task.sleep(for: .milliseconds(100))
         #expect(access.calls == [.setPanelOpen(false)])
     }
 }
@@ -454,11 +465,12 @@ private final class RecordingAccess: NotificationCenterAccess, @unchecked Sendab
     }
 
     /// RIM-16: Escape while the label shows ends the mode at once.
-    @Test func escapeWhileEndingEndsTheModeAtOnce() {
+    @Test func escapeWhileEndingEndsTheModeAtOnce() async throws {
         let access = RecordingAccess()
         let (session, terminations) = session(access, hold: 60)
         session.drawActionPanels([])
         session.handle(.escape)
+        try await waitUntil { terminations.count > 0 }
         #expect(terminations.count == 1)
         #expect(access.calls == [.setPanelOpen(false)])
     }
@@ -475,12 +487,14 @@ private final class RecordingAccess: NotificationCenterAccess, @unchecked Sendab
     }
 
     /// RIM-16: Escape followed by a signal ends the mode once.
-    @Test func escapeThenSignalTerminatesOnce() {
+    @Test func escapeThenSignalTerminatesOnce() async throws {
         let access = RecordingAccess()
         let (session, terminations) = session(access, hold: 60)
         session.drawActionPanels([])
         session.handle(.escape)
         session.teardown()
+        try await waitUntil { terminations.count > 0 }
+        try await Task.sleep(for: .milliseconds(100))
         #expect(terminations.count == 1)
         #expect(access.calls == [.setPanelOpen(false)])
     }
