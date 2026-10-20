@@ -38,7 +38,11 @@ extension OverlayKey {
 }
 
 final class FarewellWindow: NSWindow {
+    private static let boxRadius: CGFloat = 24
     private let label = NSTextField(labelWithString: "")
+    private var box: NSView?
+    private var boxWidth = NSLayoutConstraint()
+    private var boxHeight = NSLayoutConstraint()
 
     init(frame: CGRect, level: NSWindow.Level) {
         super.init(contentRect: frame, styleMask: .borderless, backing: .buffered, defer: false)
@@ -55,24 +59,51 @@ final class FarewellWindow: NSWindow {
         label.textColor = .modeGreen
         label.translatesAutoresizingMaskIntoConstraints = false
 
-        let box = NSView()
-        box.wantsLayer = true
-        box.layer?.backgroundColor = NSColor.black.withAlphaComponent(0.8).cgColor
-        box.layer?.borderColor = NSColor.lightGray.cgColor
-        box.layer?.borderWidth = 3
-        box.layer?.cornerRadius = 24
+        let padded = NSView()
+        padded.translatesAutoresizingMaskIntoConstraints = false
+        padded.addSubview(label)
+        NSLayoutConstraint.activate([
+            label.leadingAnchor.constraint(equalTo: padded.leadingAnchor, constant: 40),
+            label.trailingAnchor.constraint(equalTo: padded.trailingAnchor, constant: -40),
+            label.topAnchor.constraint(equalTo: padded.topAnchor, constant: 20),
+            label.bottomAnchor.constraint(equalTo: padded.bottomAnchor, constant: -20),
+        ])
+
+        let box: NSView
+        if #available(macOS 26, *) {
+            let glass = NSGlassEffectView()
+            glass.cornerRadius = Self.boxRadius
+            glass.tintColor = NSColor.white.withAlphaComponent(0.22)
+            glass.contentView = padded
+            box = glass
+        } else {
+            let blur = NSVisualEffectView()
+            blur.material = .hudWindow
+            blur.blendingMode = .behindWindow
+            blur.state = .active
+            blur.wantsLayer = true
+            blur.layer?.cornerRadius = Self.boxRadius
+            blur.layer?.masksToBounds = true
+            blur.addSubview(padded)
+            NSLayoutConstraint.activate([
+                padded.leadingAnchor.constraint(equalTo: blur.leadingAnchor),
+                padded.trailingAnchor.constraint(equalTo: blur.trailingAnchor),
+                padded.topAnchor.constraint(equalTo: blur.topAnchor),
+                padded.bottomAnchor.constraint(equalTo: blur.bottomAnchor),
+            ])
+            box = blur
+        }
         box.translatesAutoresizingMaskIntoConstraints = false
-        box.addSubview(label)
+        self.box = box
+        boxWidth = box.widthAnchor.constraint(equalToConstant: 0)
+        boxHeight = box.heightAnchor.constraint(equalToConstant: 0)
 
         let content = NSView(frame: NSRect(origin: .zero, size: frame.size))
         content.addSubview(box)
         NSLayoutConstraint.activate([
             box.centerXAnchor.constraint(equalTo: content.centerXAnchor),
             box.centerYAnchor.constraint(equalTo: content.centerYAnchor),
-            label.leadingAnchor.constraint(equalTo: box.leadingAnchor, constant: 40),
-            label.trailingAnchor.constraint(equalTo: box.trailingAnchor, constant: -40),
-            label.topAnchor.constraint(equalTo: box.topAnchor, constant: 20),
-            label.bottomAnchor.constraint(equalTo: box.bottomAnchor, constant: -20),
+            boxWidth, boxHeight,
         ])
         contentView = content
     }
@@ -82,6 +113,9 @@ final class FarewellWindow: NSWindow {
 
     func show(_ text: String) {
         label.stringValue = text
+        let size = label.fittingSize
+        boxWidth.constant = size.width + 80
+        boxHeight.constant = size.height + 40
     }
 }
 
