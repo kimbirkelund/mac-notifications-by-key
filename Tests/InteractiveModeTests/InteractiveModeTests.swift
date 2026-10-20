@@ -63,6 +63,7 @@ private final class RecordingAccess: NotificationCenterAccess, @unchecked Sendab
     private let lock = NSLock()
     private var recorded: [Call] = []
     private var presentedReads = 0
+    private var readGates: [DispatchSemaphore] = []
     private let presented: [PresentedNotification]
     private let dismissError: Error?
 
@@ -74,15 +75,30 @@ private final class RecordingAccess: NotificationCenterAccess, @unchecked Sendab
     var calls: [Call] { lock.withLock { recorded } }
     var readPresentedCount: Int { lock.withLock { presentedReads } }
 
-    private func record(_ call: Call) { lock.withLock { recorded.append(call) } }
+    var onCall: (@Sendable (Call) -> Void)?
+
+    private func record(_ call: Call) {
+        lock.withLock { recorded.append(call) }
+        onCall?(call)
+    }
 
     var isTrusted: Bool { true }
     var isPanelOpen: Bool { true }
     func notificationCenterPID() -> pid_t? { nil }
     func read(wait: TimeInterval) throws -> [NotificationItem] { presented.map(\.item) }
     func readPresented() throws -> [PresentedNotification] {
-        lock.withLock { presentedReads += 1 }
+        let gate = lock.withLock { () -> DispatchSemaphore? in
+            presentedReads += 1
+            return readGates.isEmpty ? nil : readGates.removeFirst()
+        }
+        gate?.wait()
         return presented
+    }
+
+    func holdNextRead() -> DispatchSemaphore {
+        let gate = DispatchSemaphore(value: 0)
+        lock.withLock { readGates.append(gate) }
+        return gate
     }
     func dismiss(index: Int) throws {
         record(.dismiss(index))
@@ -117,6 +133,22 @@ private final class RecordingAccess: NotificationCenterAccess, @unchecked Sendab
         #expect(access.calls.isEmpty)
         try await Task.sleep(for: .milliseconds(100))
         #expect(access.calls == [.setPanelOpen(false)])
+    }
+}
+
+private final class PanelLog: @unchecked Sendable {
+    enum Event: Equatable {
+        case drawn
+        case hidden
+    }
+
+    private let lock = NSLock()
+    private var recorded: [Event] = []
+
+    var events: [Event] { lock.withLock { recorded } }
+
+    func record(_ spec: ActionPanelSpec?) {
+        lock.withLock { recorded.append(spec == nil ? .hidden : .drawn) }
     }
 }
 
@@ -266,6 +298,158 @@ private final class RecordingAccess: NotificationCenterAccess, @unchecked Sendab
         #expect(access.calls == [.dismiss(1), .perform("Show Details", 1)])
     }
 
+    private func loggedSession(
+        _ access: RecordingAccess, presented: [PresentedNotification]
+    ) -> (Session, DispatchQueue, PanelLog) {
+        let queue = DispatchQueue(label: "dispatch-test")
+        let session = Session(access: access, dispatchQueue: queue, terminate: {})
+        let log = PanelLog()
+        session.panelDecorator = { log.record($0) }
+        session.drawActionPanels(presented)
+        return (session, queue, log)
+    }
+
+    /// RIM-24: the panel is gone before the entry is performed.
+    @Test func dKeyHidesThePanelBeforeTheEntryIsPerformed() {
+        let presented = Self.presented(1)
+        let access = RecordingAccess(presented: presented)
+        let (session, queue, log) = loggedSession(access, presented: presented)
+        nonisolated(unsafe) var seenAtDismiss: [PanelLog.Event] = []
+        access.onCall = { if $0 == .dismiss(1) { seenAtDismiss = log.events } }
+        session.handle(.character("d"))
+        queue.sync {}
+        #expect(seenAtDismiss == [.drawn, .hidden])
+    }
+
+    /// RIM-24: the panel is redrawn after the entry even when the list is unchanged.
+    @Test func panelIsRedrawnAfterAnEntryThatLeavesTheListUnchanged() async throws {
+        let presented = Self.presented(1)
+        let access = RecordingAccess(presented: presented)
+        let (session, queue, log) = loggedSession(access, presented: presented)
+        session.handle(.character("d"))
+        queue.sync {}
+        try await waitUntil { log.events.last == .drawn && log.events.count == 3 }
+        #expect(log.events == [.drawn, .hidden, .drawn])
+    }
+
+    /// RIM-24: Expand keeps the panel.
+    @Test func spaceOnACollapsedStackNeverHidesThePanel() async throws {
+        let presented = Self.stack(5)
+        let access = RecordingAccess(presented: presented)
+        let (session, queue, log) = loggedSession(access, presented: presented)
+        session.handle(.character(" "))
+        queue.sync {}
+        try await waitUntil { access.readPresentedCount >= 1 }
+        try await Task.sleep(for: .milliseconds(100))
+        #expect(!log.events.contains(.hidden))
+    }
+
+    /// RIM-24: Activate on a notification that is not a stack hides the panel.
+    @Test func spaceOnANotificationHidesThePanelBeforeActivating() {
+        let presented = Self.presented(4)
+        let access = RecordingAccess(presented: presented)
+        let (session, queue, log) = loggedSession(access, presented: presented)
+        nonisolated(unsafe) var seenAtPress: [PanelLog.Event] = []
+        access.onCall = { if $0 == .press(4) { seenAtPress = log.events } }
+        session.handle(.character(" "))
+        queue.sync {}
+        #expect(seenAtPress == [.drawn, .hidden])
+    }
+
+    /// RIM-24: a named action hides the panel before it is performed.
+    @Test func actionKeyHidesThePanelBeforeTheEntryIsPerformed() {
+        let presented = Self.presented(2)
+        let access = RecordingAccess(presented: presented)
+        let (session, queue, log) = loggedSession(access, presented: presented)
+        nonisolated(unsafe) var seen: [PanelLog.Event] = []
+        access.onCall = { if $0 == .perform("Show Details", 2) { seen = log.events } }
+        session.handle(.character("s"))
+        queue.sync {}
+        #expect(seen == [.drawn, .hidden])
+    }
+
+    /// RIM-24: X and D hide the panel before they are performed.
+    @Test func upperCaseKeysHideThePanelBeforeTheyArePerformed() {
+        for (key, call) in [("X", RecordingAccess.Call.clearAll), ("D", .clearAllForApp(3))] {
+            let presented = Self.presented(3, 7)
+            let access = RecordingAccess(presented: presented)
+            let (session, queue, log) = loggedSession(access, presented: presented)
+            nonisolated(unsafe) var seen: [PanelLog.Event] = []
+            access.onCall = { if $0 == call { seen = log.events } }
+            session.handle(.character(key))
+            queue.sync {}
+            #expect(seen == [.drawn, .hidden])
+        }
+    }
+
+    /// RIM-24: a periodic refresh landing mid-entry cannot bring the panel back.
+    @Test func refreshWhileAnEntryIsInFlightDoesNotDrawThePanel() async throws {
+        let presented = Self.presented(1)
+        let access = RecordingAccess(presented: presented)
+        let (session, queue, log) = loggedSession(access, presented: presented)
+        queue.suspend()
+        session.handle(.character("d"))
+        session.showActionPanels()
+        try await waitUntil { access.readPresentedCount >= 2 }
+        try await Task.sleep(for: .milliseconds(100))
+        #expect(log.events == [.drawn, .hidden])
+        queue.resume()
+        queue.sync {}
+    }
+
+    /// RIM-24: a periodic read issued before the entry finished is dropped, not drawn.
+    @Test func readIssuedBeforeTheEntryFinishedDoesNotResurrectThePanel() async throws {
+        let presented = Self.presented(1)
+        let access = RecordingAccess(presented: presented)
+        let (session, queue, log) = loggedSession(access, presented: presented)
+        let stale = access.holdNextRead()
+        let fresh = access.holdNextRead()
+        session.scheduleRead()
+        try await waitUntil { access.readPresentedCount >= 1 }
+        session.handle(.character("d"))
+        queue.sync {}
+        try await waitUntil { access.readPresentedCount >= 2 }
+        stale.signal()
+        try await Task.sleep(for: .milliseconds(100))
+        #expect(log.events == [.drawn, .hidden])
+        fresh.signal()
+        try await waitUntil { log.events.count == 3 }
+        #expect(log.events == [.drawn, .hidden, .drawn])
+    }
+
+    /// RIM-24: keys between the entry finishing and the redraw are dropped.
+    @Test func keysBeforeThePanelIsRedrawnAreIgnored() async throws {
+        let presented = Self.presented(1)
+        let access = RecordingAccess(presented: presented)
+        let (session, queue, log) = loggedSession(access, presented: presented)
+        let fresh = access.holdNextRead()
+        session.handle(.character("d"))
+        queue.sync {}
+        try await waitUntil { access.readPresentedCount >= 1 }
+        session.handle(.character("d"))
+        session.handle(.character("X"))
+        queue.sync {}
+        #expect(access.calls == [.dismiss(1)])
+        fresh.signal()
+        try await waitUntil { log.events.count == 3 }
+        session.handle(.character("s"))
+        queue.sync {}
+        #expect(access.calls == [.dismiss(1), .perform("Show Details", 1)])
+    }
+
+    /// RIM-24: moving the selection while the panel is hidden does not draw it.
+    @Test func selectionMovesWhileAnEntryIsInFlightDoNotRedrawThePanel() {
+        let presented = Self.presented(1, 2)
+        let access = RecordingAccess(presented: presented)
+        let (session, queue, log) = loggedSession(access, presented: presented)
+        queue.suspend()
+        session.handle(.character("d"))
+        session.handle(.down)
+        #expect(log.events == [.drawn, .hidden])
+        queue.resume()
+        queue.sync {}
+    }
+
     private func waitUntil(
         timeout: TimeInterval = 2, _ condition: () -> Bool
     ) async throws {
@@ -295,11 +479,12 @@ private final class RecordingAccess: NotificationCenterAccess, @unchecked Sendab
     @Test func eachEntryIsFollowedByExactlyOneImmediateRead() async throws {
         let presented = Self.presented(1)
         let access = RecordingAccess(presented: presented)
-        let (session, queue) = session(access, presented: presented)
+        let (session, queue, log) = loggedSession(access, presented: presented)
         for expected in 1...3 {
             session.handle(.character("s"))
             queue.sync {}
             try await waitUntil { access.readPresentedCount >= expected }
+            try await waitUntil { log.events.last == .drawn }
             #expect(access.readPresentedCount == expected)
         }
         try await Task.sleep(for: .milliseconds(1200))
