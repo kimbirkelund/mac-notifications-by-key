@@ -24,6 +24,7 @@ final class ActionPanelsWindow: NSWindow {
     private static let haloRadius: CGFloat = 16
     private static let panelRadius: CGFloat = 10
     private static let fillet: CGFloat = 8
+    private var glassHost: NSView?
 
     init(frame: CGRect, level: NSWindow.Level) {
         super.init(contentRect: frame, styleMask: .borderless, backing: .buffered, defer: false)
@@ -44,8 +45,11 @@ final class ActionPanelsWindow: NSWindow {
 
     func show(_ panel: ActionPanelSpec?, primaryScreenHeight: CGFloat) {
         guard let content = contentView else { return }
-        for view in content.subviews { view.removeFromSuperview() }
-        guard let panel else { return }
+        for view in content.subviews where view !== glassHost { view.removeFromSuperview() }
+        guard let panel else {
+            glassHost?.removeFromSuperview()
+            return
+        }
 
         let panelView = ActionPanelView(spec: panel)
         let local = { (cg: CGRect) in
@@ -54,11 +58,8 @@ final class ActionPanelsWindow: NSWindow {
                 in: self.frame)
         }
         let size = panelView.contentSize
-        let overflows = size.height > panel.coveredHeight
-        let bend = Self.fillet + Self.panelRadius
         let haloBottom = panel.coveredHeight + Self.haloInset
-        let panelHeight =
-            overflows ? max(size.height + Self.haloInset, haloBottom + bend) : size.height
+        let panelHeight = max(size.height + Self.haloInset, haloBottom)
         let panelCG = ActionPanelLayout.frame(
             anchor: panel.anchor, contentSize: CGSize(width: size.width, height: panelHeight))
         let haloRight = panel.anchor.insetBy(dx: -Self.haloInset, dy: -Self.haloInset)
@@ -74,12 +75,20 @@ final class ActionPanelsWindow: NSWindow {
                 halo: haloCG.offsetBy(dx: -union.minX, dy: -union.minY),
                 panel: panelCG.offsetBy(dx: -union.minX, dy: -union.minY),
                 haloRadius: Self.haloRadius, panelRadius: Self.panelRadius, fillet: Self.fillet)
-            let hosting = NSHostingView(
-                rootView: GlassOutlineView(shape: shape, tint: Color(nsColor: Self.tint)))
+            let outline = GlassOutlineView(shape: shape, tint: Color(nsColor: Self.tint))
+            let hosting: NSHostingView<GlassOutlineView>
+            if let existing = glassHost as? NSHostingView<GlassOutlineView> {
+                hosting = existing
+                hosting.rootView = outline
+            } else {
+                hosting = NSHostingView(rootView: outline)
+                hosting.sizingOptions = []
+                glassHost = hosting
+            }
             hosting.frame = local(union)
-            content.addSubview(hosting)
+            if hosting.superview == nil { content.addSubview(hosting) }
             panelView.frame = local(panelCG)
-            content.addSubview(panelView)
+            content.addSubview(panelView, positioned: .above, relativeTo: hosting)
         } else {
             let halo = NSView(frame: haloFrame)
             halo.wantsLayer = true
@@ -104,6 +113,7 @@ final class ActionPanelsWindow: NSWindow {
 
 private final class ActionPanelView: NSView {
     private static let padding: CGFloat = 8
+    private static let verticalPadding: CGFloat = 4
     private static let rowSpacing: CGFloat = 2
     private static let activatorGap: CGFloat = 6
 
@@ -123,7 +133,7 @@ private final class ActionPanelView: NSView {
         let rowHeights = rows.map(Self.rowHeight)
         contentSize = CGSize(
             width: 2 * Self.padding + activatorWidth + Self.activatorGap + entryWidth,
-            height: 2 * Self.padding + rowHeights.reduce(0, +)
+            height: 2 * Self.verticalPadding + rowHeights.reduce(0, +)
                 + CGFloat(max(rows.count - 1, 0)) * Self.rowSpacing)
         super.init(frame: CGRect(origin: .zero, size: contentSize))
         setAccessibilityElement(true)
@@ -143,7 +153,7 @@ private final class ActionPanelView: NSView {
     }
 
     private func place() {
-        var top = bounds.height - Self.padding
+        var top = bounds.height - Self.verticalPadding
         for row in rows {
             let height = Self.rowHeight(row)
             top -= height

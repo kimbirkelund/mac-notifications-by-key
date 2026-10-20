@@ -12,12 +12,14 @@ struct GlassOutlineShape: Shape {
     func path(in rect: CGRect) -> Path {
         var path = Path()
         let bottom = halo.maxY
-        let hangs = panel.maxY - bottom >= fillet + panelRadius && panel.maxX < halo.maxX
-        guard hangs else {
+        let hang = panel.maxY - bottom
+        guard hang > 0.5, panel.maxX < halo.maxX else {
             path.addRoundedRect(
                 in: halo.union(panel), cornerSize: CGSize(width: haloRadius, height: haloRadius))
             return path
         }
+        let fillet = min(self.fillet, hang / 2)
+        let neckRadius = min(panelRadius, hang / 2)
         let left = halo.minX
         let right = halo.maxX
         let top = halo.minY
@@ -34,7 +36,7 @@ struct GlassOutlineShape: Shape {
             tangent2End: CGPoint(x: neck, y: bottom + fillet), radius: fillet)
         path.addArc(
             tangent1End: CGPoint(x: neck, y: panel.maxY),
-            tangent2End: CGPoint(x: left, y: panel.maxY), radius: panelRadius)
+            tangent2End: CGPoint(x: left, y: panel.maxY), radius: neckRadius)
         path.addArc(
             tangent1End: CGPoint(x: left, y: panel.maxY), tangent2End: CGPoint(x: left, y: top),
             radius: panelRadius)

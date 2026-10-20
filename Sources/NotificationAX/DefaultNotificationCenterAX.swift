@@ -82,10 +82,9 @@ public struct DefaultNotificationCenterAX: NotificationCenterAccess {
         let pid = try requirePID()
         return notificationElements(pid).enumerated().compactMap { offset, element in
             guard let frame = frame(of: element) else { return nil }
-            let item = item(from: element, index: offset)
             return PresentedNotification(
-                item: item, frame: frame,
-                extentBelow: item.isCollapsedStack ? stackExtent(of: element, frame: frame) : 0)
+                item: item(from: element, index: offset), frame: frame,
+                extentBelow: layersExtent(of: element, frame: frame))
         }
     }
 
@@ -323,9 +322,10 @@ public struct DefaultNotificationCenterAX: NotificationCenterAccess {
             ? value : nil
     }
 
-    /// The layers of a collapsed stack have no element of their own, but they take up
+    /// The layers drawn beneath a stack have no element of their own, and they stay
+    /// once the front card is expanded and no longer reads as a stack; they take up
     /// room in the list, so the space before the next element reveals them.
-    private func stackExtent(of element: AXUIElement, frame: CGRect) -> CGFloat {
+    private func layersExtent(of element: AXUIElement, frame: CGRect) -> CGFloat {
         guard let parent = attr(element, kAXParentAttribute as String),
             CFGetTypeID(parent) == AXUIElementGetTypeID()
         else { return 0 }
