@@ -223,9 +223,9 @@ private final class RecordingAccess: NotificationCenterAccess, @unchecked Sendab
         let presented = Self.presented(2)
         let access = RecordingAccess(presented: presented)
         let (session, queue) = session(access, presented: presented)
-        session.handle(.character("c"))
+        session.handle(.character("s"))
         queue.sync {}
-        #expect(access.calls == [.perform("Close", 2)])
+        #expect(access.calls == [.perform("Show Details", 2)])
     }
 
     /// A second key while an entry is still being performed is dropped, not queued.
@@ -235,7 +235,7 @@ private final class RecordingAccess: NotificationCenterAccess, @unchecked Sendab
         let (session, queue) = session(access, presented: presented)
         session.handle(.character("d"))
         session.handle(.character("d"))
-        session.handle(.character("c"))
+        session.handle(.character("s"))
         queue.sync {}
         #expect(access.calls == [.dismiss(1)])
     }
@@ -249,10 +249,10 @@ private final class RecordingAccess: NotificationCenterAccess, @unchecked Sendab
         let deadline = Date().addingTimeInterval(2)
         while access.calls.count < 2, Date() < deadline {
             try await Task.sleep(for: .milliseconds(20))
-            session.handle(.character("c"))
+            session.handle(.character("s"))
             queue.sync {}
         }
-        #expect(access.calls == [.dismiss(1), .perform("Close", 1)])
+        #expect(access.calls == [.dismiss(1), .perform("Show Details", 1)])
     }
 
     private func waitUntil(
@@ -274,11 +274,11 @@ private final class RecordingAccess: NotificationCenterAccess, @unchecked Sendab
         session.handle(.character("d"))
         queue.sync {}
         try await waitUntil {
-            session.handle(.character("c"))
+            session.handle(.character("s"))
             queue.sync {}
             return access.calls.count >= 2
         }
-        #expect(access.calls == [.dismiss(5), .perform("Close", 5)])
+        #expect(access.calls == [.dismiss(5), .perform("Show Details", 5)])
     }
 
     @Test func eachEntryIsFollowedByExactlyOneImmediateRead() async throws {
@@ -286,7 +286,7 @@ private final class RecordingAccess: NotificationCenterAccess, @unchecked Sendab
         let access = RecordingAccess(presented: presented)
         let (session, queue) = session(access, presented: presented)
         for expected in 1...3 {
-            session.handle(.character("c"))
+            session.handle(.character("s"))
             queue.sync {}
             try await waitUntil { access.readPresentedCount >= expected }
             #expect(access.readPresentedCount == expected)
@@ -304,20 +304,20 @@ private final class RecordingAccess: NotificationCenterAccess, @unchecked Sendab
         #expect(access.calls == [.clearAll])
     }
 
-    @Test func cKeyClearsAllForTheSelectedApp() {
+    @Test func dKeyDismissesAllForTheSelectedApp() {
         let presented = Self.presented(3, 7)
         let access = RecordingAccess(presented: presented)
         let (session, queue) = session(access, presented: presented)
         session.handle(.character("j"))
-        session.handle(.character("C"))
+        session.handle(.character("D"))
         queue.sync {}
         #expect(access.calls == [.clearAllForApp(7)])
     }
 
-    @Test func cKeyWithNothingPresentedPerformsNothing() {
+    @Test func dKeyWithNothingPresentedPerformsNothing() {
         let access = RecordingAccess()
         let (session, queue) = session(access, presented: [])
-        session.handle(.character("C"))
+        session.handle(.character("D"))
         queue.sync {}
         #expect(access.calls.isEmpty)
     }
@@ -336,7 +336,7 @@ private final class RecordingAccess: NotificationCenterAccess, @unchecked Sendab
         let presented = Self.presented(1)
         let access = RecordingAccess(presented: presented)
         let (session, queue) = session(access, presented: presented)
-        for (expected, key) in ["X", "C"].enumerated() {
+        for (expected, key) in ["X", "D"].enumerated() {
             session.handle(.character(key))
             queue.sync {}
             try await waitUntil { access.readPresentedCount >= expected + 1 }
@@ -359,7 +359,7 @@ private final class RecordingAccess: NotificationCenterAccess, @unchecked Sendab
         let presented = Self.presented(1)
         let access = RecordingAccess(presented: presented)
         let (session, queue) = session(access, presented: presented)
-        for key in ["x", "D", "z"] { session.handle(.character(key)) }
+        for key in ["x", "C", "z"] { session.handle(.character(key)) }
         queue.sync {}
         #expect(access.calls.isEmpty)
     }
@@ -378,7 +378,8 @@ private final class RecordingAccess: NotificationCenterAccess, @unchecked Sendab
         indices.enumerated().map { offset, index in
             PresentedNotification(
                 item: NotificationItem(
-                    index: index, app: "Script Editor", title: "N\(index)", actions: ["Close"]),
+                    index: index, app: "Script Editor", title: "N\(index)",
+                    actions: ["Show Details"]),
                 frame: CGRect(x: 0, y: CGFloat(offset) * 100, width: 300, height: 80))
         }
     }
@@ -446,7 +447,7 @@ private final class RecordingAccess: NotificationCenterAccess, @unchecked Sendab
         let (session, terminations) = session(access, hold: 60, queue: queue)
         session.drawActionPanels([])
         session.drawActionPanels(presented)
-        for key in ["X", "C"] { session.handle(.character(key)) }
+        for key in ["X", "D"] { session.handle(.character(key)) }
         queue.sync {}
         #expect(access.calls.isEmpty)
         #expect(terminations.count == 0)
