@@ -419,6 +419,7 @@ if ($DoTest)
       Write-Step 'Acceptance tier (cucumber-js, black-box nbk)'
       if (-not (Test-Path 'node_modules')) { Invoke-Checked 'npm' @('install') }
       $env:NBK_BIN = (Resolve-Path $binPath).Path
+      $env:DEMO_NC_BIN = Join-Path (Split-Path $env:NBK_BIN -Parent) 'demo-nc'
       Invoke-Checked 'npx' @('cucumber-js')
     }
     else { Write-Skip 'Acceptance tier (no Accessibility trust)' }

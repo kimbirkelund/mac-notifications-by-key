@@ -50,12 +50,11 @@ Given('interactive mode is running', STEP, async function () {
   assert.ok(await this.waitForPanel(true), 'expected the Notification Center panel to open')
 })
 
-// Demo mode opens no panel; it is running once every fixture notification has a
-// box, so no key can fire before the first redraw.
+// Demo mode opens no panel; it is running once demo-nc shows every fixture notification
+// and nbk has drawn its first action panel, so no key can fire before nbk's first read.
 Given('interactive mode is running with demo file {string}', STEP, async function (file) {
-  this.startDemo(file)
+  this.startDemoNc(file)
   const want = this.demoInitiallyPresented().length
-  await waitForOverlay(this)
   let last = null
   const shown = await this.pollUntil(async () => {
     last = await this.demoFrames()
@@ -63,8 +62,20 @@ Given('interactive mode is running with demo file {string}', STEP, async functio
   }, SETTLE_MS)
   assert.ok(
     shown,
-    `expected the demo window with ${want} notifications; last read: ${JSON.stringify(last)}; stderr: ${this.interactive.stderr}`
+    `expected the demo window with ${want} notifications; last read: ${JSON.stringify(last)}; stderr: ${this.demo.nc.stderr}`
   )
+  this.startInteractive(['--demo'])
+  await waitForOverlay(this)
+  if (want > 0) {
+    const drawn = await this.pollUntil(
+      async () => (await this.actionPanels()).length > 0,
+      SETTLE_MS
+    )
+    assert.ok(
+      drawn,
+      `expected nbk to draw its first action panel; stderr: ${this.interactive.stderr}`
+    )
+  }
 })
 
 Then('an overlay window covering the screen is present', STEP, async function () {
@@ -537,6 +548,9 @@ Then('the notification titled {string} becomes presented', STEP, async function 
 // Nothing marks a non-closing entry as done, so hold for a window in which a removal would show.
 Then('the notification titled {string} is still presented', STEP, async function (title) {
   assert.ok(this.demo, 'presence is only observable under --demo')
+  // demo-nc applies an action asynchronously, so a title an action reveals (a stack's
+  // member) may take a moment to appear; once it has, it must stay.
+  await this.pollUntil(async () => (await demoTitles(this)).titles?.includes(title), SETTLE_MS)
   const deadline = Date.now() + UNCHANGED_HOLD_MS
   do {
     const { read, titles } = await demoTitles(this)

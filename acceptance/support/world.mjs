@@ -10,6 +10,10 @@ const run = promisify(execFile)
 // The compiled CLI under test. build.ps1 sets NBK_BIN; default to the debug build.
 const NBK_BIN = process.env.NBK_BIN ?? '.build/debug/nbk'
 
+// The demo Notification Center stand-in that `nbk interactive --demo` reads.
+const DEMO_NC_BIN = process.env.DEMO_NC_BIN ?? path.join(path.dirname(NBK_BIN), 'demo-nc')
+const DEMO_NC_PROCESS = path.basename(DEMO_NC_BIN)
+
 // osascript `display notification` is delivered by the Script Editor agent, so all
 // test notifications appear under this app. Banner coalescing is per-app, so this
 // is the app whose stack we clear to keep the Notification Center deterministic.
@@ -27,7 +31,7 @@ const NBK_PROCESS = path.basename(NBK_BIN)
 // Demo files named in scenarios are relative to this directory.
 const FIXTURES_DIR = path.join(path.dirname(fileURLToPath(import.meta.url)), '..', 'fixtures')
 
-// The window in which `--demo` draws a placeholder box per notification.
+// The window in which demo-nc draws a placeholder box per notification.
 const DEMO_WINDOW_NAME = 'Demo notifications'
 
 // Poll `probe` until it returns a truthy value or the deadline passes; returns the
@@ -218,15 +222,20 @@ function panelsIn(windows) {
 }
 
 // Placeholder boxes in the demo window of an AX window tree, as
-// {window: bool, frames: [{title, x, y, width, height}]}. A box is the first AXGroup on
-// a path holding direct static texts; its title is the text identified "title", or
-// failing that its first text. `window` is false when no demo window exists, so a
+// {window: bool, frames: [{title, x, y, width, height}]}. A box is the first AXGroup
+// (looking through scroll areas) on a path holding direct static texts; its title is
+// the text identified "title", or failing that its first text. `window` is false when no demo window exists, so a
 // missing window cannot pass for an empty one.
 function demoFramesIn(windows) {
   const result = { window: false, frames: [] }
   const walk = (node, depth) => {
     if (depth > MAX_GROUP_WALK_DEPTH) return
-    for (const g of groupsOf(node)) {
+    for (const g of node.children) {
+      if (g.role === 'AXScrollArea') {
+        walk(g, depth + 1)
+        continue
+      }
+      if (g.role !== AX_GROUP) continue
       const texts = staticTextsOf(g)
       if (texts.length > 0) {
         const titled = texts.find((t) => t.identifier === 'title') ?? texts[0]
@@ -454,14 +463,19 @@ export class NbkWorld extends World {
     return proc
   }
 
-  startDemo(file) {
+  // Spawns demo-nc only; the caller waits for its window, then calls startInteractive(['--demo']).
+  startDemoNc(file) {
     const demoPath = path.join(FIXTURES_DIR, file)
     let fixture = null
     try {
       fixture = JSON.parse(fs.readFileSync(demoPath, 'utf8'))
     } catch {}
-    this.demo = { path: demoPath, fixture }
-    return this.startInteractive(['--demo', demoPath])
+    const child = spawn(DEMO_NC_BIN, [demoPath], { stdio: ['ignore', 'ignore', 'pipe'] })
+    const nc = { child, stderr: '' }
+    child.on('error', (e) => (nc.stderr += e.message))
+    child.stderr.on('data', (chunk) => (nc.stderr += chunk))
+    this.demo = { path: demoPath, fixture, nc }
+    return nc
   }
 
   // The file's notifications as { title, actions: [name], arrivesAfter }, newest first.
@@ -509,6 +523,27 @@ export class NbkWorld extends World {
     this.interactive = null
   }
 
+  async killDemoNc() {
+    const pids = async () => {
+      try {
+        const { stdout } = await run('pgrep', ['-x', DEMO_NC_PROCESS])
+        return stdout.split('\n').filter(Boolean).map(Number)
+      } catch {
+        return []
+      }
+    }
+    const signalAll = (sig, list) =>
+      list.forEach((pid) => {
+        try {
+          process.kill(pid, sig)
+        } catch {}
+      })
+    signalAll('SIGTERM', await pids())
+    if (await pollUntil(async () => (await pids()).length === 0, 3000)) return
+    signalAll('SIGKILL', await pids())
+    await pollUntil(async () => (await pids()).length === 0, 2000)
+  }
+
   // Pids of every running `nbk interactive`, retained or not (an orphan from a
   // hung step or an earlier run still owns the screen). Scoped to the interactive
   // subcommand so one-shot nbk commands from other runs are left alone.
@@ -526,6 +561,7 @@ export class NbkWorld extends World {
   // SIGTERM (so teardown can close the panel), then SIGKILL whatever remains.
   async killAllInteractive() {
     await this.killInteractive()
+    await this.killDemoNc()
     const signalAll = (sig, pids) =>
       pids.forEach((pid) => {
         try {
@@ -589,7 +625,7 @@ export class NbkWorld extends World {
   }
 
   // Sorted top-down, like the real panel's tree order (newest on top).
-  async demoFrames(pid = this.interactive.child.pid) {
+  async demoFrames(pid = this.demo.nc.child.pid) {
     const result = demoFramesIn(await this.axTree(pid))
     result.frames.sort((a, b) => a.y - b.y)
     return result
