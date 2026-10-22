@@ -1,7 +1,8 @@
 import Foundation
+import NotificationCore
 import Testing
 
-@testable import NotificationCore
+@testable import DemoNotifications
 
 @Suite struct DemoFileTests {
     private func decode(_ json: String) throws -> DemoFile {

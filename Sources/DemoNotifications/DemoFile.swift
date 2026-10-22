@@ -1,4 +1,5 @@
 import Foundation
+import NotificationCore
 
 public struct DemoAction: Equatable, Sendable, Codable {
     public var name: String

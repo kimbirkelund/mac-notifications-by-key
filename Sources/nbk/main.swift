@@ -1,4 +1,5 @@
 import AppKit
+import DemoNotifications
 import Foundation
 import InteractiveMode
 import NotificationAX
