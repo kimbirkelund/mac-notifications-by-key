@@ -23,11 +23,20 @@ import NotificationCore
 /// - Just after opening, the panel's subtree may not have rendered yet, so a single
 ///   closed reading is not trusted before pressing.
 public struct DefaultNotificationCenterAX: NotificationCenterAccess {
+    private var demoExecutableName: String?
+    private var panelAlwaysOpen = false
+
     public init() {}
+
+    package init(executableNamed name: String, panelAlwaysOpen: Bool) {
+        demoExecutableName = name
+        self.panelAlwaysOpen = panelAlwaysOpen
+    }
 
     public var isTrusted: Bool { AXIsProcessTrusted() }
 
     public func notificationCenterPID() -> pid_t? {
+        if let demoExecutableName { return pidByExecutableName(demoExecutableName) }
         if let pid =
             NSRunningApplication
             .runningApplications(withBundleIdentifier: "com.apple.notificationcenterui")
@@ -61,6 +70,31 @@ public struct DefaultNotificationCenterAX: NotificationCenterAccess {
             guard length > 0 else { continue }
             let bytes = pathBuffer[..<Int(length)].map { UInt8(bitPattern: $0) }
             if String(decoding: bytes, as: UTF8.self).contains(needle) { return pid }
+        }
+        return nil
+    }
+
+    package static func executablePath(_ path: String, isNamed name: String) -> Bool {
+        path.hasSuffix("/" + name)
+    }
+
+    private func pidByExecutableName(_ name: String) -> pid_t? {
+        let allPids: UInt32 = 1
+        let pathInfoMaxSize = 4 * 1024
+        let maxBytes = proc_listpids(allPids, 0, nil, 0)
+        guard maxBytes > 0 else { return nil }
+        let capacity = Int(maxBytes) / MemoryLayout<pid_t>.size + 64
+        var pids = [pid_t](repeating: 0, count: capacity)
+        let written = proc_listpids(allPids, 0, &pids, Int32(capacity * MemoryLayout<pid_t>.size))
+        guard written > 0 else { return nil }
+        var pathBuffer = [CChar](repeating: 0, count: pathInfoMaxSize)
+        for pid in pids.prefix(Int(written) / MemoryLayout<pid_t>.size) where pid > 0 {
+            let length = proc_pidpath(pid, &pathBuffer, UInt32(pathInfoMaxSize))
+            guard length > 0 else { continue }
+            let bytes = pathBuffer[..<Int(length)].map { UInt8(bitPattern: $0) }
+            if Self.executablePath(String(decoding: bytes, as: UTF8.self), isNamed: name) {
+                return pid
+            }
         }
         return nil
     }
@@ -169,11 +203,13 @@ public struct DefaultNotificationCenterAX: NotificationCenterAccess {
     // MARK: Panel
 
     public var isPanelOpen: Bool {
+        if panelAlwaysOpen { return true }
         guard isTrusted, let pid = notificationCenterPID() else { return false }
         return panelIsOpen(pid)
     }
 
     public func setPanelOpen(_ open: Bool) throws {
+        if panelAlwaysOpen { return }
         let pid = try requirePID()
         if settledPanelIsOpen(pid) == open { return }
         let name = open ? "open panel" : "close panel"

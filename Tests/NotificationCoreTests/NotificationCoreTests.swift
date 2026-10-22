@@ -110,19 +110,11 @@ import Testing
 }
 
 @Suite struct DemoOptionTests {
-    @Test func absentReturnsNil() throws {
-        #expect(try DemoOption.parse(["interactive"]) == nil)
+    @Test func absentIsFalse() {
+        #expect(!DemoOption.parse(["interactive"]))
     }
 
-    @Test func returnsThePathAfterTheFlag() throws {
-        #expect(try DemoOption.parse(["--demo", "three.json"]) == "three.json")
-    }
-
-    @Test func aFlagWithoutAValueThrows() {
-        #expect(throws: ArgumentError.missingDemoPath) { try DemoOption.parse(["--demo"]) }
-    }
-
-    @Test func unknownTokensAreIgnored() throws {
-        #expect(try DemoOption.parse(["--other", "--demo", "a.json", "extra"]) == "a.json")
+    @Test func theFlagIsTrue() {
+        #expect(DemoOption.parse(["interactive", "--demo"]))
     }
 }

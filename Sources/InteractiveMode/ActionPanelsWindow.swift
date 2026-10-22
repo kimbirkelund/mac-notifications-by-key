@@ -9,10 +9,6 @@ enum ScreenGeometry {
             width: rect.width, height: rect.height)
     }
 
-    static func cgRect(fromAppKit rect: CGRect, primaryScreenHeight: CGFloat) -> CGRect {
-        appKitRect(fromCG: rect, primaryScreenHeight: primaryScreenHeight)
-    }
-
     static func local(_ rect: CGRect, in windowFrame: CGRect) -> CGRect {
         rect.offsetBy(dx: -windowFrame.minX, dy: -windowFrame.minY)
     }

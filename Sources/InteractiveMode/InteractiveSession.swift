@@ -7,8 +7,7 @@ public enum InteractiveSession {
     private static var session: Session?
 
     public static func run(
-        access: NotificationCenterAccess, mainScreenFrame: () -> CGRect?,
-        decorator: (@MainActor ([PresentedNotification]) -> Void)? = nil
+        access: NotificationCenterAccess, mainScreenFrame: () -> CGRect?
     ) throws -> Never {
         guard let frame = mainScreenFrame() else { throw InteractiveError.noScreen }
 
@@ -24,7 +23,6 @@ public enum InteractiveSession {
         }
 
         let session = Session(access: access)
-        session.presentedDecorator = decorator
         Self.session = session
         session.installSignalHandlers()
         do {
@@ -60,7 +58,6 @@ final class Session {
     private let endingHold: TimeInterval
     private let endingFade: TimeInterval
     private let terminate: () -> Void
-    var presentedDecorator: (@MainActor (_ presented: [PresentedNotification]) -> Void)?
     var panelDecorator: (@MainActor (_ panel: ActionPanelSpec?) -> Void)?
 
     static let endingHold: TimeInterval = 1
@@ -289,7 +286,6 @@ final class Session {
         hasDrawn = true
         panelHidden = false
         let panel = ActionPanelLayout.panel(for: presented, selectedIndex: selection.selectedIndex)
-        presentedDecorator?(presented)
         panelDecorator?(panel)
         if presented.isEmpty, !ending, !tearingDown { beginEnding() }
         guard let window, let primary = NSScreen.screens.first else { return }

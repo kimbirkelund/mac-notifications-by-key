@@ -623,8 +623,6 @@ private final class PanelLog: @unchecked Sendable {
         let access = RecordingAccess(presented: presented)
         let queue = DispatchQueue(label: "ending-test")
         let (session, terminations) = session(access, hold: 60, queue: queue)
-        var decorated: [[PresentedNotification]] = []
-        session.presentedDecorator = { decorated.append($0) }
         session.drawActionPanels([])
         session.drawActionPanels(presented)
         for key: OverlayKey in [.character("j"), .down, .character("d"), .character(" ")] {
@@ -632,7 +630,6 @@ private final class PanelLog: @unchecked Sendable {
         }
         queue.sync {}
         #expect(access.calls.isEmpty)
-        #expect(decorated == [[], presented])
         #expect(terminations.count == 0)
     }
 
@@ -695,7 +692,7 @@ private final class PanelLog: @unchecked Sendable {
     }
 }
 
-@MainActor @Suite struct SessionDecoratorTests {
+@MainActor @Suite struct SessionFirstReadTests {
     private static func presented(atTops tops: CGFloat...) -> [PresentedNotification] {
         tops.enumerated().map { index, top in
             PresentedNotification(
@@ -705,13 +702,13 @@ private final class PanelLog: @unchecked Sendable {
     }
 
     private final class Recorder {
-        var calls: [[PresentedNotification]] = []
+        var panels: [ActionPanelSpec?] = []
     }
 
     private func session(_ access: RecordingAccess) -> (Session, Recorder) {
         let recorder = Recorder()
         let session = Session(access: access, terminate: {})
-        session.presentedDecorator = { recorder.calls.append($0) }
+        session.panelDecorator = { recorder.panels.append($0) }
         return (session, recorder)
     }
 
@@ -722,30 +719,24 @@ private final class PanelLog: @unchecked Sendable {
         }
     }
 
-    @Test func readPresentedReachesTheDecoratorTopDown() async throws {
-        let bottomUp = Self.presented(atTops: 200, 100)
-        let (session, recorder) = session(RecordingAccess(presented: bottomUp))
+    @Test func readPresentedIsOrderedTopDownBeforeThePanelAnchorsToTheFirst() async throws {
+        let (session, recorder) = session(
+            RecordingAccess(presented: Self.presented(atTops: 200, 100)))
         session.showActionPanels()
-        try await waitUntil { !recorder.calls.isEmpty }
-        #expect(recorder.calls == [PresentedNotification.topDown(bottomUp)])
-        #expect(recorder.calls.first?.map(\.item.index) == [1, 0])
+        try await waitUntil { !recorder.panels.isEmpty }
+        #expect(recorder.panels.count == 1)
+        #expect(recorder.panels.first??.anchor.minY == 100)
+        #expect(recorder.panels.first??.canMoveUp == false)
+        #expect(recorder.panels.first??.canMoveDown == true)
     }
 
-    @Test func aSelectionMoveRedecorates() {
-        let presented = Self.presented(atTops: 0, 100)
-        let (session, recorder) = session(RecordingAccess(presented: presented))
-        session.drawActionPanels(presented)
-        session.handle(.character("j"))
-        #expect(recorder.calls == [presented, presented])
-    }
-
-    @Test func anEmptyFirstReadStillDecoratesOnce() async throws {
+    @Test func anEmptyFirstReadDrawsOnce() async throws {
         let (session, recorder) = session(RecordingAccess(presented: []))
         session.showActionPanels()
-        try await waitUntil { !recorder.calls.isEmpty }
-        #expect(recorder.calls == [[]])
+        try await waitUntil { !recorder.panels.isEmpty }
+        #expect(recorder.panels == [nil])
         try await Task.sleep(for: .milliseconds(1200))
-        #expect(recorder.calls == [[]])
+        #expect(recorder.panels == [nil])
     }
 }
 

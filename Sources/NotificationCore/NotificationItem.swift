@@ -50,8 +50,6 @@ public enum ArgumentError: Error, Equatable, Sendable {
     case missingValue(flag: String)
     case invalidValue(flag: String, value: String)
     case negativeValue(flag: String, value: String)
-    case missingDemoPath
-    case demoFile(reason: String)
 
     public var message: String {
         switch self {
@@ -61,10 +59,6 @@ public enum ArgumentError: Error, Equatable, Sendable {
             return "\(flag) expects a number of seconds, got \"\(value)\"."
         case .negativeValue(let flag, let value):
             return "\(flag) must not be negative, got \"\(value)\"."
-        case .missingDemoPath:
-            return "nbk: --demo: requires a file path"
-        case .demoFile(let reason):
-            return "nbk: --demo: \(reason)"
         }
     }
 
@@ -112,11 +106,7 @@ public enum ActionName {
     }
 }
 
-/// Parses the `--demo <path>` option of `interactive`. Absent → nil; present requires a path.
+/// Parses the `--demo` flag of `interactive`.
 public enum DemoOption {
-    public static func parse(_ tokens: [String]) throws -> String? {
-        guard let i = tokens.firstIndex(of: "--demo") else { return nil }
-        guard i + 1 < tokens.count else { throw ArgumentError.missingDemoPath }
-        return tokens[i + 1]
-    }
+    public static func parse(_ tokens: [String]) -> Bool { tokens.contains("--demo") }
 }

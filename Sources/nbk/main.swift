@@ -1,5 +1,4 @@
 import AppKit
-import DemoNotifications
 import Foundation
 import InteractiveMode
 import NotificationAX
@@ -18,7 +17,7 @@ let usage = """
       press <index>             default activation (open)
       clear-all                 dismiss every presented notification
       clear-all-for-app <index> dismiss every notification from <index>'s app
-      interactive [--demo <file>]  show the interactive-mode overlay (Escape or SIGINT/SIGTERM ends it)
+      interactive [--demo]      show the interactive-mode overlay (Escape or SIGINT/SIGTERM ends it)
       doctor                    report Accessibility trust, NC pid, macOS version
       --version                 print the version
     """
@@ -30,17 +29,6 @@ let rest = Array(args.dropFirst())
 func intArg(_ tokens: [String], _ position: Int) -> Int? {
     guard position < tokens.count else { return nil }
     return Int(tokens[position])
-}
-
-@MainActor
-func loadDemo(_ path: String, mainScreenFrame: () -> CGRect?) throws -> DemoMode {
-    do {
-        return try DemoMode(
-            file: try DemoFile.load(from: URL(fileURLWithPath: path)),
-            mainScreenFrame: mainScreenFrame)
-    } catch let error as DemoFileError {
-        throw ArgumentError.demoFile(reason: error.description)
-    }
 }
 
 let nc = NotificationCenterAccessFactory.make()
@@ -74,11 +62,15 @@ do {
         try nc.clearAll(forApp: n)
 
     case "interactive":
-        if let demoPath = try DemoOption.parse(rest) {
-            let frame = { NSScreen.main?.frame }
-            let demo = try loadDemo(demoPath, mainScreenFrame: frame)
-            try InteractiveSession.run(
-                access: demo.access, mainScreenFrame: frame, decorator: demo.decorator)
+        if DemoOption.parse(rest) {
+            let demo = DemoNotificationCenterAccess.make()
+            if !demo.isTrusted {
+                die(NbkError.notTrusted.message, code: NbkError.notTrusted.exitCode)
+            }
+            if demo.notificationCenterPID() == nil {
+                die("nbk: --demo: no demo-nc process is running")
+            }
+            try InteractiveSession.run(access: demo, mainScreenFrame: { NSScreen.main?.frame })
         }
         if !nc.isTrusted { die(NbkError.notTrusted.message, code: NbkError.notTrusted.exitCode) }
         try InteractiveSession.run(access: nc, mainScreenFrame: { NSScreen.main?.frame })

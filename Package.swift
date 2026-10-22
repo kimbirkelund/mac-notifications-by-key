@@ -12,15 +12,10 @@ let package = Package(
         // Demo-notification model and file schema — pure, no AX or AppKit.
         .target(name: "DemoNotifications", dependencies: ["NotificationCore"]),
         // Interactive mode: the overlay session (AppKit), kept out of the adapter and the CLI.
-        .target(
-            name: "InteractiveMode",
-            dependencies: ["NotificationAX", "NotificationCore", "DemoNotifications"]),
+        .target(name: "InteractiveMode", dependencies: ["NotificationAX", "NotificationCore"]),
         // The CLI executable.
         .executableTarget(
-            name: "nbk",
-            dependencies: [
-                "NotificationCore", "NotificationAX", "InteractiveMode", "DemoNotifications",
-            ]),
+            name: "nbk", dependencies: ["NotificationCore", "NotificationAX", "InteractiveMode"]),
         .executableTarget(name: "windowlist"),
         .executableTarget(name: "axdump"),
         .executableTarget(
@@ -36,9 +31,7 @@ let package = Package(
             dependencies: ["DemoNotifications", "NotificationCore"]),
         .testTarget(
             name: "InteractiveModeTests",
-            dependencies: [
-                "InteractiveMode", "NotificationAX", "NotificationCore", "DemoNotifications",
-            ]),
+            dependencies: ["InteractiveMode", "NotificationAX", "NotificationCore"]),
         // AX-integration tier (gated on Accessibility trust at runtime).
         .testTarget(
             name: "NotificationAXIntegrationTests",
