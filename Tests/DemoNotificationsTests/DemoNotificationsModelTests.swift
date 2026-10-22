@@ -25,6 +25,59 @@ import Testing
             ])
     }
 
+    @Test func presentedCountsAStacksHiddenMembers() throws {
+        let model = Self.model([
+            DemoNotification(
+                app: "Mail", title: "Inbox",
+                members: [DemoNotification(title: "One"), DemoNotification(title: "Two")]),
+            DemoNotification(title: "B"),
+        ])
+        #expect(model.presented().map(\.hiddenMembers) == [2, 0])
+        #expect(model.presented().map(\.item) == model.items())
+        try model.expand(index: 0)
+        #expect(model.presented().map(\.hiddenMembers) == [0, 0, 0])
+    }
+
+    @Test func dismissByIDTargetsTheSameEntryAfterAnEarlierOneLeaves() throws {
+        let model = Self.model([
+            DemoNotification(title: "A"), DemoNotification(title: "B"),
+            DemoNotification(title: "C"),
+        ])
+        let c = try #require(model.presented().first { $0.item.title == "C" })
+        try model.dismiss(index: 0)
+        try model.dismiss(id: c.id)
+        #expect(Self.titles(model) == ["B"])
+    }
+
+    @Test func expandedMembersGetIDsOfTheirOwn() throws {
+        let model = Self.model([
+            DemoNotification(
+                title: "Inbox",
+                members: [
+                    DemoNotification(title: "One", actions: [DemoAction(name: "Archive")]),
+                    DemoNotification(title: "Two"),
+                ]),
+            DemoNotification(title: "B"),
+        ])
+        let stack = try #require(model.presented().first)
+        try model.expand(id: stack.id)
+        let ids = model.presented().map(\.id)
+        #expect(Set(ids).count == 3)
+        #expect(!ids.contains(stack.id))
+        try model.perform(action: "Archive", id: ids[0])
+        #expect(Self.titles(model) == ["Two", "B"])
+    }
+
+    @Test func actingOnAnIDNoLongerPresentedThrowsAndRemovesNothing() throws {
+        let model = Self.model([DemoNotification(title: "A"), DemoNotification(title: "B")])
+        let a = try #require(model.presented().first)
+        try model.dismiss(id: a.id)
+        #expect(throws: DemoNotificationsError.notPresented(id: a.id)) {
+            try model.press(id: a.id)
+        }
+        #expect(Self.titles(model) == ["B"])
+    }
+
     @Test func clearAllForAppThrowsIndexOutOfRangeAndRemovesNothing() throws {
         let model = Self.model([DemoNotification(app: "Mail", title: "A")])
         #expect(throws: DemoNotificationsError.self) { try model.clearAll(forApp: 1) }

@@ -23,7 +23,8 @@ let package = Package(
             ]),
         .executableTarget(name: "windowlist"),
         .executableTarget(name: "axdump"),
-        .executableTarget(name: "demo-nc"),
+        .executableTarget(
+            name: "demo-nc", dependencies: ["DemoNotifications", "NotificationCore"]),
         // Unit tier.
         .testTarget(name: "NotificationCoreTests", dependencies: ["NotificationCore"]),
         // Unit tier for the AX module's seam/factory logic (no Accessibility at runtime).

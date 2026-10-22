@@ -1,39 +1,33 @@
 import AppKit
+import DemoNotifications
 
-final class NotificationGroupView: NSView {
-    override func isAccessibilityElement() -> Bool { true }
-    override func accessibilityRole() -> NSAccessibility.Role? { .group }
-
-    @available(macOS, deprecated: 10.10)
-    override func accessibilityActionNames() -> [NSAccessibility.Action] {
-        [
-            .press, NSAccessibility.Action(rawValue: "Close"),
-            NSAccessibility.Action(rawValue: "Name:Reply"),
-        ]
-    }
-
-    @available(macOS, deprecated: 10.10)
-    override func accessibilityPerformAction(_ action: NSAccessibility.Action) {}
+let arguments = CommandLine.arguments
+guard arguments.count == 2 else {
+    FileHandle.standardError.write(Data("usage: demo-nc <file>\n".utf8))
+    exit(2)
 }
 
-final class AppDelegate: NSObject, NSApplicationDelegate {
-    private var window: NSWindow?
+let file: DemoFile
+do {
+    file = try DemoFile.load(from: URL(fileURLWithPath: arguments[1]))
+} catch {
+    FileHandle.standardError.write(Data("demo-nc: \(error)\n".utf8))
+    exit(1)
+}
 
-    func applicationDidFinishLaunching(_ notification: Notification) {
-        let window = NSWindow(
-            contentRect: NSRect(x: 0, y: 0, width: 360, height: 120),
-            styleMask: [.titled], backing: .buffered, defer: false)
-        window.title = "Demo notifications"
-        let group = NotificationGroupView(frame: NSRect(x: 10, y: 10, width: 340, height: 100))
-        window.contentView?.addSubview(group)
-        window.center()
-        window.makeKeyAndOrderFront(nil)
-        self.window = window
-    }
+let missingApp = file.notifications.enumerated().flatMap { index, notification in
+    [(String(index), notification)]
+        + notification.members.enumerated().map { ("\(index).members.\($0.offset)", $0.element) }
+}.first { $0.1.app == nil }
+if let (location, notification) = missingApp {
+    let title = notification.title.map { " (\"\($0)\")" } ?? ""
+    FileHandle.standardError.write(
+        Data("demo-nc: notification \(location)\(title) has no \"app\"\n".utf8))
+    exit(1)
 }
 
 let app = NSApplication.shared
-let delegate = AppDelegate()
-app.delegate = delegate
+let controller = DemoController(model: DemoNotificationsModel(notifications: file.notifications))
+app.delegate = controller
 app.setActivationPolicy(.accessory)
 app.run()
