@@ -13,10 +13,11 @@ struct Node: Encodable {
     let y: Double?
     let width: Double?
     let height: Double?
+    let actions: [String]?
     let children: [Node]
 
     enum CodingKeys: String, CodingKey {
-        case role, identifier, title, value, selected, x, y, width, height, children
+        case role, identifier, title, value, selected, x, y, width, height, actions, children
     }
 
     func encode(to encoder: Encoder) throws {
@@ -30,6 +31,7 @@ struct Node: Encodable {
         try container.encode(y, forKey: .y)
         try container.encode(width, forKey: .width)
         try container.encode(height, forKey: .height)
+        try container.encodeIfPresent(actions, forKey: .actions)
         try container.encode(children, forKey: .children)
     }
 }
@@ -83,8 +85,19 @@ func node(_ element: AXUIElement, depth: Int) -> Node {
         y: hasPoint ? Double(point.y) : nil,
         width: hasSize ? Double(size.width) : nil,
         height: hasSize ? Double(size.height) : nil,
+        actions: actionNames(element),
         children: kids.map { node($0, depth: depth + 1) }
     )
+}
+
+func actionNames(_ element: AXUIElement) -> [String]? {
+    var names: CFArray?
+    guard AXUIElementCopyActionNames(element, &names) == .success,
+        let actions = names as? [String], !actions.isEmpty
+    else {
+        return nil
+    }
+    return actions
 }
 
 func childElements(_ element: AXUIElement) -> [AXUIElement] {
