@@ -307,13 +307,13 @@ Feature: Interactive mode
     And the selected panel shows activator "s" before "Snooze"
     And interactive mode is still running
 
-  # Validates RIM-21: a demo file that cannot be read is an argument error, reported before
-  # any window appears.
+  # Validates RIM-28: with no demo application running, --demo is refused before any window
+  # appears.
   @demo
-  Scenario: A missing demo file is refused before the overlay appears
-    When I run "nbk interactive --demo missing.json"
-    Then the command exits with status 64
-    And the error output starts with "nbk: --demo:"
+  Scenario: No running demo application is refused before the overlay appears
+    When I run "nbk interactive --demo"
+    Then the command fails
+    And the error output starts with "nbk: --demo: no demo-nc process is running"
     And no overlay window is present
 
   # Validates RIM-9: entering a mode whose every operation would fail is refused.

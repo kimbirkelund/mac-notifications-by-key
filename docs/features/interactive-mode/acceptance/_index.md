@@ -38,7 +38,7 @@ exception is the window-order scenario, which needs the real panel. The trust sc
 | Expanding a stack presents its members in its place (demo)              | RIM-18, RIM-15      | ✅                                             |
 | An arriving notification keeps the selection on its notification (demo) | RIM-22, RIM-21      | ✅                                             |
 | A departing notification keeps the selection on its notification (demo) | RIM-22, RIM-21      | ✅                                             |
-| A missing demo file is refused before the overlay (demo)                | RIM-21              | ✅                                             |
+| No running demo application is refused before the overlay (demo)        | RIM-28              | ✅                                             |
 | Missing Accessibility trust is refused                                  | RIM-9               | ✅ `@operator` — attended; last run 2026-09-27 |
 
 ## What the harness adds
@@ -57,14 +57,15 @@ notification access uses. None needs a new framework.
   System Events reports a bundle-less accessory process as never frontmost, so the frontmost check
   asks the workspace for the active application instead.
 - **Notification and panel frames.** The action-panel scenarios read each presented notification's
-  position and size from the demo window's placeholders, and our own action-panel groups (their
+  position and size from the demo application's window, and our own action-panel groups (their
   position, size, the action names they list, and the texts of their movement hints) from the
   overlay's accessibility windows. Same permission, no new tooling.
-- **Fixtures.** Scenarios that need a controlled set of notifications start the mode with
-  `--demo <file>`, the path relative to `acceptance/fixtures/`; a fixture may time a notification's
-  arrival or departure with `arrivesAfter` / `leavesAfter` seconds. Demo mode draws a placeholder
-  per notification, so the harness reads presented notifications from those placeholders instead of
-  Notification Center, and never runs `nbk list` in such a scenario.
+- **Fixtures.** Scenarios that need a controlled set of notifications start the demo application
+  with a fixture, the path relative to `acceptance/fixtures/`, wait for its window to show the
+  fixture's notifications, and then start the mode with `--demo`; a fixture may time a
+  notification's arrival or departure with `arrivesAfter` / `leavesAfter` seconds. The harness reads
+  presented notifications from the demo application's window instead of Notification Center, and
+  never runs `nbk list` in such a scenario. Teardown stops both processes.
 - **Keystrokes.** Movement and activator keys are posted through System Events, each step first
   asserting the overlay is frontmost so a mistimed key cannot reach another app.
 

@@ -52,9 +52,9 @@ nbk action <index> <name>        # perform a named action (e.g. "Show")
 nbk press <index>                # default activation (open)
 nbk clear-all                    # dismiss every presented notification
 nbk clear-all-for-app <index>    # dismiss every notification from <index>'s app
-nbk interactive [--demo <file>]  # overlay mode: opens the NC panel; Escape, SIGINT/SIGTERM, or
+nbk interactive [--demo]         # overlay mode: opens the NC panel; Escape, SIGINT/SIGTERM, or
                                  # no notifications left ends it;
-                                 # --demo presents the notifications in <file> instead
+                                 # --demo uses the running demo-nc's notifications instead
 nbk doctor                       # report Accessibility trust, NC pid, macOS version
 ```
 
@@ -128,10 +128,14 @@ Accessibility permission to whatever runs `nbk` (see `nbk doctor`).
 ```
 Sources/NotificationCore/   pure logic — models, JSON output, selection, action-name parsing (unit-tested)
 Sources/NotificationAX/     AX adapter — NotificationCenterAccess seam (protocol + factory), reads/acts on the live tree
-Sources/nbk/                the CLI executable wiring Core + AX
+Sources/DemoNotifications/  demo file schema and the pure demo-notification model (unit-tested)
+Sources/InteractiveMode/    the interactive-mode overlay session (AppKit)
+Sources/nbk/                the CLI executable wiring Core + AX + InteractiveMode
+Sources/demo-nc/            development tool: `demo-nc <file>` presents a demo file's notifications in its own window, exposed via AX like Notification Center (not packaged)
 Tests/NotificationCoreTests/            unit tier — pure logic (swift-testing)
 Tests/NotificationAXUnitTests/          unit tier — AX seam/factory (no AX trust)
 Tests/NotificationAXIntegrationTests/   AX-integration tier (gated)
+Tests/DemoNotificationsTests/           unit tier — demo file and model
 docs/features/**/acceptance/*.feature   acceptance specs (executable via cucumber-js)
 acceptance/steps, acceptance/support    cucumber-js step definitions + world
 ```

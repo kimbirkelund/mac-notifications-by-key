@@ -170,14 +170,15 @@ for `C-*`/`X-*`.
 ## Demo mode
 
 - **RIM-21 (optional) — Demo notifications in place of Notification Center's.** Where `interactive`
-  is invoked with `--demo <file>`, the system shall present the file's notifications in place of
-  Notification Center's, draw a placeholder per notification, open and close no panel, and apply
-  entries to that list according to whether the file says each entry closes its notification; where
-  the file schedules a notification's arrival or departure, the system shall present it only from
+  is invoked with `--demo` while a demo application is running, the system shall present that
+  application's notifications in place of Notification Center's and open and close no panel;
+  everything else shall behave as without `--demo`. The demo application is started separately with
+  a [demo file](../../definitions.md); it presents the file's notifications in its own window,
+  exposes them to the Accessibility API the way Notification Center does, and applies entries to
+  that list according to whether the file says each entry closes its notification. Where the file
+  schedules a notification's arrival or departure, the demo application shall present it only from
   its arrival until its departure, and where the file says an entry on a notification takes some
-  seconds, the system shall complete that entry's removal of the notification only after that delay;
-  everything else shall behave as without `--demo`. The file's format is the
-  [demo file](../../definitions.md).
+  seconds, the notification shall leave only after that delay.
 
 ## Safe failure
 
@@ -189,6 +190,10 @@ for `C-*`/`X-*`.
   lacks Accessibility trust ([C-2](../../constraints.md)), then the system shall report the missing
   permission and how to grant it, and exit non-zero without showing the overlay — a mode whose
   notification operations would all fail shall not be entered ([X-4](../../cross-cutting.md)).
+
+- **RIM-28 (unwanted) — No demo application running.** If `interactive` is invoked with `--demo`
+  while no demo application is running, then the system shall report
+  `nbk: --demo: no demo-nc process is running` and exit non-zero before any window appears.
 
 ## Open seeds (not yet specified)
 

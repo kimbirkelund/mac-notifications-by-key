@@ -39,13 +39,16 @@ the harness delivers is attributed to Script Editor and collapses into one stack
 ever presented, and what it exposes is fixed. Behavior that depends on the notification set (moving
 the selection, selection after removal, activator assignment, which entries close a notification) is
 therefore driven through **demo mode** ([RIM-21](features/interactive-mode/requirements.md)): the
-scenario starts `interactive --demo` with a fixture file from `acceptance/fixtures/`, and the
-notifications, their actions and whether each entry closes are exactly what the fixture says.
-Scenarios that use a fixture never run `nbk list`. Tag them `@demo`: the hooks then skip the
-Notification Center clearing (which opens and closes the panel) around them and only stop the mode.
-The harness reads the overlay windows, their action panels and the demo window's placeholder boxes
-through `axdump`, a small helper built next to `nbk` that dumps the accessibility windows of an
-`nbk` process in one pass.
+scenario starts the demo application, `demo-nc`, with a fixture file from `acceptance/fixtures/`,
+waits for its window to show the fixture's notifications, and then starts `interactive --demo`; the
+notifications, their actions and whether each entry closes are exactly what the fixture says. The
+demo application exposes them through the Accessibility API like Notification Center, so `nbk` reads
+and acts on them through its real adapter. Teardown stops both processes. Scenarios that use a
+fixture never run `nbk list`. Tag them `@demo`: the hooks then skip the Notification Center clearing
+(which opens and closes the panel) around them and only stop the mode and the demo application. The
+harness reads the overlay windows and their action panels from `nbk`, and the notification boxes
+from the demo application's window, through `axdump`, a small helper built next to `nbk` that dumps
+the accessibility windows of a process in one pass.
 
 Demo mode proves the key handling, selection and panel logic of the overlay, and that entries act on
 the list the way the file says. It does not prove that Notification Center's accessibility tree is
