@@ -10,9 +10,10 @@ for `C-*`/`X-*`.
   `interactive`, the system shall display a screen-filling borderless window on every Space, above
   every window except the Notification Center panel — which stays on top of it and reachable —
   tinted and bearing no text; shall become the active application and hold keyboard focus; and shall
-  keep that overlay visible until interactive mode ends, though focus may leave it when the user
-  interacts with the panel. Keyboard and mouse input shall be received by the overlay and shall
-  **not** reach the windows beneath it; the panel, being above it, is not covered by this.
+  keep that overlay visible until interactive mode ends, though focus leaves it for a text field in
+  the panel ([RIM-27](#mode-signal)) and is reclaimed from anywhere else ([RIM-25](#mode-signal)).
+  Keyboard and mouse input shall be received by the overlay and shall **not** reach the windows
+  beneath it; the panel, being above it, is not covered by this.
 
 - **RIM-2 (state) — The overlay is a translucent tint.** While interactive mode is active, the
   overlay shall be translucent rather than opaque, keeping the desktop visible underneath it so the
@@ -26,6 +27,22 @@ for `C-*`/`X-*`.
   interactive mode is already active, the system shall bring the existing overlay to the front and
   give it focus rather than drawing a second overlay; the new invocation shall exit `0` and the
   already-running instance shall continue to own the mode.
+
+- **RIM-25 (event) — Focus lost is reclaimed.** When an application other than the overlay becomes
+  the active application while interactive mode is active and the Notification Center panel shows no
+  text field, the system shall make the overlay the active application holding keyboard focus again,
+  keeping the mode, the panel and the selection unchanged.
+
+- **RIM-26 (unwanted) — Reclaiming focus fails.** If making the overlay the active application
+  ([RIM-25](#mode-signal)) does not take effect, then the system shall retry until it succeeds or
+  interactive mode ends.
+
+- **RIM-27 (event) — A text field in the panel takes focus.** When a text field — an element of role
+  `AXTextField` or `AXTextArea` inside the Notification Center panel — becomes visible while
+  interactive mode is active, the system shall make Notification Center the active application with
+  keyboard focus in that field, and shall not reclaim focus ([RIM-25](#mode-signal)) while the field
+  stays visible. When the field is no longer visible, the system shall reclaim focus as
+  [RIM-25](#mode-signal) describes.
 
 ## Notification Center panel
 
@@ -175,6 +192,12 @@ for `C-*`/`X-*`.
 
 ## Open seeds (not yet specified)
 
+- **Escape inside a reply field.** Notification Center consumes Escape to close the field, after
+  which [RIM-25](#mode-signal) reclaims focus; whether a further Escape must end the mode is not
+  specified.
+- **Text fields in demo mode.** Demo notifications ([RIM-21](#demo-mode)) have no panel and so no
+  text field; how [RIM-27](#mode-signal) is exercised without a real Notification Center is not
+  specified.
 - **Collapsing a stack.** [RIM-18](#selection-and-actions) expands a stack from the overlay;
   collapsing it again is not specified.
 - **Launch on unlock.** Entering the mode when the machine is unlocked is part of the daemon seed in
