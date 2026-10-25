@@ -54,7 +54,8 @@ nbk clear-all                    # dismiss every presented notification
 nbk clear-all-for-app <index>    # dismiss every notification from <index>'s app
 nbk interactive [--demo]         # overlay mode: opens the NC panel; Escape, SIGINT/SIGTERM, or
                                  # no notifications left ends it;
-                                 # --demo uses the running demo-nc's notifications instead
+                                 # --demo uses the running demo-nc's notifications instead,
+                                 # opening and closing its list instead of the NC panel
 nbk doctor                       # report Accessibility trust, NC pid, macOS version
 ```
 
@@ -131,7 +132,7 @@ Sources/NotificationAX/     AX adapter — NotificationCenterAccess seam (protoc
 Sources/DemoNotifications/  demo file schema and the pure demo-notification model (unit-tested)
 Sources/InteractiveMode/    the interactive-mode overlay session (AppKit)
 Sources/nbk/                the CLI executable wiring Core + AX + InteractiveMode
-Sources/demo-nc/            development tool: `demo-nc <file>` presents a demo file's notifications in its own window, exposed via AX like Notification Center (not packaged)
+Sources/demo-nc/            development tool: `demo-nc [--open] <file>` presents a demo file's notifications in a list exposed via AX like Notification Center; starts closed unless `--open`, toggled by its "Demo NC" menu bar item or by `nbk interactive --demo` (not packaged)
 Tests/NotificationCoreTests/            unit tier — pure logic (swift-testing)
 Tests/NotificationAXUnitTests/          unit tier — AX seam/factory (no AX trust)
 Tests/NotificationAXIntegrationTests/   AX-integration tier (gated)

@@ -31,19 +31,20 @@ Shared domain vocabulary used across all features.
   current list, newest-first). Selection logic is pure and unit-tested independently of the AX layer
   (see [testing](testing.md)).
 - **Demo file.** A JSON file given to `demo-nc`, the demo application, listing the notifications
-  that it presents and that [interactive mode](features/interactive-mode/_index.md) shows instead of
-  Notification Center's when invoked with `--demo`, newest first. Each notification has an `app` (a
-  notification or stack member without one is rejected) and may have a `title`, a `subtitle`, a
-  `body`, an `activateCloses` flag (default true) saying whether activating it removes it, and
-  `actions` (default none), and may schedule its `arrivesAfter` (it is absent from the list until
-  that many seconds after the demo application starts) and its `leavesAfter` (it is removed after
-  that many seconds), and may give a `takes` delay, the seconds after an entry that removes it is
-  performed before it leaves; the entry itself returns at once. An action is either a bare name,
-  which removes the notification when performed, or an object with a `name` and a `closes` flag. A
-  notification with a non-empty `members` array (each member a notification of the same shape,
-  newest first) is a collapsed stack presented under its own `app` and `title`: expanding it
-  replaces it with its members, dismissing it removes it with its members, and it cannot be
-  activated. Members cannot themselves have `members`, nor `arrivesAfter` or `leavesAfter`; both are
-  non-negative numbers of seconds. Unknown keys are ignored. A file that is missing, unreadable or
-  not valid is reported by `demo-nc` on standard error with a non-zero exit status, before any
-  window appears.
+  that it presents in its list (closed at launch unless `demo-nc` is started with `--open`; its menu
+  bar item opens and closes it) and that [interactive mode](features/interactive-mode/_index.md)
+  shows instead of Notification Center's when invoked with `--demo`, newest first. Each notification
+  has an `app` (a notification or stack member without one is rejected) and may have a `title`, a
+  `subtitle`, a `body`, an `activateCloses` flag (default true) saying whether activating it removes
+  it, and `actions` (default none), and may schedule its `arrivesAfter` (it is absent from the list
+  until that many seconds after the demo application starts, whether or not the list is open) and
+  its `leavesAfter` (it is removed after that many seconds), and may give a `takes` delay, the
+  seconds after an entry that removes it is performed before it leaves; the entry itself returns at
+  once. An action is either a bare name, which removes the notification when performed, or an object
+  with a `name` and a `closes` flag. A notification with a non-empty `members` array (each member a
+  notification of the same shape, newest first) is a collapsed stack presented under its own `app`
+  and `title`: expanding it replaces it with its members, dismissing it removes it with its members,
+  and it cannot be activated. Members cannot themselves have `members`, nor `arrivesAfter` or
+  `leavesAfter`; both are non-negative numbers of seconds. Unknown keys are ignored. A file that is
+  missing, unreadable or not valid is reported by `demo-nc` on standard error with a non-zero exit
+  status, before any window appears.

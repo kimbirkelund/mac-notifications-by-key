@@ -32,6 +32,12 @@ trust** for the test host ([C-2](constraints.md)), and they **deliver real notif
 the `--wait` behavior). These tiers are therefore environment-dependent: `build.ps1` preflights AX
 trust and skips them with a clear message when it is absent, rather than reporting false failures.
 
+They also drive the real screen, so `build.ps1` guards every run of them, whether started by a
+person or an agent. It refuses to start them, with a clear message, unless the invoking user owns
+the console session and the screen is unlocked. While they run it keeps the display and the machine
+awake (`caffeinate`) and shows a small "Tests running — hands off" sign that never takes focus or
+clicks; both go away when the run ends, fails or is interrupted. The unit tier does none of this.
+
 ## Fixture-driven acceptance (demo mode)
 
 Notification Center cannot be made to present a controlled set of notifications: every notification
@@ -39,16 +45,20 @@ the harness delivers is attributed to Script Editor and collapses into one stack
 ever presented, and what it exposes is fixed. Behavior that depends on the notification set (moving
 the selection, selection after removal, activator assignment, which entries close a notification) is
 therefore driven through **demo mode** ([RIM-21](features/interactive-mode/requirements.md)): the
-scenario starts the demo application, `demo-nc`, with a fixture file from `acceptance/fixtures/`,
-waits for its window to show the fixture's notifications, and then starts `interactive --demo`; the
-notifications, their actions and whether each entry closes are exactly what the fixture says. The
-demo application exposes them through the Accessibility API like Notification Center, so `nbk` reads
-and acts on them through its real adapter. Teardown stops both processes. Scenarios that use a
-fixture never run `nbk list`. Tag them `@demo`: the hooks then skip the Notification Center clearing
-(which opens and closes the panel) around them and only stop the mode and the demo application. The
-harness reads the overlay windows and their action panels from `nbk`, and the notification boxes
-from the demo application's window, through `axdump`, a small helper built next to `nbk` that dumps
-the accessibility windows of a process in one pass.
+scenario starts the demo application, `demo-nc`, with a fixture file from `acceptance/fixtures/`. By
+default it starts with its list closed: the harness waits for its menu bar item, starts
+`interactive --demo`, and waits for the mode to open the list with the fixture's notifications. A
+scenario that says the demo list starts open launches `demo-nc --open` instead, waits for the list,
+and only then starts the mode. The notifications, their actions and whether each entry closes are
+exactly what the fixture says. The demo application exposes them through the Accessibility API like
+Notification Center, so `nbk` reads and acts on them through its real adapter. Teardown stops both
+processes. Scenarios that use a fixture never run `nbk list`. Tag them `@demo`: the hooks then skip
+the Notification Center clearing (which opens and closes the panel) around them and only stop the
+mode and the demo application. The harness reads the overlay windows and their action panels from
+`nbk`, and the notification boxes from the demo application's window, through `axdump`, a small
+helper built next to `nbk` that dumps the accessibility windows of a process in one pass, together
+with the menu bar items the process owns (the harness uses the demo application's item to tell that
+it is ready, and its window to tell whether its list is open).
 
 Demo mode proves the key handling, selection and panel logic of the overlay, and that entries act on
 the list the way the file says. It does not prove that Notification Center's accessibility tree is

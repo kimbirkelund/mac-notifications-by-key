@@ -171,14 +171,17 @@ for `C-*`/`X-*`.
 
 - **RIM-21 (optional) — Demo notifications in place of Notification Center's.** Where `interactive`
   is invoked with `--demo` while a demo application is running, the system shall present that
-  application's notifications in place of Notification Center's and open and close no panel;
-  everything else shall behave as without `--demo`. The demo application is started separately with
-  a [demo file](../../definitions.md); it presents the file's notifications in its own window,
-  exposes them to the Accessibility API the way Notification Center does, and applies entries to
-  that list according to whether the file says each entry closes its notification. Where the file
-  schedules a notification's arrival or departure, the demo application shall present it only from
-  its arrival until its departure, and where the file says an entry on a notification takes some
-  seconds, the notification shall leave only after that delay.
+  application's notifications in place of Notification Center's, open and close the demo
+  application's list where it would open the panel ([RIM-5](#notification-center-panel)) and close
+  it ([RIM-6](#ending-the-mode)), and open and close no Notification Center panel; everything else
+  shall behave as without `--demo`. The demo application is started separately with a
+  [demo file](../../definitions.md); it starts with its list closed unless told to start it open,
+  and exposes a menu bar item that opens and closes the list. While open, the list shows the file's
+  notifications in the demo application's own window, exposes them to the Accessibility API the way
+  Notification Center does, and applies entries according to whether the file says each entry closes
+  its notification. Where the file schedules a notification's arrival or departure, the demo
+  application shall present it only from its arrival until its departure, and where the file says an
+  entry on a notification takes some seconds, the notification shall leave only after that delay.
 
 ## Safe failure
 
@@ -200,8 +203,8 @@ for `C-*`/`X-*`.
 - **Escape inside a reply field.** Notification Center consumes Escape to close the field, after
   which [RIM-25](#mode-signal) reclaims focus; whether a further Escape must end the mode is not
   specified.
-- **Text fields in demo mode.** Demo notifications ([RIM-21](#demo-mode)) have no panel and so no
-  text field; how [RIM-27](#mode-signal) is exercised without a real Notification Center is not
+- **Text fields in demo mode.** The demo application's list ([RIM-21](#demo-mode)) has no text
+  field; how [RIM-27](#mode-signal) is exercised without a real Notification Center is not
   specified.
 - **Collapsing a stack.** [RIM-18](#selection-and-actions) expands a stack from the overlay;
   collapsing it again is not specified.
