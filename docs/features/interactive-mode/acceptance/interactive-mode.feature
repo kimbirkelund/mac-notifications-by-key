@@ -118,8 +118,7 @@ Feature: Interactive mode
   # Validates RIM-13: the panel shows a lower-case key left of each entry.
   @demo
   Scenario: The selected panel shows lower-case activators
-    Given the demo list starts open
-    And interactive mode is running with demo file "one.json"
+    Given interactive mode is running with demo file "one.json"
     Then the selected panel shows activator "space" before "Activate"
     And the selected panel shows activator "d / D / X" before "Dismiss this / app / all"
     And the selected panel shows activator "a" before "Archive"
@@ -131,8 +130,7 @@ Feature: Interactive mode
   # Validates RIM-12: j/k and Down/Up move one step, and the ends clamp rather than wrap.
   @demo
   Scenario: Moving the selection between notifications
-    Given the demo list starts open
-    And interactive mode is running with demo file "three.json"
+    Given interactive mode is running with demo file "three.json"
     And the overlay is the frontmost application
     When I press "j"
     Then the notification at position 2 is selected
@@ -150,8 +148,7 @@ Feature: Interactive mode
   # Validates RIM-23: a hint shows only where the move would change the selection.
   @demo
   Scenario: Movement hints show only where a move is possible
-    Given the demo list starts open
-    And interactive mode is running with demo file "three.json"
+    Given interactive mode is running with demo file "three.json"
     And the overlay is the frontmost application
     Then the panel does not show the "k" hint
     And the panel shows the "j" hint
@@ -165,8 +162,7 @@ Feature: Interactive mode
   # Validates RIM-17: a key that is bound to nothing does nothing.
   @demo
   Scenario: Unbound keys are ignored
-    Given the demo list starts open
-    And interactive mode is running with demo file "one.json"
+    Given interactive mode is running with demo file "one.json"
     And the overlay is the frontmost application
     When I press "x"
     Then interactive mode is still running
@@ -177,8 +173,7 @@ Feature: Interactive mode
   # stays, and the selection stays at the same position, now on the next notification.
   @demo
   Scenario: Pressing d dismisses the selected notification
-    Given the demo list starts open
-    And interactive mode is running with demo file "three.json"
+    Given interactive mode is running with demo file "three.json"
     And the overlay is the frontmost application
     When I press "j"
     Then the notification at position 2 is selected
@@ -191,8 +186,7 @@ Feature: Interactive mode
   # and is drawn again once it has finished.
   @demo
   Scenario: The panel hides while an entry removes its notification
-    Given the demo list starts open
-    And interactive mode is running with demo file "slow-dismiss.json"
+    Given interactive mode is running with demo file "slow-dismiss.json"
     And the overlay is the frontmost application
     When I press "d"
     Then the action panel is removed
