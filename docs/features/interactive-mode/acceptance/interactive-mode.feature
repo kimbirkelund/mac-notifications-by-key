@@ -9,7 +9,8 @@ Feature: Interactive mode
   # Validates RIM-1: entering the mode draws the overlay and takes focus.
   @demo
   Scenario: Entering interactive mode shows the overlay
-    Given interactive mode is running with demo file "one.json"
+    Given the demo list starts open
+    And interactive mode is running with demo file "one.json"
     Then an overlay window covering the screen is present
     And the overlay is the frontmost application
     And the overlay shows no label
@@ -17,14 +18,16 @@ Feature: Interactive mode
   # Validates RIM-3: the mode holds focus without becoming an app you switch to.
   @demo
   Scenario: The mode keeps no application presence
-    Given interactive mode is running with demo file "one.json"
+    Given the demo list starts open
+    And interactive mode is running with demo file "one.json"
     Then the mode presents no Dock icon and no menu bar
 
   # Validates RIM-4: a toggle hotkey pressed twice must not stack overlays. The
   # second invocation returns 0 and the first keeps owning the mode.
   @demo
   Scenario: Re-invoking while the mode runs does not stack a second overlay
-    Given interactive mode is running with demo file "one.json"
+    Given the demo list starts open
+    And interactive mode is running with demo file "one.json"
     When I run "nbk interactive"
     Then the command succeeds
     And exactly one overlay window is present
@@ -36,7 +39,8 @@ Feature: Interactive mode
   # adapter closes the panel.
   @demo
   Scenario: Terminating on a signal removes the overlay
-    Given interactive mode is running with demo file "one.json"
+    Given the demo list starts open
+    And interactive mode is running with demo file "one.json"
     When interactive mode is sent SIGTERM
     Then interactive mode exits with status 0
     And no overlay window is present
@@ -48,7 +52,8 @@ Feature: Interactive mode
   # show the real adapter closes the panel.
   @demo
   Scenario: Pressing Escape leaves the mode
-    Given interactive mode is running with demo file "one.json"
+    Given the demo list starts open
+    And interactive mode is running with demo file "one.json"
     And the overlay is the frontmost application
     When I press Escape
     Then interactive mode exits with status 0
@@ -70,7 +75,8 @@ Feature: Interactive mode
   # top-aligned and no shorter than it.
   @demo
   Scenario: Only the selected notification gets an action panel
-    Given interactive mode is running with demo file "three.json"
+    Given the demo list starts open
+    And interactive mode is running with demo file "three.json"
     Then exactly one action panel is present
     And the panel lists "Activate", "Dismiss this / app / all", then the selected notification's actions in order
     And the panel sits to the left of the selected notification with the same top edge
@@ -80,7 +86,8 @@ Feature: Interactive mode
   # to, and the mode has nothing left to be the subject of, so it ends.
   @demo
   Scenario: Nothing presented on entry ends the mode
-    Given interactive mode is running with demo file "none.json"
+    Given the demo list starts open
+    And interactive mode is running with demo file "none.json"
     Then the overlay shows the label "No more jobs!"
     And no action panel is present
     And interactive mode exits with status 0
@@ -89,7 +96,8 @@ Feature: Interactive mode
   # Validates RIM-16: dismissing the last notification empties the list and ends the mode.
   @demo
   Scenario: Dismissing the last notification ends the mode
-    Given interactive mode is running with demo file "one.json"
+    Given the demo list starts open
+    And interactive mode is running with demo file "one.json"
     And the overlay is the frontmost application
     When I press "d"
     Then the overlay shows the label "No more jobs!"
@@ -100,7 +108,8 @@ Feature: Interactive mode
   # Validates RIM-16: Escape during the farewell does not wait for the fade.
   @demo
   Scenario: Escape during the farewell ends the mode at once
-    Given interactive mode is running with demo file "none.json"
+    Given the demo list starts open
+    And interactive mode is running with demo file "none.json"
     And the overlay shows the label "No more jobs!"
     When I press Escape
     Then interactive mode exits with status 0
@@ -110,7 +119,8 @@ Feature: Interactive mode
   # to choose between.
   @demo
   Scenario: The newest notification is selected on entry
-    Given interactive mode is running with demo file "three.json"
+    Given the demo list starts open
+    And interactive mode is running with demo file "three.json"
     Then exactly one action panel is selected
     And the panel sits beside the topmost notification
     And the Notification Center panel is closed
@@ -118,7 +128,8 @@ Feature: Interactive mode
   # Validates RIM-13: the panel shows a lower-case key left of each entry.
   @demo
   Scenario: The selected panel shows lower-case activators
-    Given interactive mode is running with demo file "one.json"
+    Given the demo list starts open
+    And interactive mode is running with demo file "one.json"
     Then the selected panel shows activator "space" before "Activate"
     And the selected panel shows activator "d / D / X" before "Dismiss this / app / all"
     And the selected panel shows activator "a" before "Archive"
@@ -130,7 +141,8 @@ Feature: Interactive mode
   # Validates RIM-12: j/k and Down/Up move one step, and the ends clamp rather than wrap.
   @demo
   Scenario: Moving the selection between notifications
-    Given interactive mode is running with demo file "three.json"
+    Given the demo list starts open
+    And interactive mode is running with demo file "three.json"
     And the overlay is the frontmost application
     When I press "j"
     Then the notification at position 2 is selected
@@ -148,7 +160,8 @@ Feature: Interactive mode
   # Validates RIM-23: a hint shows only where the move would change the selection.
   @demo
   Scenario: Movement hints show only where a move is possible
-    Given interactive mode is running with demo file "three.json"
+    Given the demo list starts open
+    And interactive mode is running with demo file "three.json"
     And the overlay is the frontmost application
     Then the panel does not show the "k" hint
     And the panel shows the "j" hint
@@ -162,7 +175,8 @@ Feature: Interactive mode
   # Validates RIM-17: a key that is bound to nothing does nothing.
   @demo
   Scenario: Unbound keys are ignored
-    Given interactive mode is running with demo file "one.json"
+    Given the demo list starts open
+    And interactive mode is running with demo file "one.json"
     And the overlay is the frontmost application
     When I press "x"
     Then interactive mode is still running
@@ -173,7 +187,8 @@ Feature: Interactive mode
   # stays, and the selection stays at the same position, now on the next notification.
   @demo
   Scenario: Pressing d dismisses the selected notification
-    Given interactive mode is running with demo file "three.json"
+    Given the demo list starts open
+    And interactive mode is running with demo file "three.json"
     And the overlay is the frontmost application
     When I press "j"
     Then the notification at position 2 is selected
@@ -186,7 +201,8 @@ Feature: Interactive mode
   # and is drawn again once it has finished.
   @demo
   Scenario: The panel hides while an entry removes its notification
-    Given interactive mode is running with demo file "slow-dismiss.json"
+    Given the demo list starts open
+    And interactive mode is running with demo file "slow-dismiss.json"
     And the overlay is the frontmost application
     When I press "d"
     Then the action panel is removed
@@ -198,7 +214,8 @@ Feature: Interactive mode
   # Validates RIM-14: a named action's key performs that action and the mode stays.
   @demo
   Scenario: Pressing a named action's key performs it
-    Given interactive mode is running with demo file "three.json"
+    Given the demo list starts open
+    And interactive mode is running with demo file "three.json"
     And the overlay is the frontmost application
     When I press "a"
     Then the notification titled "First" is no longer presented
@@ -208,7 +225,8 @@ Feature: Interactive mode
   # notification presented; the later d proves the key reached the mode.
   @demo
   Scenario: An action that does not close keeps the notification
-    Given interactive mode is running with demo file "keep-open.json"
+    Given the demo list starts open
+    And interactive mode is running with demo file "keep-open.json"
     And the overlay is the frontmost application
     When I press "r"
     Then the notification titled "Pinned" is still presented
@@ -219,7 +237,8 @@ Feature: Interactive mode
   # Validates RIM-14: Space performs Activate and the mode stays.
   @demo
   Scenario: Pressing Space activates the selected notification
-    Given interactive mode is running with demo file "three.json"
+    Given the demo list starts open
+    And interactive mode is running with demo file "three.json"
     And the overlay is the frontmost application
     When I press "Space"
     Then the notification titled "First" is no longer presented
@@ -228,7 +247,8 @@ Feature: Interactive mode
   # Validates RIM-20, RIM-16: X clears everything presented, which empties the list.
   @demo
   Scenario: Pressing X clears every notification and ends the mode
-    Given interactive mode is running with demo file "three.json"
+    Given the demo list starts open
+    And interactive mode is running with demo file "three.json"
     And the overlay is the frontmost application
     When I press "X"
     Then the overlay shows the label "No more jobs!"
@@ -239,7 +259,8 @@ Feature: Interactive mode
   # lands on what is now topmost.
   @demo
   Scenario: Pressing D dismisses the selected notification's app only
-    Given interactive mode is running with demo file "two-apps.json"
+    Given the demo list starts open
+    And interactive mode is running with demo file "two-apps.json"
     And the overlay is the frontmost application
     When I press "D"
     Then the notifications titled "Inbox one" and "Inbox two" are no longer presented
@@ -250,7 +271,8 @@ Feature: Interactive mode
   # Validates RIM-10: Close is performed by Dismiss, so it is not a separate entry.
   @demo
   Scenario: Close is not listed as an entry
-    Given interactive mode is running with demo file "close-action.json"
+    Given the demo list starts open
+    And interactive mode is running with demo file "close-action.json"
     Then the selected panel shows activator "space" before "Activate"
     And the selected panel shows activator "d / D / X" before "Dismiss this / app / all"
     And the selected panel shows activator "a" before "Archive"
@@ -259,7 +281,8 @@ Feature: Interactive mode
   # Validates RIM-18: a collapsed stack offers Expand in place of Activate, on the same key.
   @demo
   Scenario: A collapsed stack offers Expand instead of Activate
-    Given interactive mode is running with demo file "stack.json"
+    Given the demo list starts open
+    And interactive mode is running with demo file "stack.json"
     Then the selected panel shows activator "space" before "Expand"
     And the selected panel shows activator "d / D / X" before "Dismiss this / app / all"
     And exactly one action panel is present
@@ -268,7 +291,8 @@ Feature: Interactive mode
   # now holding the first member.
   @demo
   Scenario: Expanding a stack presents its members in its place
-    Given interactive mode is running with demo file "stack.json"
+    Given the demo list starts open
+    And interactive mode is running with demo file "stack.json"
     And the overlay is the frontmost application
     When I press "Space"
     Then the notification titled "Inbox one" is still presented
@@ -283,7 +307,8 @@ Feature: Interactive mode
   # on the same notification, now one position lower.
   @demo
   Scenario: An arriving notification leaves the selection on the same notification
-    Given interactive mode is running with demo file "arrival.json"
+    Given the demo list starts open
+    And interactive mode is running with demo file "arrival.json"
     And the overlay is the frontmost application
     When I press "j"
     Then the notification at position 2 is selected
@@ -297,7 +322,8 @@ Feature: Interactive mode
   # on the same notification, now at the top.
   @demo
   Scenario: A departing notification leaves the selection on the same notification
-    Given interactive mode is running with demo file "departure.json"
+    Given the demo list starts open
+    And interactive mode is running with demo file "departure.json"
     And the overlay is the frontmost application
     When I press "j"
     Then the notification at position 2 is selected

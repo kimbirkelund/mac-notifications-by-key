@@ -290,6 +290,7 @@ export class NbkWorld extends World {
   // Set while interactive mode runs from a demo file: { path, fixture }, where
   // fixture is the parsed file, or null when it is not valid JSON.
   demo = null
+  demoStartsOpen = false
 
   pendingDeliveries = []
 
@@ -463,14 +464,17 @@ export class NbkWorld extends World {
     return proc
   }
 
-  // Spawns demo-nc only; the caller waits for its window, then calls startInteractive(['--demo']).
+  // Spawns demo-nc only, its list open when the scenario asked for it; the caller waits for
+  // it, then calls startInteractive(['--demo']).
   startDemoNc(file) {
     const demoPath = path.join(FIXTURES_DIR, file)
     let fixture = null
     try {
       fixture = JSON.parse(fs.readFileSync(demoPath, 'utf8'))
     } catch {}
-    const child = spawn(DEMO_NC_BIN, ['--open', demoPath], { stdio: ['ignore', 'ignore', 'pipe'] })
+    const child = spawn(DEMO_NC_BIN, [...(this.demoStartsOpen ? ['--open'] : []), demoPath], {
+      stdio: ['ignore', 'ignore', 'pipe']
+    })
     const nc = { child, stderr: '' }
     child.on('error', (e) => (nc.stderr += e.message))
     child.stderr.on('data', (chunk) => (nc.stderr += chunk))
@@ -611,17 +615,31 @@ export class NbkWorld extends World {
     return JSON.parse(await osascript(NOTIFICATION_FRAMES_SCRIPT, 'JavaScript'))
   }
 
-  async axTree(pid) {
+  // A non-zero exit (the process is not AX-registered yet) reads as an empty dump.
+  async axDump(pid) {
     try {
       const { stdout } = await run(path.join(path.dirname(NBK_BIN), 'axdump'), [String(pid)], {
         maxBuffer: 16 * 1024 * 1024,
         timeout: EXEC_TIMEOUT_MS
       })
-      return JSON.parse(stdout).windows
+      return JSON.parse(stdout)
     } catch (e) {
-      if (typeof e.code === 'number') return []
+      if (typeof e.code === 'number') return { windows: [], extras: [] }
       throw new Error(`axdump ${pid} failed: ${(e.stderr || e.message).toString().trim()}`)
     }
+  }
+
+  async axTree(pid) {
+    return (await this.axDump(pid)).windows
+  }
+
+  async demoExtras(pid = this.demo.nc.child.pid) {
+    return (await this.axDump(pid)).extras
+  }
+
+  async isDemoListOpen(pid = this.demo.nc.child.pid) {
+    const windows = await this.axTree(pid)
+    return windows.some((w) => hasIdentifier(w, 'widget-editor-button'))
   }
 
   // Sorted top-down, like the real panel's tree order (newest on top).

@@ -50,22 +50,45 @@ Given('interactive mode is running', STEP, async function () {
   assert.ok(await this.waitForPanel(true), 'expected the Notification Center panel to open')
 })
 
-// Demo mode opens no panel; it is running once demo-nc shows every fixture notification
-// and nbk has drawn its first action panel, so no key can fire before nbk's first read.
-Given('interactive mode is running with demo file {string}', STEP, async function (file) {
-  this.startDemoNc(file)
-  const want = this.demoInitiallyPresented().length
+Given('the demo list starts open', STEP, function () {
+  this.demoStartsOpen = true
+})
+
+async function waitForDemoList(world, want) {
   let last = null
-  const shown = await this.pollUntil(async () => {
-    last = await this.demoFrames()
+  const shown = await world.pollUntil(async () => {
+    last = await world.demoFrames()
     return last.window && last.frames.length === want
   }, SETTLE_MS)
   assert.ok(
     shown,
-    `expected the demo window with ${want} notifications; last read: ${JSON.stringify(last)}; stderr: ${this.demo.nc.stderr}`
+    `expected the demo window with ${want} notifications; last read: ${JSON.stringify(last)}; stderr: ${world.demo.nc.stderr}`
   )
+}
+
+async function waitForDemoToggle(world) {
+  let last = null
+  const ready = await world.pollUntil(async () => {
+    last = await world.demoExtras()
+    return last.some((e) => e.identifier === 'demo-nc-toggle')
+  }, SETTLE_MS)
+  assert.ok(
+    ready,
+    `expected demo-nc to expose its toggle; last extras: ${JSON.stringify(last)}; stderr: ${world.demo.nc.stderr}`
+  )
+}
+
+// Running means demo-nc shows every fixture notification and nbk has drawn its first
+// action panel, so no key can fire before nbk's first read. A list that starts closed is
+// opened by nbk itself, so the list is awaited after nbk starts.
+Given('interactive mode is running with demo file {string}', STEP, async function (file) {
+  this.startDemoNc(file)
+  const want = this.demoInitiallyPresented().length
+  if (this.demoStartsOpen) await waitForDemoList(this, want)
+  else await waitForDemoToggle(this)
   this.startInteractive(['--demo'])
   await waitForOverlay(this)
+  if (!this.demoStartsOpen) await waitForDemoList(this, want)
   if (want > 0) {
     const drawn = await this.pollUntil(
       async () => (await this.actionPanels()).length > 0,
@@ -114,6 +137,21 @@ Then('the Notification Center panel is open', STEP, async function () {
 
 Then('the Notification Center panel is closed', STEP, async function () {
   assert.ok(await this.waitForPanel(false), 'expected the Notification Center panel to be closed')
+})
+
+Then('the demo list is open', STEP, async function () {
+  assert.ok(
+    await this.pollUntil(() => this.isDemoListOpen(), SETTLE_MS),
+    'expected the demo list to be open'
+  )
+})
+
+Then('the demo list is closed', STEP, async function () {
+  assert.equal(this.demo.nc.child.exitCode, null, 'expected demo-nc to still be running')
+  assert.ok(
+    await this.pollUntil(async () => !(await this.isDemoListOpen()), SETTLE_MS),
+    'expected the demo list to be closed'
+  )
 })
 
 Then('the mode presents no Dock icon and no menu bar', STEP, async function () {
