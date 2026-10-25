@@ -40,6 +40,8 @@ final class DemoWindow: NSWindow {
         outer.addSubview(editWidgets)
     }
 
+    override var canBecomeKey: Bool { true }
+
     override func accessibilitySubrole() -> NSAccessibility.Subrole? { .systemDialog }
 
     func show(_ notifications: [DemoPresentedNotification]) {
@@ -47,6 +49,7 @@ final class DemoWindow: NSWindow {
         shown = notifications
         for view in list.subviews { view.removeFromSuperview() }
         var top: CGFloat = 0
+        var field: NSTextField?
         for (index, notification) in notifications.enumerated() {
             if index > 0 { top += Self.rowGap }
             let card = NotificationView(
@@ -56,9 +59,14 @@ final class DemoWindow: NSWindow {
                 onAction(action, notification.id, notification.item.isCollapsedStack)
             }
             list.addSubview(card)
-            top += Self.cardSize.height + Self.layers(notification)
+            field = field ?? card.field
+            top += card.frame.height + Self.layers(notification)
         }
         resize(height: max(top, 1))
+        if let field {
+            if isVisible { makeKeyAndOrderFront(nil) }
+            makeFirstResponder(field)
+        }
     }
 
     private static func layers(_ notification: DemoPresentedNotification) -> CGFloat {

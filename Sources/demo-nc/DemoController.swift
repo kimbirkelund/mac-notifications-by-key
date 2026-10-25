@@ -64,6 +64,10 @@ final class DemoController: NSObject, NSApplicationDelegate {
                 try? model.dismiss(id: id)
             case .named(let name):
                 try? model.perform(action: name, id: id)
+            case .submitField:
+                try? model.submitField(id: id)
+            case .cancelField:
+                try? model.cancelField(id: id)
             }
             DispatchQueue.main.async {
                 MainActor.assumeIsolated { self?.render() }
