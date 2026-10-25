@@ -7,6 +7,8 @@ final class DemoController: NSObject, NSApplicationDelegate {
     private let actions = DispatchQueue(label: "demo-nc.actions")
     private var window: DemoWindow?
     private var timer: Timer?
+    private var statusItem: NSStatusItem?
+    private var isOpen = true
 
     init(model: DemoNotificationsModel) {
         self.model = model
@@ -17,15 +19,38 @@ final class DemoController: NSObject, NSApplicationDelegate {
             self?.perform(action, id: id, isStack: isStack)
         }
         self.window = window
+        statusItem = makeStatusItem()
         render()
-        window.orderFrontRegardless()
         timer = Timer.scheduledTimer(withTimeInterval: 0.1, repeats: true) { [weak self] _ in
             MainActor.assumeIsolated { self?.render() }
         }
     }
 
+    private func makeStatusItem() -> NSStatusItem {
+        let item = NSStatusBar.system.statusItem(withLength: NSStatusItem.variableLength)
+        if let button = item.button {
+            button.title = "Demo NC"
+            button.setAccessibilityIdentifier("demo-nc-toggle")
+            button.setAccessibilityLabel("Demo notifications")
+            button.target = self
+            button.action = #selector(toggle)
+        }
+        return item
+    }
+
+    @objc private func toggle() {
+        isOpen.toggle()
+        render()
+    }
+
     private func render() {
-        window?.show(model.presented())
+        guard let window else { return }
+        window.show(model.presented())
+        if isOpen, !window.isVisible {
+            window.orderFrontRegardless()
+        } else if !isOpen, window.isVisible {
+            window.orderOut(nil)
+        }
     }
 
     private func perform(_ action: NotificationAction, id: Int, isStack: Bool) {

@@ -15,6 +15,7 @@ final class DemoWindow: NSWindow {
     private let inner = GroupView()
     private let scroll = NSScrollView()
     private let list = FlippedView()
+    private let editWidgets = NSButton(title: "", target: nil, action: nil)
     private var shown: [DemoPresentedNotification]?
 
     init(onAction: @escaping Perform) {
@@ -33,7 +34,13 @@ final class DemoWindow: NSWindow {
         contentView = outer
         outer.addSubview(inner)
         inner.addSubview(scroll)
+        editWidgets.isBordered = false
+        editWidgets.setAccessibilityIdentifier("widget-editor-button")
+        editWidgets.setAccessibilityLabel("Edit Widgets")
+        outer.addSubview(editWidgets)
     }
+
+    override func accessibilitySubrole() -> NSAccessibility.Subrole? { .systemDialog }
 
     func show(_ notifications: [DemoPresentedNotification]) {
         guard notifications != shown else { return }

@@ -36,6 +36,27 @@ struct Node: Encodable {
     }
 }
 
+struct Extra: Encodable {
+    let role: String?
+    let subrole: String?
+    let identifier: String?
+    let description: String?
+    let title: String?
+
+    enum CodingKeys: String, CodingKey {
+        case role, subrole, identifier, description, title
+    }
+
+    func encode(to encoder: Encoder) throws {
+        var container = encoder.container(keyedBy: CodingKeys.self)
+        try container.encode(role, forKey: .role)
+        try container.encode(subrole, forKey: .subrole)
+        try container.encode(identifier, forKey: .identifier)
+        try container.encode(description, forKey: .description)
+        try container.encode(title, forKey: .title)
+    }
+}
+
 func fail(_ message: String) -> Never {
     FileHandle.standardError.write(Data((message + "\n").utf8))
     exit(1)
@@ -104,20 +125,46 @@ func childElements(_ element: AXUIElement) -> [AXUIElement] {
     attribute(element, kAXChildrenAttribute) as? [AXUIElement] ?? []
 }
 
-let arguments = CommandLine.arguments
-guard arguments.count == 2, let pid = pid_t(arguments[1]) else {
-    fail("usage: axdump <pid>")
+func extras(_ app: AXUIElement) -> [Extra] {
+    guard let bar = attribute(app, "AXExtrasMenuBar"), CFGetTypeID(bar) == AXUIElementGetTypeID()
+    else {
+        return []
+    }
+    return childElements(unsafeDowncast(bar, to: AXUIElement.self)).map {
+        Extra(
+            role: stringAttribute($0, kAXRoleAttribute),
+            subrole: stringAttribute($0, kAXSubroleAttribute),
+            identifier: stringAttribute($0, kAXIdentifierAttribute),
+            description: stringAttribute($0, kAXDescriptionAttribute),
+            title: stringAttribute($0, kAXTitleAttribute)
+        )
+    }
+}
+
+func write<T: Encodable>(_ value: T) {
+    let encoder = JSONEncoder()
+    encoder.outputFormatting = [.prettyPrinted, .sortedKeys]
+    FileHandle.standardOutput.write(try! encoder.encode(value))
+    FileHandle.standardOutput.write(Data("\n".utf8))
+}
+
+var arguments = Array(CommandLine.arguments.dropFirst())
+let extrasOnly = arguments.first == "--extras"
+if extrasOnly { arguments.removeFirst() }
+guard arguments.count == 1, let pid = pid_t(arguments[0]) else {
+    fail("usage: axdump [--extras] <pid>")
 }
 guard AXIsProcessTrusted() else {
     fail("axdump: Accessibility access is not granted")
 }
 
 let app = AXUIElementCreateApplication(pid)
+if extrasOnly {
+    write(extras(app))
+    exit(0)
+}
 guard let windows = attribute(app, kAXWindowsAttribute) as? [AXUIElement] else {
     fail("axdump: no windows attribute for pid \(pid)")
 }
 
-let encoder = JSONEncoder()
-encoder.outputFormatting = [.prettyPrinted, .sortedKeys]
-FileHandle.standardOutput.write(try encoder.encode(windows.map { node($0, depth: 1) }))
-FileHandle.standardOutput.write(Data("\n".utf8))
+write(windows.map { node($0, depth: 1) })
