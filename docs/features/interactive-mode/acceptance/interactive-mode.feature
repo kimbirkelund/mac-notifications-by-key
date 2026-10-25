@@ -198,8 +198,7 @@ Feature: Interactive mode
   # Validates RIM-14: a named action's key performs that action and the mode stays.
   @demo
   Scenario: Pressing a named action's key performs it
-    Given the demo list starts open
-    And interactive mode is running with demo file "three.json"
+    Given interactive mode is running with demo file "three.json"
     And the overlay is the frontmost application
     When I press "a"
     Then the notification titled "First" is no longer presented
@@ -209,8 +208,7 @@ Feature: Interactive mode
   # notification presented; the later d proves the key reached the mode.
   @demo
   Scenario: An action that does not close keeps the notification
-    Given the demo list starts open
-    And interactive mode is running with demo file "keep-open.json"
+    Given interactive mode is running with demo file "keep-open.json"
     And the overlay is the frontmost application
     When I press "r"
     Then the notification titled "Pinned" is still presented
@@ -221,8 +219,7 @@ Feature: Interactive mode
   # Validates RIM-14: Space performs Activate and the mode stays.
   @demo
   Scenario: Pressing Space activates the selected notification
-    Given the demo list starts open
-    And interactive mode is running with demo file "three.json"
+    Given interactive mode is running with demo file "three.json"
     And the overlay is the frontmost application
     When I press "Space"
     Then the notification titled "First" is no longer presented
@@ -231,8 +228,7 @@ Feature: Interactive mode
   # Validates RIM-20, RIM-16: X clears everything presented, which empties the list.
   @demo
   Scenario: Pressing X clears every notification and ends the mode
-    Given the demo list starts open
-    And interactive mode is running with demo file "three.json"
+    Given interactive mode is running with demo file "three.json"
     And the overlay is the frontmost application
     When I press "X"
     Then the overlay shows the label "No more jobs!"
@@ -243,8 +239,7 @@ Feature: Interactive mode
   # lands on what is now topmost.
   @demo
   Scenario: Pressing D dismisses the selected notification's app only
-    Given the demo list starts open
-    And interactive mode is running with demo file "two-apps.json"
+    Given interactive mode is running with demo file "two-apps.json"
     And the overlay is the frontmost application
     When I press "D"
     Then the notifications titled "Inbox one" and "Inbox two" are no longer presented
