@@ -12,6 +12,9 @@
   Operator runs the attended @operator scenarios (cucumber-js -p operator); it
   prompts a human at the terminal, so it is never part of All.
   Integration/Acceptance/Operator are skipped (not failed) when Accessibility trust is absent.
+  Integration/Acceptance refuse to start unless you own the console session and the
+  screen is unlocked; while they run, caffeinate holds off sleep and a small
+  "hands off" sign is shown.
 
   Lint (-DoLint) covers both code and docs:
     Swift      swift-format (.swift-format config)
@@ -346,6 +349,52 @@ function Test-AxTrust
   return ($LASTEXITCODE -eq 0)
 }
 
+function Get-ConsoleLockProblem([string]$Ioreg, [int]$Uid)
+{
+  if ($Ioreg -match '"IOConsoleLocked" = Yes') { return 'the screen is locked' }
+  $users = if ($Ioreg -match '"IOConsoleUsers" = \((.*)\)') { $Matches[1] -split '\},\{' } else { @() }
+  $console = $users | Where-Object { $_ -match '"kCGSSessionOnConsoleKey"=Yes' } | Select-Object -First 1
+  if (-not $console) { return 'no user session owns the console' }
+  if ($console -notmatch "`"kCGSSessionUserIDKey`"=$Uid\b")
+  {
+    $owner = if ($console -match '"kCGSSessionUserNameKey"="([^"]*)"') { $Matches[1] } else { 'another user' }
+    return "the console session belongs to $owner"
+  }
+  if ($console -match '"CGSSessionScreenIsLocked"=Yes') { return 'the screen is locked' }
+  return $null
+}
+
+function Assert-ConsoleUnlocked
+{
+  $ioreg = (& ioreg -n Root -d1) -join "`n"
+  $problem = Get-ConsoleLockProblem -Ioreg $ioreg -Uid ([int](& id -u))
+  if ($problem)
+  {
+    Write-Host "Integration/Acceptance tiers drive the real screen, but $problem." -ForegroundColor Red
+    Write-Host 'Unlock the screen in your own console session, then rerun.' -ForegroundColor Red
+    exit 1
+  }
+}
+
+function Enter-HandsOffGuard([System.Collections.Generic.List[System.Diagnostics.Process]]$Started)
+{
+  $caffeinateArgs = @('-d', '-i', '-u')
+  $signPath = Join-Path (Split-Path $binPath -Parent) 'hands-off'
+  if (Test-Path $signPath)
+  {
+    $sign = Start-Process -FilePath $signPath -ArgumentList @($PID) -PassThru
+    $Started.Add($sign)
+    $caffeinateArgs += @('-w', $sign.Id)
+  }
+  else { Write-Skip "hands-off sign ($signPath not built)" }
+  $Started.Add((Start-Process -FilePath 'caffeinate' -ArgumentList $caffeinateArgs -PassThru))
+}
+
+function Exit-HandsOffGuard($processes)
+{
+  foreach ($p in $processes) { if (-not $p.HasExited) { $p.Kill() } }
+}
+
 if ($DoInstall)
 {
   Write-Step 'Resolving SwiftPM dependencies'
@@ -402,28 +451,36 @@ if ($DoTest)
     Write-Host 'Grant it in System Settings > Privacy & Security > Accessibility, then rerun.' -ForegroundColor Yellow
   }
 
-  if ($selected -contains 'Integration')
+  $guarded = $trusted -and (($selected -contains 'Integration') -or ($selected -contains 'Acceptance'))
+  if ($guarded) { Assert-ConsoleUnlocked }
+  $guard = [System.Collections.Generic.List[System.Diagnostics.Process]]::new()
+  try
   {
-    if ($trusted)
+    if ($guarded) { Enter-HandsOffGuard $guard }
+    if ($selected -contains 'Integration')
     {
-      Write-Step 'AX-integration tier (NotificationAXIntegrationTests)'
-      Invoke-Checked 'swift' @('test', '--filter', 'NotificationAXIntegrationTests')
+      if ($trusted)
+      {
+        Write-Step 'AX-integration tier (NotificationAXIntegrationTests)'
+        Invoke-Checked 'swift' @('test', '--filter', 'NotificationAXIntegrationTests')
+      }
+      else { Write-Skip 'Integration tier (no Accessibility trust)' }
     }
-    else { Write-Skip 'Integration tier (no Accessibility trust)' }
-  }
 
-  if ($selected -contains 'Acceptance')
-  {
-    if ($trusted)
+    if ($selected -contains 'Acceptance')
     {
-      Write-Step 'Acceptance tier (cucumber-js, black-box nbk)'
-      if (-not (Test-Path 'node_modules')) { Invoke-Checked 'npm' @('install') }
-      $env:NBK_BIN = (Resolve-Path $binPath).Path
-      $env:DEMO_NC_BIN = Join-Path (Split-Path $env:NBK_BIN -Parent) 'demo-nc'
-      Invoke-Checked 'npx' @('cucumber-js')
+      if ($trusted)
+      {
+        Write-Step 'Acceptance tier (cucumber-js, black-box nbk)'
+        if (-not (Test-Path 'node_modules')) { Invoke-Checked 'npm' @('install') }
+        $env:NBK_BIN = (Resolve-Path $binPath).Path
+        $env:DEMO_NC_BIN = Join-Path (Split-Path $env:NBK_BIN -Parent) 'demo-nc'
+        Invoke-Checked 'npx' @('cucumber-js')
+      }
+      else { Write-Skip 'Acceptance tier (no Accessibility trust)' }
     }
-    else { Write-Skip 'Acceptance tier (no Accessibility trust)' }
   }
+  finally { Exit-HandsOffGuard $guard }
 
   if ($selected -contains 'Operator')
   {

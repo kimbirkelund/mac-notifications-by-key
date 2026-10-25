@@ -18,6 +18,7 @@ let package = Package(
             name: "nbk", dependencies: ["NotificationCore", "NotificationAX", "InteractiveMode"]),
         .executableTarget(name: "windowlist"),
         .executableTarget(name: "axdump"),
+        .executableTarget(name: "hands-off"),
         .executableTarget(
             name: "demo-nc", dependencies: ["DemoNotifications", "NotificationCore"]),
         // Unit tier.
