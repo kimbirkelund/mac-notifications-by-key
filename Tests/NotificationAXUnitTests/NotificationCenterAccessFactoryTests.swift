@@ -1,3 +1,4 @@
+import NotificationCore
 import Testing
 
 @testable import NotificationAX
@@ -14,16 +15,15 @@ import Testing
 
 @Suite struct DemoConfigurationTests {
     private let ax = DefaultNotificationCenterAX(
-        executableNamed: "no-such-demo-process", panelAlwaysOpen: true)
+        executableNamed: "no-such-demo-process")
 
     @Test func findsNoProcessWhenNoneMatchesThePath() {
         #expect(ax.notificationCenterPID() == nil)
     }
 
-    @Test func theDemoPanelIsAlwaysOpenAndClosingIsANoOp() throws {
-        #expect(ax.isPanelOpen)
-        try ax.setPanelOpen(false)
-        #expect(ax.isPanelOpen)
+    @Test func theDemoPanelIsNotOpenWhenNoDemoProcessRuns() {
+        #expect(!ax.isPanelOpen)
+        #expect(throws: NbkError.self) { try ax.setPanelOpen(true) }
     }
 
     @Test func onlyTheFinalPathComponentMatchesTheExecutableName() {

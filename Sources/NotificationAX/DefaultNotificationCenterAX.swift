@@ -24,13 +24,11 @@ import NotificationCore
 ///   closed reading is not trusted before pressing.
 public struct DefaultNotificationCenterAX: NotificationCenterAccess {
     private var demoExecutableName: String?
-    private var panelAlwaysOpen = false
 
     public init() {}
 
-    package init(executableNamed name: String, panelAlwaysOpen: Bool) {
+    package init(executableNamed name: String) {
         demoExecutableName = name
-        self.panelAlwaysOpen = panelAlwaysOpen
     }
 
     public var isTrusted: Bool { AXIsProcessTrusted() }
@@ -203,13 +201,11 @@ public struct DefaultNotificationCenterAX: NotificationCenterAccess {
     // MARK: Panel
 
     public var isPanelOpen: Bool {
-        if panelAlwaysOpen { return true }
         guard isTrusted, let pid = notificationCenterPID() else { return false }
         return panelIsOpen(pid)
     }
 
     public func setPanelOpen(_ open: Bool) throws {
-        if panelAlwaysOpen { return }
         let pid = try requirePID()
         if settledPanelIsOpen(pid) == open { return }
         let name = open ? "open panel" : "close panel"
@@ -245,6 +241,7 @@ public struct DefaultNotificationCenterAX: NotificationCenterAccess {
     /// The menu bar clock toggles the panel. Its owning process has moved between
     /// releases (ControlCenter, then MenuBarAgent), so every candidate is searched.
     private func clockMenuExtra() -> AXUIElement? {
+        if demoExecutableName != nil { return demoToggleMenuExtra() }
         let owners = [
             ("com.apple.MenuBarAgent", "CoreServices/MenuBarAgent.app/"),
             ("com.apple.controlcenter", "CoreServices/ControlCenter.app/"),
@@ -267,6 +264,16 @@ public struct DefaultNotificationCenterAX: NotificationCenterAccess {
             ?? menuExtras.first {
                 attr($0, kAXDescriptionAttribute as String) as? String == "Clock"
             }
+    }
+
+    private func demoToggleMenuExtra() -> AXUIElement? {
+        guard let pid = notificationCenterPID(),
+            let bar = attr(AXUIElementCreateApplication(pid), "AXExtrasMenuBar"),
+            CFGetTypeID(bar) == AXUIElementGetTypeID()
+        else { return nil }
+        return descendants(of: unsafeDowncast(bar, to: AXUIElement.self)).first {
+            axIdentifier($0) == "demo-nc-toggle"
+        }
     }
 
     // MARK: - Internals

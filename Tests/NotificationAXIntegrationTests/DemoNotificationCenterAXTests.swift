@@ -25,13 +25,12 @@ import Testing
         NotificationCenterAccessFactory.make().isTrusted && demoBinary != nil
     }
 
-    private func launchDemo(fixture: String) throws -> Process {
+    private func launchDemo(fixture: String, open: Bool = true) throws -> Process {
         let process = Process()
         process.executableURL = try #require(Self.demoBinary)
-        process.arguments = [
-            "--open",
-            Self.repoRoot.appendingPathComponent("acceptance/fixtures/\(fixture)").path,
-        ]
+        process.arguments =
+            (open ? ["--open"] : [])
+            + [Self.repoRoot.appendingPathComponent("acceptance/fixtures/\(fixture)").path]
         try process.run()
         return process
     }
@@ -40,8 +39,7 @@ import Testing
     func readsTheStackFixtureThroughTheRealAdapter() throws {
         let demo = try launchDemo(fixture: "stack.json")
         defer { demo.terminate() }
-        let ax = DefaultNotificationCenterAX(
-            executableNamed: "demo-nc", panelAlwaysOpen: true)
+        let ax = DefaultNotificationCenterAX(executableNamed: "demo-nc")
 
         let items = try ax.read(wait: 6)
         #expect(items.map(\.title) == ["Inbox", "Meeting"])
@@ -55,5 +53,47 @@ import Testing
 
         let presented = try ax.readPresented()
         #expect(presented[0].extentBelow > 0)
+    }
+
+    @Test(.enabled(if: DemoNotificationCenterAXTests.available))
+    func opensAndClosesAClosedListThroughTheMenuBarToggle() throws {
+        let demo = try launchDemo(fixture: "stack.json", open: false)
+        defer { demo.terminate() }
+        let ax = DefaultNotificationCenterAX(executableNamed: "demo-nc")
+
+        let deadline = Date().addingTimeInterval(6)
+        while ax.notificationCenterPID() == nil, Date() < deadline {
+            Thread.sleep(forTimeInterval: 0.1)
+        }
+        Thread.sleep(forTimeInterval: 1)
+        #expect(!ax.isPanelOpen)
+        while true {
+            do {
+                try ax.setPanelOpen(true)
+                break
+            } catch {
+                guard Date() < deadline else { throw error }
+                Thread.sleep(forTimeInterval: 0.1)
+            }
+        }
+        #expect(ax.isPanelOpen)
+        #expect(try ax.read(wait: 6).map(\.title) == ["Inbox", "Meeting"])
+
+        try ax.setPanelOpen(false)
+        #expect(try ax.read(wait: 0).isEmpty)
+        #expect(!ax.isPanelOpen)
+    }
+
+    @Test(.enabled(if: DemoNotificationCenterAXTests.available))
+    func aListLaunchedOpenIsOpenAtOnceAndStaysOpen() throws {
+        let demo = try launchDemo(fixture: "stack.json")
+        defer { demo.terminate() }
+        let ax = DefaultNotificationCenterAX(executableNamed: "demo-nc")
+
+        let deadline = Date().addingTimeInterval(6)
+        while !ax.isPanelOpen, Date() < deadline { Thread.sleep(forTimeInterval: 0.1) }
+        #expect(ax.isPanelOpen)
+        try ax.setPanelOpen(true)
+        #expect(ax.isPanelOpen)
     }
 }
