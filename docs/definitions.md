@@ -41,10 +41,13 @@ Shared domain vocabulary used across all features.
   its `leavesAfter` (it is removed after that many seconds), and may give a `takes` delay, the
   seconds after an entry that removes it is performed before it leaves; the entry itself returns at
   once. An action is either a bare name, which removes the notification when performed, or an object
-  with a `name` and a `closes` flag. A notification with a non-empty `members` array (each member a
-  notification of the same shape, newest first) is a collapsed stack presented under its own `app`
-  and `title`: expanding it replaces it with its members, dismissing it removes it with its members,
-  and it cannot be activated. Members cannot themselves have `members`, nor `arrivesAfter` or
-  `leavesAfter`; both are non-negative numbers of seconds. Unknown keys are ignored. A file that is
-  missing, unreadable or not valid is reported by `demo-nc` on standard error with a non-zero exit
-  status, before any window appears.
+  with a `name`, a `closes` flag and a `field` flag (default false). Performing a `field` action
+  opens an editable reply field on the notification, exposed through AX as a text field, and keeps
+  the notification; Return in the field removes the notification, after any `takes` delay, whatever
+  `closes` says, and Escape drops the field and keeps the notification. A notification with a
+  non-empty `members` array (each member a notification of the same shape, newest first) is a
+  collapsed stack presented under its own `app` and `title`: expanding it replaces it with its
+  members, dismissing it removes it with its members, and it cannot be activated. Members cannot
+  themselves have `members`, nor `arrivesAfter` or `leavesAfter`; both are non-negative numbers of
+  seconds. Unknown keys are ignored. A file that is missing, unreadable or not valid is reported by
+  `demo-nc` on standard error with a non-zero exit status, before any window appears.
