@@ -167,4 +167,4 @@ guard let windows = attribute(app, kAXWindowsAttribute) as? [AXUIElement] else {
     fail("axdump: no windows attribute for pid \(pid)")
 }
 
-write(windows.map { node($0, depth: 1) })
+write(["windows": windows.map { node($0, depth: 1) }])

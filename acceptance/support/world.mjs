@@ -617,7 +617,7 @@ export class NbkWorld extends World {
         maxBuffer: 16 * 1024 * 1024,
         timeout: EXEC_TIMEOUT_MS
       })
-      return JSON.parse(stdout)
+      return JSON.parse(stdout).windows
     } catch (e) {
       if (typeof e.code === 'number') return []
       throw new Error(`axdump ${pid} failed: ${(e.stderr || e.message).toString().trim()}`)
