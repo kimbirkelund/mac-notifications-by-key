@@ -250,8 +250,7 @@ Feature: Interactive mode
   # Validates RIM-10: Close is performed by Dismiss, so it is not a separate entry.
   @demo
   Scenario: Close is not listed as an entry
-    Given the demo list starts open
-    And interactive mode is running with demo file "close-action.json"
+    Given interactive mode is running with demo file "close-action.json"
     Then the selected panel shows activator "space" before "Activate"
     And the selected panel shows activator "d / D / X" before "Dismiss this / app / all"
     And the selected panel shows activator "a" before "Archive"
@@ -260,8 +259,7 @@ Feature: Interactive mode
   # Validates RIM-18: a collapsed stack offers Expand in place of Activate, on the same key.
   @demo
   Scenario: A collapsed stack offers Expand instead of Activate
-    Given the demo list starts open
-    And interactive mode is running with demo file "stack.json"
+    Given interactive mode is running with demo file "stack.json"
     Then the selected panel shows activator "space" before "Expand"
     And the selected panel shows activator "d / D / X" before "Dismiss this / app / all"
     And exactly one action panel is present
@@ -270,8 +268,7 @@ Feature: Interactive mode
   # now holding the first member.
   @demo
   Scenario: Expanding a stack presents its members in its place
-    Given the demo list starts open
-    And interactive mode is running with demo file "stack.json"
+    Given interactive mode is running with demo file "stack.json"
     And the overlay is the frontmost application
     When I press "Space"
     Then the notification titled "Inbox one" is still presented
@@ -286,8 +283,7 @@ Feature: Interactive mode
   # on the same notification, now one position lower.
   @demo
   Scenario: An arriving notification leaves the selection on the same notification
-    Given the demo list starts open
-    And interactive mode is running with demo file "arrival.json"
+    Given interactive mode is running with demo file "arrival.json"
     And the overlay is the frontmost application
     When I press "j"
     Then the notification at position 2 is selected
@@ -301,8 +297,7 @@ Feature: Interactive mode
   # on the same notification, now at the top.
   @demo
   Scenario: A departing notification leaves the selection on the same notification
-    Given the demo list starts open
-    And interactive mode is running with demo file "departure.json"
+    Given interactive mode is running with demo file "departure.json"
     And the overlay is the frontmost application
     When I press "j"
     Then the notification at position 2 is selected
