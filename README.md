@@ -132,7 +132,7 @@ Sources/NotificationAX/     AX adapter — NotificationCenterAccess seam (protoc
 Sources/DemoNotifications/  demo file schema and the pure demo-notification model (unit-tested)
 Sources/InteractiveMode/    the interactive-mode overlay session (AppKit)
 Sources/nbk/                the CLI executable wiring Core + AX + InteractiveMode
-Sources/demo-nc/            development tool: `demo-nc [--open] <file>` presents a demo file's notifications in a list exposed via AX like Notification Center; starts closed unless `--open`, toggled by its "Demo NC" menu bar item or by `nbk interactive --demo` (not packaged)
+Sources/demo-nc/            development tool: `demo-nc [--open] <file>` presents a demo file's notifications in a list exposed via AX like Notification Center; starts closed unless `--open`, toggled by its "Demo NC" menu bar item or by `nbk interactive --demo`; a `field` action opens a reply field on its card that takes key focus without activating `demo-nc` — Return submits and removes the notification, Escape drops the field (not packaged)
 Tests/NotificationCoreTests/            unit tier — pure logic (swift-testing)
 Tests/NotificationAXUnitTests/          unit tier — AX seam/factory (no AX trust)
 Tests/NotificationAXIntegrationTests/   AX-integration tier (gated)
