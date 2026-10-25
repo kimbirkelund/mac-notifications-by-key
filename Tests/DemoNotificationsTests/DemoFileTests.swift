@@ -25,6 +25,24 @@ import Testing
         #expect(file.notifications[0].actions[0].closes)
     }
 
+    @Test func bareStringActionIsNotAField() throws {
+        let file = try decode(#"{"notifications":[{"actions":["Archive"]}]}"#)
+        #expect(!file.notifications[0].actions[0].field)
+    }
+
+    @Test func objectActionWithoutFieldIsNotAField() throws {
+        let file = try decode(#"{"notifications":[{"actions":[{"name":"Reply"}]}]}"#)
+        #expect(!file.notifications[0].actions[0].field)
+    }
+
+    @Test func objectActionHonoursFieldTrue() throws {
+        let file = try decode(
+            #"{"notifications":[{"actions":[{"name":"Reply","closes":false,"field":true}]}]}"#)
+        #expect(
+            file.notifications[0].actions
+                == [DemoAction(name: "Reply", closes: false, field: true)])
+    }
+
     @Test func activateClosesDefaultsToTrue() throws {
         let file = try decode(#"{"notifications":[{"title":"t"}]}"#)
         #expect(file.notifications[0].activateCloses)
