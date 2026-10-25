@@ -9,8 +9,7 @@ Feature: Interactive mode
   # Validates RIM-1: entering the mode draws the overlay and takes focus.
   @demo
   Scenario: Entering interactive mode shows the overlay
-    Given the demo list starts open
-    And interactive mode is running with demo file "one.json"
+    Given interactive mode is running with demo file "one.json"
     Then an overlay window covering the screen is present
     And the overlay is the frontmost application
     And the overlay shows no label
@@ -18,16 +17,14 @@ Feature: Interactive mode
   # Validates RIM-3: the mode holds focus without becoming an app you switch to.
   @demo
   Scenario: The mode keeps no application presence
-    Given the demo list starts open
-    And interactive mode is running with demo file "one.json"
+    Given interactive mode is running with demo file "one.json"
     Then the mode presents no Dock icon and no menu bar
 
   # Validates RIM-4: a toggle hotkey pressed twice must not stack overlays. The
   # second invocation returns 0 and the first keeps owning the mode.
   @demo
   Scenario: Re-invoking while the mode runs does not stack a second overlay
-    Given the demo list starts open
-    And interactive mode is running with demo file "one.json"
+    Given interactive mode is running with demo file "one.json"
     When I run "nbk interactive"
     Then the command succeeds
     And exactly one overlay window is present
@@ -39,8 +36,7 @@ Feature: Interactive mode
   # adapter closes the panel.
   @demo
   Scenario: Terminating on a signal removes the overlay
-    Given the demo list starts open
-    And interactive mode is running with demo file "one.json"
+    Given interactive mode is running with demo file "one.json"
     When interactive mode is sent SIGTERM
     Then interactive mode exits with status 0
     And no overlay window is present
@@ -52,8 +48,7 @@ Feature: Interactive mode
   # show the real adapter closes the panel.
   @demo
   Scenario: Pressing Escape leaves the mode
-    Given the demo list starts open
-    And interactive mode is running with demo file "one.json"
+    Given interactive mode is running with demo file "one.json"
     And the overlay is the frontmost application
     When I press Escape
     Then interactive mode exits with status 0
