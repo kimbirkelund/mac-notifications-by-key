@@ -135,6 +135,55 @@ import Testing
         #expect(Self.titles(model) == ["A"])
     }
 
+    private static func replyModel() -> DemoNotificationsModel {
+        model([
+            DemoNotification(
+                title: "A",
+                actions: [
+                    DemoAction(name: "Reply", closes: true, field: true),
+                    DemoAction(name: "Archive"),
+                ])
+        ])
+    }
+
+    @Test func performingAFieldActionShowsTheFieldAndKeepsTheEntry() throws {
+        let model = Self.replyModel()
+        #expect(model.presented().map(\.showsField) == [false])
+        try model.perform(action: "Reply", index: 0)
+        #expect(Self.titles(model) == ["A"])
+        #expect(model.presented().map(\.showsField) == [true])
+    }
+
+    @Test func submittingTheFieldRemovesTheEntry() throws {
+        let model = Self.replyModel()
+        try model.perform(action: "Reply", index: 0)
+        let id = try #require(model.presented().first).id
+        try model.submitField(id: id)
+        #expect(Self.titles(model) == [])
+    }
+
+    @Test func cancellingTheFieldKeepsTheEntryAndHidesTheField() throws {
+        let model = Self.replyModel()
+        try model.perform(action: "Reply", index: 0)
+        let id = try #require(model.presented().first).id
+        try model.cancelField(id: id)
+        #expect(Self.titles(model) == ["A"])
+        #expect(model.presented().map(\.showsField) == [false])
+    }
+
+    @Test func aNonFieldActionStillClosesOnANotificationWithAFieldAction() throws {
+        let model = Self.replyModel()
+        try model.perform(action: "Archive", index: 0)
+        #expect(Self.titles(model) == [])
+    }
+
+    @Test func dismissRemovesAnEntryShowingItsField() throws {
+        let model = Self.replyModel()
+        try model.perform(action: "Reply", index: 0)
+        try model.dismiss(index: 0)
+        #expect(Self.titles(model) == [])
+    }
+
     @Test func performThrowsUnknownActionForAnUnlistedName() throws {
         let model = Self.model([
             DemoNotification(title: "A", actions: [DemoAction(name: "Archive")])

@@ -11,11 +11,13 @@ public struct DemoPresentedNotification: Equatable, Sendable {
     public var id: Int
     public var item: NotificationItem
     public var hiddenMembers: Int
+    public var showsField: Bool
 
-    public init(id: Int, item: NotificationItem, hiddenMembers: Int) {
+    public init(id: Int, item: NotificationItem, hiddenMembers: Int, showsField: Bool = false) {
         self.id = id
         self.item = item
         self.hiddenMembers = hiddenMembers
+        self.showsField = showsField
     }
 }
 
@@ -23,6 +25,7 @@ public final class DemoNotificationsModel: @unchecked Sendable {
     private struct Entry {
         var id: Int
         var notification: DemoNotification
+        var showsField = false
     }
 
     private enum Target {
@@ -58,7 +61,8 @@ public final class DemoNotificationsModel: @unchecked Sendable {
             presentedEntries().enumerated().map { index, entry in
                 DemoPresentedNotification(
                     id: entry.id, item: entry.notification.item(index: index),
-                    hiddenMembers: entry.notification.members.count)
+                    hiddenMembers: entry.notification.members.count,
+                    showsField: entry.showsField)
             }
         }
     }
@@ -103,6 +107,16 @@ public final class DemoNotificationsModel: @unchecked Sendable {
         try perform(action: displayName, .id(id))
     }
 
+    public func submitField(id: Int) throws { try dismiss(.id(id)) }
+
+    public func cancelField(id: Int) throws {
+        try lock.withLock {
+            let entry = try resolve(.id(id))
+            guard let position = entries.firstIndex(where: { $0.id == entry.id }) else { return }
+            entries[position].showsField = false
+        }
+    }
+
     private func dismiss(_ target: Target) throws {
         try removeIf(target) { _ in true }
     }
@@ -126,7 +140,8 @@ public final class DemoNotificationsModel: @unchecked Sendable {
     }
 
     private func press(_ target: Target) throws {
-        try removeIf(target) { notification in
+        try removeIf(target) { entry in
+            let notification = entry.notification
             guard !notification.isCollapsedStack else {
                 throw DemoNotificationsError.unknownAction(
                     name: "Activate", available: notification.actions.map(\.name))
@@ -136,20 +151,27 @@ public final class DemoNotificationsModel: @unchecked Sendable {
     }
 
     private func perform(action displayName: String, _ target: Target) throws {
-        try removeIf(target) { notification in
+        try removeIf(target) { entry in
+            let notification = entry.notification
             guard let action = notification.actions.first(where: { $0.name == displayName })
             else {
                 throw DemoNotificationsError.unknownAction(
                     name: displayName, available: notification.actions.map(\.name))
             }
+            if action.field {
+                if let position = entries.firstIndex(where: { $0.id == entry.id }) {
+                    entries[position].showsField = true
+                }
+                return false
+            }
             return action.closes
         }
     }
 
-    private func removeIf(_ target: Target, _ closes: (DemoNotification) throws -> Bool) throws {
+    private func removeIf(_ target: Target, _ closes: (Entry) throws -> Bool) throws {
         let removal = try lock.withLock { () -> (id: Int, takes: TimeInterval)? in
             let entry = try resolve(target)
-            return try closes(entry.notification)
+            return try closes(entry)
                 ? (entry.id, entry.notification.takes ?? 0) : nil
         }
         guard let removal else { return }
