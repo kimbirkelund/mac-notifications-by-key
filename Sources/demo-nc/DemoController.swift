@@ -8,10 +8,11 @@ final class DemoController: NSObject, NSApplicationDelegate {
     private var window: DemoWindow?
     private var timer: Timer?
     private var statusItem: NSStatusItem?
-    private var isOpen = true
+    private var isOpen: Bool
 
-    init(model: DemoNotificationsModel) {
+    init(model: DemoNotificationsModel, isOpen: Bool) {
         self.model = model
+        self.isOpen = isOpen
     }
 
     func applicationDidFinishLaunching(_ notification: Notification) {

@@ -470,7 +470,7 @@ export class NbkWorld extends World {
     try {
       fixture = JSON.parse(fs.readFileSync(demoPath, 'utf8'))
     } catch {}
-    const child = spawn(DEMO_NC_BIN, [demoPath], { stdio: ['ignore', 'ignore', 'pipe'] })
+    const child = spawn(DEMO_NC_BIN, ['--open', demoPath], { stdio: ['ignore', 'ignore', 'pipe'] })
     const nc = { child, stderr: '' }
     child.on('error', (e) => (nc.stderr += e.message))
     child.stderr.on('data', (chunk) => (nc.stderr += chunk))

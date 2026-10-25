@@ -29,7 +29,8 @@ import Testing
         let process = Process()
         process.executableURL = try #require(Self.demoBinary)
         process.arguments = [
-            Self.repoRoot.appendingPathComponent("acceptance/fixtures/\(fixture)").path
+            "--open",
+            Self.repoRoot.appendingPathComponent("acceptance/fixtures/\(fixture)").path,
         ]
         try process.run()
         return process

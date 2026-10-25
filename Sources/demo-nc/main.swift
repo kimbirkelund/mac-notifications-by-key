@@ -1,15 +1,17 @@
 import AppKit
 import DemoNotifications
 
-let arguments = CommandLine.arguments
-guard arguments.count == 2 else {
-    FileHandle.standardError.write(Data("usage: demo-nc <file>\n".utf8))
+var arguments = Array(CommandLine.arguments.dropFirst())
+let isOpen = arguments.first == "--open"
+if isOpen { arguments.removeFirst() }
+guard arguments.count == 1 else {
+    FileHandle.standardError.write(Data("usage: demo-nc [--open] <file>\n".utf8))
     exit(2)
 }
 
 let file: DemoFile
 do {
-    file = try DemoFile.load(from: URL(fileURLWithPath: arguments[1]))
+    file = try DemoFile.load(from: URL(fileURLWithPath: arguments[0]))
 } catch {
     FileHandle.standardError.write(Data("demo-nc: \(error)\n".utf8))
     exit(1)
@@ -27,7 +29,8 @@ if let (location, notification) = missingApp {
 }
 
 let app = NSApplication.shared
-let controller = DemoController(model: DemoNotificationsModel(notifications: file.notifications))
+let controller = DemoController(
+    model: DemoNotificationsModel(notifications: file.notifications), isOpen: isOpen)
 app.delegate = controller
 app.setActivationPolicy(.accessory)
 app.run()
