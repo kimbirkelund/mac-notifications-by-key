@@ -70,8 +70,7 @@ Feature: Interactive mode
   # top-aligned and no shorter than it.
   @demo
   Scenario: Only the selected notification gets an action panel
-    Given the demo list starts open
-    And interactive mode is running with demo file "three.json"
+    Given interactive mode is running with demo file "three.json"
     Then exactly one action panel is present
     And the panel lists "Activate", "Dismiss this / app / all", then the selected notification's actions in order
     And the panel sits to the left of the selected notification with the same top edge
@@ -81,8 +80,7 @@ Feature: Interactive mode
   # to, and the mode has nothing left to be the subject of, so it ends.
   @demo
   Scenario: Nothing presented on entry ends the mode
-    Given the demo list starts open
-    And interactive mode is running with demo file "none.json"
+    Given interactive mode is running with demo file "none.json"
     Then the overlay shows the label "No more jobs!"
     And no action panel is present
     And interactive mode exits with status 0
@@ -91,8 +89,7 @@ Feature: Interactive mode
   # Validates RIM-16: dismissing the last notification empties the list and ends the mode.
   @demo
   Scenario: Dismissing the last notification ends the mode
-    Given the demo list starts open
-    And interactive mode is running with demo file "one.json"
+    Given interactive mode is running with demo file "one.json"
     And the overlay is the frontmost application
     When I press "d"
     Then the overlay shows the label "No more jobs!"
@@ -103,8 +100,7 @@ Feature: Interactive mode
   # Validates RIM-16: Escape during the farewell does not wait for the fade.
   @demo
   Scenario: Escape during the farewell ends the mode at once
-    Given the demo list starts open
-    And interactive mode is running with demo file "none.json"
+    Given interactive mode is running with demo file "none.json"
     And the overlay shows the label "No more jobs!"
     When I press Escape
     Then interactive mode exits with status 0
@@ -114,8 +110,7 @@ Feature: Interactive mode
   # to choose between.
   @demo
   Scenario: The newest notification is selected on entry
-    Given the demo list starts open
-    And interactive mode is running with demo file "three.json"
+    Given interactive mode is running with demo file "three.json"
     Then exactly one action panel is selected
     And the panel sits beside the topmost notification
     And the Notification Center panel is closed
