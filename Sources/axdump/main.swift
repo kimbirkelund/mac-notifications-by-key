@@ -141,30 +141,26 @@ func extras(_ app: AXUIElement) -> [Extra] {
     }
 }
 
-func write<T: Encodable>(_ value: T) {
-    let encoder = JSONEncoder()
-    encoder.outputFormatting = [.prettyPrinted, .sortedKeys]
-    FileHandle.standardOutput.write(try! encoder.encode(value))
-    FileHandle.standardOutput.write(Data("\n".utf8))
+struct Dump: Encodable {
+    let windows: [Node]
+    let extras: [Extra]
 }
 
-var arguments = Array(CommandLine.arguments.dropFirst())
-let extrasOnly = arguments.first == "--extras"
-if extrasOnly { arguments.removeFirst() }
-guard arguments.count == 1, let pid = pid_t(arguments[0]) else {
-    fail("usage: axdump [--extras] <pid>")
+let arguments = CommandLine.arguments
+guard arguments.count == 2, let pid = pid_t(arguments[1]) else {
+    fail("usage: axdump <pid>")
 }
 guard AXIsProcessTrusted() else {
     fail("axdump: Accessibility access is not granted")
 }
 
 let app = AXUIElementCreateApplication(pid)
-if extrasOnly {
-    write(extras(app))
-    exit(0)
-}
 guard let windows = attribute(app, kAXWindowsAttribute) as? [AXUIElement] else {
     fail("axdump: no windows attribute for pid \(pid)")
 }
 
-write(["windows": windows.map { node($0, depth: 1) }])
+let encoder = JSONEncoder()
+encoder.outputFormatting = [.prettyPrinted, .sortedKeys]
+FileHandle.standardOutput.write(
+    try encoder.encode(Dump(windows: windows.map { node($0, depth: 1) }, extras: extras(app))))
+FileHandle.standardOutput.write(Data("\n".utf8))
