@@ -1,0 +1,18 @@
+{
+  "notifications": [
+    {
+      "app": "Messages",
+      "title": "Ping",
+      "subtitle": null,
+      "body": "Got a minute?",
+      "actions": [{ "name": "Reply", "closes": false, "field": true }]
+    },
+    {
+      "app": "Mail",
+      "title": "Second",
+      "subtitle": null,
+      "body": null,
+      "actions": ["Archive"]
+    }
+  ]
+}
