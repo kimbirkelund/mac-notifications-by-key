@@ -316,6 +316,27 @@ Feature: Interactive mode
     And the error output starts with "nbk: --demo: no demo-nc process is running"
     And no overlay window is present
 
+  # Validates RIM-21: entering the mode opens the demo list where it would open the panel.
+  @demo
+  Scenario: Entering demo mode opens the demo list
+    Given interactive mode is running with demo file "one.json"
+    Then the demo list is open
+
+  # Validates RIM-21: leaving the mode closes the demo list where it would close the panel.
+  @demo
+  Scenario: Leaving demo mode closes the demo list
+    Given interactive mode is running with demo file "one.json"
+    When I press Escape
+    Then interactive mode exits with status 0
+    And the demo list is closed
+
+  # Validates RIM-21: a list that is already open when the mode starts stays open.
+  @demo
+  Scenario: Entering demo mode leaves an already open demo list open
+    Given the demo list starts open
+    And interactive mode is running with demo file "one.json"
+    Then the demo list is open
+
   # Validates RIM-9: entering a mode whose every operation would fail is refused.
   # @operator because there is no API to revoke Accessibility trust; a human does
   # it when prompted. Attended only: npx cucumber-js -p operator

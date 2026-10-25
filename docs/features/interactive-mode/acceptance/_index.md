@@ -4,10 +4,10 @@ BDD scenarios (Gherkin) specifying interactive mode. These `.feature` files **ar
 acceptance tests: [cucumber-js](https://github.com/cucumber/cucumber-js) runs them against the
 compiled `nbk` binary as a black box, using the step definitions in `acceptance/steps/`.
 
-The twenty-eight unattended scenarios run in the default acceptance run. All but one run in demo
-mode ([RIM-21](../requirements.md#demo-mode)) and never touch the real Notification Center; the
-exception is the window-order scenario, which needs the real panel. The trust scenario is
-`@operator` and runs only attended.
+The thirty-one unattended scenarios run in the default acceptance run. All but one run in demo mode
+([RIM-21](../requirements.md#demo-mode)) and never touch the real Notification Center; the exception
+is the window-order scenario, which needs the real panel. The trust scenario is `@operator` and runs
+only attended.
 
 | Scenario                                                                | Validates           | Status                                         |
 | ----------------------------------------------------------------------- | ------------------- | ---------------------------------------------- |
@@ -39,6 +39,9 @@ exception is the window-order scenario, which needs the real panel. The trust sc
 | An arriving notification keeps the selection on its notification (demo) | RIM-22, RIM-21      | ✅                                             |
 | A departing notification keeps the selection on its notification (demo) | RIM-22, RIM-21      | ✅                                             |
 | No running demo application is refused before the overlay (demo)        | RIM-28              | ✅                                             |
+| Entering demo mode opens the demo list (demo)                           | RIM-21              | ✅                                             |
+| Leaving demo mode closes the demo list (demo)                           | RIM-21              | ✅                                             |
+| Entering demo mode leaves an already open demo list open (demo)         | RIM-21              | ✅                                             |
 | Missing Accessibility trust is refused                                  | RIM-9               | ✅ `@operator` — attended; last run 2026-09-27 |
 
 ## What the harness adds
@@ -61,11 +64,13 @@ notification access uses. None needs a new framework.
   position, size, the action names they list, and the texts of their movement hints) from the
   overlay's accessibility windows. Same permission, no new tooling.
 - **Fixtures.** Scenarios that need a controlled set of notifications start the demo application
-  with a fixture, the path relative to `acceptance/fixtures/`, wait for its window to show the
-  fixture's notifications, and then start the mode with `--demo`; a fixture may time a
-  notification's arrival or departure with `arrivesAfter` / `leavesAfter` seconds. The harness reads
-  presented notifications from the demo application's window instead of Notification Center, and
-  never runs `nbk list` in such a scenario. Teardown stops both processes.
+  with a fixture, the path relative to `acceptance/fixtures/`, and start the mode with `--demo`. The
+  demo application's list starts closed and the mode opens it; a scenario that needs it already open
+  first says "Given the demo list starts open", which launches the demo application with `--open`
+  and waits for the list before the mode starts. A fixture may time a notification's arrival or
+  departure with `arrivesAfter` / `leavesAfter` seconds. The harness reads presented notifications
+  from the demo application's window instead of Notification Center, and never runs `nbk list` in
+  such a scenario. Teardown stops both processes.
 - **Keystrokes.** Movement and activator keys are posted through System Events, each step first
   asserting the overlay is frontmost so a mistimed key cannot reach another app.
 
