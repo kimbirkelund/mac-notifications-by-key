@@ -216,14 +216,15 @@ Feature: Interactive mode
     When I press "d"
     Then the notification titled "Pinned" is no longer presented
 
-  # Validates RIM-14: Space performs Activate and the mode stays.
+  # Validates RIM-29: Space performs Activate, then the mode ends.
   @demo
-  Scenario: Pressing Space activates the selected notification
+  Scenario: Pressing Space activates the notification and ends the mode
     Given interactive mode is running with demo file "three.json"
     And the overlay is the frontmost application
     When I press "Space"
     Then the notification titled "First" is no longer presented
-    And interactive mode is still running
+    And interactive mode exits with status 0
+    And no overlay window is present
 
   # Validates RIM-20, RIM-16: X clears everything presented, which empties the list.
   @demo

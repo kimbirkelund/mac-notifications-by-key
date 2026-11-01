@@ -52,6 +52,7 @@ final class Session {
     private var terminated = false
     private var screenClosed = false
     private var dispatching = false
+    private var endingDispatch = false
     private var panelHidden = false
     private var dispatchGeneration = 0
     private var hasDrawn = false
@@ -136,7 +137,7 @@ final class Session {
     }
 
     private func apply(_ decision: FocusPolicy.Decision) {
-        guard !tearingDown, !ending else { return }
+        guard !tearingDown, !ending, !endingDispatch else { return }
         switch decision {
         case .none: break
         case .reclaim:
@@ -149,11 +150,13 @@ final class Session {
     }
 
     private func reclaimFocus(generation: Int) {
-        guard generation == reclaimGeneration, !tearingDown, !ending, !textFieldVisible else {
+        guard generation == reclaimGeneration, !tearingDown, !ending, !endingDispatch,
+            !textFieldVisible, let window
+        else {
             return
         }
         NSApp.activate(ignoringOtherApps: true)
-        window?.makeKeyAndOrderFront(nil)
+        window.makeKeyAndOrderFront(nil)
         DispatchQueue.main.asyncAfter(deadline: .now() + Self.reclaimRecheckInterval) {
             [weak self] in
             MainActor.assumeIsolated {
@@ -245,8 +248,10 @@ final class Session {
             let command = EntryCommand.resolve(
                 key: key, entries: ActionPanelLayout.entries(for: item))
         else { return }
-        dispatch(hidingPanel: command.hidesPanel(onCollapsedStack: item.isCollapsedStack)) {
-            access in
+        dispatch(
+            hidingPanel: command.hidesPanel(onCollapsedStack: item.isCollapsedStack),
+            endingOnSuccess: command.endsMode(onCollapsedStack: item.isCollapsedStack)
+        ) { access in
             switch command {
             case .activate:
                 if item.isCollapsedStack {
@@ -275,20 +280,34 @@ final class Session {
     }
 
     private func dispatch(
-        hidingPanel: Bool, _ work: @escaping (NotificationCenterAccess) throws -> Void
+        hidingPanel: Bool, endingOnSuccess: Bool = false,
+        _ work: @escaping (NotificationCenterAccess) throws -> Void
     ) {
         dispatching = true
+        if endingOnSuccess {
+            endingDispatch = true
+            reclaimGeneration += 1
+        }
         if hidingPanel { hidePanel() }
         nonisolated(unsafe) let access = access
         nonisolated(unsafe) let work = work
         dispatchQueue.async {
+            let succeeded: Bool
             do {
                 try work(access)
+                succeeded = true
             } catch {
                 Self.reportError(error)
+                succeeded = false
             }
             DispatchQueue.main.async {
                 MainActor.assumeIsolated {
+                    if succeeded, endingOnSuccess { return self.teardown() }
+                    if endingOnSuccess {
+                        self.endingDispatch = false
+                        self.applicationActivated(
+                            pid: NSWorkspace.shared.frontmostApplication?.processIdentifier)
+                    }
                     self.dispatching = false
                     self.dispatchGeneration += 1
                     self.readNow()
@@ -446,6 +465,10 @@ extension EntryCommand {
         case .dismiss: true
         case .action: true
         }
+    }
+
+    fileprivate func endsMode(onCollapsedStack: Bool) -> Bool {
+        self == .activate && !onCollapsedStack
     }
 }
 

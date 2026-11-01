@@ -71,10 +71,15 @@ private final class RecordingAccess: NotificationCenterAccess, @unchecked Sendab
     private var readGates: [DispatchSemaphore] = []
     private let presented: [PresentedNotification]
     private let dismissError: Error?
+    private let pressError: Error?
 
-    init(presented: [PresentedNotification] = [], dismissError: Error? = nil) {
+    init(
+        presented: [PresentedNotification] = [], dismissError: Error? = nil,
+        pressError: Error? = nil
+    ) {
         self.presented = presented
         self.dismissError = dismissError
+        self.pressError = pressError
     }
 
     var calls: [Call] { lock.withLock { recorded } }
@@ -109,7 +114,10 @@ private final class RecordingAccess: NotificationCenterAccess, @unchecked Sendab
         record(.dismiss(index))
         if let dismissError { throw dismissError }
     }
-    func press(index: Int) throws { record(.press(index)) }
+    func press(index: Int) throws {
+        record(.press(index))
+        if let pressError { throw pressError }
+    }
     func expand(index: Int) throws { record(.expand(index)) }
     func perform(action displayName: String, index: Int) throws {
         record(.perform(displayName, index))
@@ -464,6 +472,68 @@ private final class PanelLog: @unchecked Sendable {
         while !condition(), Date() < deadline {
             try await Task.sleep(for: .milliseconds(20))
         }
+    }
+
+    private final class Terminations: @unchecked Sendable {
+        private let lock = NSLock()
+        private var count = 0
+        var value: Int { lock.withLock { count } }
+        func record() { lock.withLock { count += 1 } }
+    }
+
+    private func terminatingSession(
+        _ access: RecordingAccess, presented: [PresentedNotification]
+    ) -> (Session, DispatchQueue, PanelLog, Terminations) {
+        let queue = DispatchQueue(label: "dispatch-test")
+        let terminations = Terminations()
+        let session = Session(
+            access: access, dispatchQueue: queue, terminate: { terminations.record() })
+        let log = PanelLog()
+        session.panelDecorator = { log.record($0) }
+        session.drawActionPanels(presented)
+        return (session, queue, log, terminations)
+    }
+
+    /// RIM-29: a successful Activate on a notification ends the mode, press first.
+    @Test func spaceOnANotificationEndsTheModeAfterActivating() async throws {
+        let presented = Self.presented(4)
+        let access = RecordingAccess(presented: presented)
+        let (session, queue, _, terminations) = terminatingSession(access, presented: presented)
+        session.handle(.character(" "))
+        queue.sync {}
+        try await waitUntil { terminations.value == 1 }
+        #expect(terminations.value == 1)
+        #expect(access.calls == [.press(4), .setPanelOpen(false)])
+    }
+
+    /// RIM-30: a failed Activate keeps the mode running and redraws the panel.
+    @Test func failedActivateKeepsTheModeAndRedrawsThePanel() async throws {
+        let presented = Self.presented(4)
+        let access = RecordingAccess(
+            presented: presented,
+            pressError: NbkError.indexOutOfRange(requested: 4, count: 0))
+        let (session, queue, log, terminations) = terminatingSession(
+            access, presented: presented)
+        session.handle(.character(" "))
+        queue.sync {}
+        try await waitUntil { log.events.count == 3 }
+        try await Task.sleep(for: .milliseconds(100))
+        #expect(log.events == [.drawn, .hidden, .drawn])
+        #expect(terminations.value == 0)
+        #expect(access.calls == [.press(4)])
+    }
+
+    /// RIM-14, RIM-18: Expand on a collapsed stack keeps the mode running.
+    @Test func spaceOnACollapsedStackKeepsTheMode() async throws {
+        let presented = Self.stack(5)
+        let access = RecordingAccess(presented: presented)
+        let (session, queue, _, terminations) = terminatingSession(access, presented: presented)
+        session.handle(.character(" "))
+        queue.sync {}
+        try await waitUntil { access.readPresentedCount >= 1 }
+        try await Task.sleep(for: .milliseconds(100))
+        #expect(terminations.value == 0)
+        #expect(access.calls == [.expand(5)])
     }
 
     /// RIM-14: a failed entry is reported, never fatal; the mode keeps taking keys.

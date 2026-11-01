@@ -30,7 +30,7 @@ exception is the window-order scenario, which needs the real panel. The trust sc
 | The panel hides while an entry removes its notification (demo)          | RIM-24, RIM-21      | ✅                                             |
 | Pressing a named action's key performs it (demo)                        | RIM-14              | ✅                                             |
 | An action that does not close keeps the notification (demo)             | RIM-14, RIM-21      | ✅                                             |
-| Pressing Space activates the selected notification (demo)               | RIM-14              | ✅                                             |
+| Pressing Space activates the notification and ends the mode (demo)      | RIM-29              | ✅                                             |
 | Pressing X clears every notification and ends the mode (demo)           | RIM-20, RIM-16      | ✅                                             |
 | Pressing D dismisses the selected notification's app only (demo)        | RIM-20, RIM-15      | ✅                                             |
 | Close is not listed as an entry (demo)                                  | RIM-10              | ✅                                             |
@@ -106,6 +106,8 @@ is open always comes from the AX check described in the AX reference.
   mode with the panel already open.
 - **RIM-16's "keys are ignored during the farewell"** — the farewell is too brief to probe reliably
   with real key events. Belongs in the unit tier, against the key handling.
+- **RIM-30 (Activate fails)** — the demo cannot make a press fail. Belongs in the unit tier, against
+  the key handling.
 - **Tint color and exact opacity** — pixel properties. `RIM-2` is asserted only as "not opaque"; the
   rest is appearance detail, accepted as visually verified.
 
