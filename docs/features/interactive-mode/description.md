@@ -99,17 +99,17 @@ would go nowhere (RIM-23). The panel shows a key to the left of each entry, the 
 in a column of their own: `space` for `Activate`, `d / D / X` for `Dismiss this / app / all`, and a
 lower-case letter for each of the notification's own actions, so `r` and `m` for `Reply` and
 `Mark as Read` (RIM-13). Pressing a shown key performs that entry on the selected notification: `d`
-dismisses it, Space activates it, and a named action's key performs that action. A collapsed stack's
-panel offers `Expand` on Space instead of `Activate`: expanding puts the stack's members in its
-place and the selection stays at that position (RIM-18); `d` dismisses the stack as a whole. The
-mode stays running afterwards, so the user can act on the next notification (RIM-14). The panel
-disappears as soon as an entry is triggered, and comes back once the entry has finished and the list
-has been read again; `Expand` keeps it (RIM-24). Two upper-case keys act on more than the selected
-notification: `X` clears every presented notification and `D` dismisses every one from the selected
-notification's app, and both keys are shown on the panel's `Dismiss` row. Afterwards the selection
-and the end-of-mode rules apply as usual (RIM-20). Any other key is ignored (RIM-17). Entries are
-triggered by keyboard only: the action panels are display, not controls, and clicking it does
-nothing.
+dismisses it, Space activates it and ends the mode (RIM-29), and a named action's key performs that
+action. A collapsed stack's panel offers `Expand` on Space instead of `Activate`: expanding puts the
+stack's members in its place and the selection stays at that position (RIM-18); `d` dismisses the
+stack as a whole. After `d` or a named action the mode stays running, so the user can act on the
+next notification (RIM-14). The panel disappears as soon as an entry is triggered, and comes back
+once the entry has finished and the list has been read again; `Expand` keeps it (RIM-24). Two
+upper-case keys act on more than the selected notification: `X` clears every presented notification
+and `D` dismisses every one from the selected notification's app, and both keys are shown on the
+panel's `Dismiss` row. Afterwards the selection and the end-of-mode rules apply as usual (RIM-20).
+Any other key is ignored (RIM-17). Entries are triggered by keyboard only: the action panels are
+display, not controls, and clicking it does nothing.
 
 The panel and the sheet hugging the notification fade in as they appear and out as they disappear,
 and slide and resize from one notification to the next as the selection moves, unless Reduce Motion

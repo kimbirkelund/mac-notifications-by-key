@@ -103,17 +103,30 @@ for `C-*`/`X-*`.
 - **RIM-14 (event) — Trigger an entry by key.** When the user presses an activator key shown in the
   selected notification's panel while the overlay holds focus, the system shall perform that entry
   on the selected notification: `Dismiss` as `dismiss <n>` does
-  ([RNA-4](../notification-access/requirements.md)), `Activate` as `press <n>` does
-  ([RNA-6](../notification-access/requirements.md)), and a named action as `action <n> <name>` does
+  ([RNA-4](../notification-access/requirements.md)) and a named action as `action <n> <name>` does
   ([RNA-5](../notification-access/requirements.md)). Interactive mode shall stay active afterwards.
+  Space on a notification that is not a collapsed stack is covered by
+  [RIM-29](#selection-and-actions); Space on a collapsed stack expands it
+  ([RIM-18](#selection-and-actions)) and interactive mode shall stay active afterwards.
+
+- **RIM-29 (event) — Activate ends the mode.** When the user presses Space while the overlay holds
+  focus and the selected notification is not a collapsed stack, the system shall perform `Activate`
+  on it as `press <n>` does ([RNA-6](../notification-access/requirements.md)) and then end
+  interactive mode with the same teardown as [RIM-6](#ending-the-mode) — overlay removed, panel
+  closed, exit `0`.
+
+- **RIM-30 (unwanted) — Activate fails.** If performing `Activate`
+  ([RIM-29](#selection-and-actions)) fails, then the system shall keep interactive mode active,
+  redraw the action panel as [RIM-24](#selection-and-actions) describes, and the selection rules
+  ([RIM-15](#selection-and-actions), [RIM-22](#selection-and-actions)) shall apply as usual.
 
 - **RIM-24 (event) — The panel is hidden while an entry is performed.** When the user triggers
-  `Activate` on a notification that is not a stack, `Dismiss`, any named action, `D` or `X`
-  ([RIM-14](#selection-and-actions), [RIM-20](#selection-and-actions)), the system shall remove the
-  action panel from the overlay before performing the entry, and shall redraw it
-  ([RIM-15](#selection-and-actions), [RIM-22](#selection-and-actions)) once the entry has completed
-  and the notifications presented have been read again, even if none changed. When the user triggers
-  `Expand` on a collapsed stack, the system shall keep the action panel.
+  `Dismiss`, any named action, `D` or `X` ([RIM-14](#selection-and-actions),
+  [RIM-20](#selection-and-actions)), the system shall remove the action panel from the overlay
+  before performing the entry, and shall redraw it ([RIM-15](#selection-and-actions),
+  [RIM-22](#selection-and-actions)) once the entry has completed and the notifications presented
+  have been read again, even if none changed. When the user triggers `Expand` on a collapsed stack,
+  the system shall keep the action panel.
 
 - **RIM-15 (event) — Selection survives the selected notification going away.** When the selected
   notification is no longer presented — after an entry was performed on it, or because it was
