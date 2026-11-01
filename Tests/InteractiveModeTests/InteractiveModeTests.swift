@@ -36,6 +36,11 @@ private final class UnusedAccess: NotificationCenterAccess {
     func clearAll() throws { touched = true }
     func clearAll(forApp index: Int) throws { touched = true }
     func setPanelOpen(_ open: Bool) throws { touched = true }
+    func panelShowsTextField() -> Bool {
+        touched = true
+        return false
+    }
+    func focusPanelTextField() throws { touched = true }
 }
 
 @MainActor @Suite struct InteractiveSessionTests {
@@ -112,6 +117,8 @@ private final class RecordingAccess: NotificationCenterAccess, @unchecked Sendab
     func clearAll() throws { record(.clearAll) }
     func clearAll(forApp index: Int) throws { record(.clearAllForApp(index)) }
     func setPanelOpen(_ open: Bool) throws { record(.setPanelOpen(open)) }
+    func panelShowsTextField() -> Bool { false }
+    func focusPanelTextField() throws {}
 }
 
 @MainActor @Suite struct SessionReleaseScreenTests {

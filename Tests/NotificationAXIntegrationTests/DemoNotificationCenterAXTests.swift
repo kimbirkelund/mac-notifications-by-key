@@ -98,17 +98,22 @@ import Testing
         #expect(ax.isPanelOpen)
     }
 
-    private func panelTextFieldIdentifiers(_ pid: pid_t) -> [String?] {
+    private func panelTextFields(_ pid: pid_t) -> [(identifier: String?, focused: Bool)] {
         func attr(_ element: AXUIElement, _ name: String) -> AnyObject? {
             var value: AnyObject?
             AXUIElementCopyAttributeValue(element, name as CFString, &value)
             return value
         }
-        func fields(_ element: AXUIElement, depth: Int) -> [String?] {
+        func fields(_ element: AXUIElement, depth: Int) -> [(identifier: String?, focused: Bool)] {
             guard depth < 12 else { return [] }
-            let own: [String?] =
+            let own: [(identifier: String?, focused: Bool)] =
                 attr(element, kAXRoleAttribute) as? String == kAXTextFieldRole
-                ? [attr(element, kAXIdentifierAttribute) as? String] : []
+                ? [
+                    (
+                        attr(element, kAXIdentifierAttribute) as? String,
+                        attr(element, kAXFocusedAttribute) as? Bool == true
+                    )
+                ] : []
             let children = attr(element, kAXChildrenAttribute) as? [AXUIElement] ?? []
             return own + children.flatMap { fields($0, depth: depth + 1) }
         }
@@ -118,6 +123,10 @@ import Testing
             windows
             .filter { attr($0, kAXSubroleAttribute) as? String == kAXSystemDialogSubrole }
             .flatMap { fields($0, depth: 0) }
+    }
+
+    private func panelTextFieldIdentifiers(_ pid: pid_t) -> [String?] {
+        panelTextFields(pid).map(\.identifier)
     }
 
     // RIM-27: a field action surfaces a text field in the panel without closing the notification.
@@ -139,5 +148,34 @@ import Testing
         }
         #expect(panelTextFieldIdentifiers(pid) == ["reply"])
         #expect(try ax.read(wait: 0).count == 2)
+    }
+
+    @Test(.enabled(if: DemoNotificationCenterAXTests.available))
+    func aPanelWithoutATextFieldReportsNoneAndCannotFocusOne() throws {
+        let demo = try launchDemo(fixture: "one.json")
+        defer { demo.terminate() }
+        let ax = DefaultNotificationCenterAX(executableNamed: "demo-nc")
+
+        #expect(try ax.read(wait: 6).count == 1)
+        #expect(!ax.panelShowsTextField())
+        #expect(throws: NbkError.self) { try ax.focusPanelTextField() }
+    }
+
+    @Test(.enabled(if: DemoNotificationCenterAXTests.available))
+    func aShownTextFieldCanBeFocused() throws {
+        let demo = try launchDemo(fixture: "reply.json")
+        defer { demo.terminate() }
+        let ax = DefaultNotificationCenterAX(executableNamed: "demo-nc")
+
+        #expect(try ax.read(wait: 6).count == 2)
+        try ax.perform(action: "Reply", index: 0)
+        let deadline = Date().addingTimeInterval(6)
+        while !ax.panelShowsTextField(), Date() < deadline { Thread.sleep(forTimeInterval: 0.1) }
+        #expect(ax.panelShowsTextField())
+
+        try ax.focusPanelTextField()
+
+        let pid = try #require(ax.notificationCenterPID())
+        #expect(panelTextFields(pid).map(\.focused) == [true])
     }
 }

@@ -20,4 +20,6 @@ public protocol NotificationCenterAccess {
     func clearAll() throws
     func clearAll(forApp index: Int) throws
     func setPanelOpen(_ open: Bool) throws
+    func panelShowsTextField() -> Bool
+    func focusPanelTextField() throws
 }

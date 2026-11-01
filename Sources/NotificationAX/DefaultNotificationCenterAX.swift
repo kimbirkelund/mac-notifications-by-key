@@ -221,6 +221,26 @@ public struct DefaultNotificationCenterAX: NotificationCenterAccess {
         }
     }
 
+    public func panelShowsTextField() -> Bool {
+        guard isTrusted, let pid = notificationCenterPID() else { return false }
+        return !textFields(pid).isEmpty
+    }
+
+    public func focusPanelTextField() throws {
+        let pid = try requirePID()
+        guard let field = textFields(pid).first,
+            AXUIElementSetAttributeValue(field, kAXFocusedAttribute as CFString, kCFBooleanTrue)
+                == .success
+        else { throw NbkError.actionFailed(name: "focus text field") }
+    }
+
+    private func textFields(_ pid: pid_t) -> [AXUIElement] {
+        let app = AXUIElementCreateApplication(pid)
+        let windows = (attr(app, kAXWindowsAttribute as String) as? [AXUIElement]) ?? []
+        let roles = [kAXTextFieldRole as String, kAXTextAreaRole as String]
+        return windows.flatMap { descendants(of: $0).filter { roles.contains(axRole($0)) } }
+    }
+
     private func settledPanelIsOpen(_ pid: pid_t) -> Bool {
         for attempt in 0..<3 {
             if panelIsOpen(pid) { return true }
