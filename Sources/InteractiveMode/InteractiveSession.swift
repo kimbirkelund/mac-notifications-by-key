@@ -55,6 +55,9 @@ final class Session {
     private var panelHidden = false
     private var dispatchGeneration = 0
     private var hasDrawn = false
+    private var textFieldVisible = false
+    private var reclaimGeneration = 0
+    private var activationObserver: NSObjectProtocol?
     private let endingHold: TimeInterval
     private let endingFade: TimeInterval
     private let terminate: () -> Void
@@ -100,6 +103,74 @@ final class Session {
         self.window = window
         window.makeKeyAndOrderFront(nil)
         app.activate(ignoringOtherApps: true)
+        observeActivations()
+    }
+
+    private func observeActivations() {
+        activationObserver = NSWorkspace.shared.notificationCenter.addObserver(
+            forName: NSWorkspace.didActivateApplicationNotification, object: nil, queue: .main
+        ) { [weak self] note in
+            let activated =
+                note.userInfo?[NSWorkspace.applicationUserInfoKey]
+                as? NSRunningApplication
+            let pid = activated?.processIdentifier
+            MainActor.assumeIsolated { self?.applicationActivated(pid: pid) }
+        }
+    }
+
+    private func applicationActivated(pid: pid_t?) {
+        let activation: FocusPolicy.Activation =
+            pid == getpid()
+            ? .overlay : pid == access.notificationCenterPID() ? .notificationCenter : .other
+        apply(
+            FocusPolicy.decide(
+                activation: activation, textFieldVisible: textFieldVisible,
+                previousTextFieldVisible: textFieldVisible))
+    }
+
+    private func textFieldPolled(_ visible: Bool) {
+        let decision = FocusPolicy.decide(
+            activation: nil, textFieldVisible: visible, previousTextFieldVisible: textFieldVisible)
+        textFieldVisible = visible
+        apply(decision)
+    }
+
+    private func apply(_ decision: FocusPolicy.Decision) {
+        guard !tearingDown, !ending else { return }
+        switch decision {
+        case .none: break
+        case .reclaim:
+            reclaimGeneration += 1
+            reclaimFocus(generation: reclaimGeneration)
+        case .yieldToTextField:
+            reclaimGeneration += 1
+            yieldToTextField()
+        }
+    }
+
+    private func reclaimFocus(generation: Int) {
+        guard generation == reclaimGeneration, !tearingDown, !ending, !textFieldVisible else {
+            return
+        }
+        NSApp.activate(ignoringOtherApps: true)
+        window?.makeKeyAndOrderFront(nil)
+        DispatchQueue.main.asyncAfter(deadline: .now() + Self.reclaimRecheckInterval) {
+            [weak self] in
+            MainActor.assumeIsolated {
+                guard NSWorkspace.shared.frontmostApplication?.processIdentifier != getpid()
+                else { return }
+                self?.reclaimFocus(generation: generation)
+            }
+        }
+    }
+
+    private func yieldToTextField() {
+        if let pid = access.notificationCenterPID() {
+            NSRunningApplication(processIdentifier: pid)?
+                .activate(options: .activateIgnoringOtherApps)
+        }
+        nonisolated(unsafe) let access = access
+        dispatchQueue.async { try? access.focusPanelTextField() }
     }
 
     func showActionPanels() {
@@ -120,6 +191,7 @@ final class Session {
     private nonisolated static let presentedReadInterval: TimeInterval = 0.15
     private nonisolated static let presentedEmptyAgreement = 2
     private static let refreshInterval: TimeInterval = 0.5
+    private static let reclaimRecheckInterval: TimeInterval = 0.1
 
     /// The panel fills in over several reads and its rows slide into place, so a
     /// non-empty read counts only once the next one agrees with it. An empty read
@@ -271,8 +343,10 @@ final class Session {
         let generation = dispatchGeneration
         DispatchQueue.global(qos: .userInitiated).async {
             let presented = try? access.readPresented()
+            let textField = access.panelShowsTextField()
             DispatchQueue.main.async {
                 MainActor.assumeIsolated {
+                    self.textFieldPolled(textField)
                     apply(self, generation == self.dispatchGeneration ? presented : nil)
                 }
             }
@@ -332,6 +406,11 @@ final class Session {
     func releaseScreen(then completion: @escaping () -> Void = {}) {
         guard !tearingDown else { return completion() }
         tearingDown = true
+        reclaimGeneration += 1
+        if let observer = activationObserver {
+            NSWorkspace.shared.notificationCenter.removeObserver(observer)
+            activationObserver = nil
+        }
         guard let panelsWindow else { return closeScreen(then: completion) }
         panelsWindow.show(nil, primaryScreenHeight: NSScreen.screens.first?.frame.height ?? 0) {
             self.closeScreen(then: completion)
