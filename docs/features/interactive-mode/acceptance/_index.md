@@ -4,10 +4,10 @@ BDD scenarios (Gherkin) specifying interactive mode. These `.feature` files **ar
 acceptance tests: [cucumber-js](https://github.com/cucumber/cucumber-js) runs them against the
 compiled `nbk` binary as a black box, using the step definitions in `acceptance/steps/`.
 
-The thirty-one unattended scenarios run in the default acceptance run. All but one run in demo mode
-([RIM-21](../requirements.md#demo-mode)) and never touch the real Notification Center; the exception
-is the window-order scenario, which needs the real panel. The trust scenario is `@operator` and runs
-only attended.
+The thirty-three unattended scenarios run in the default acceptance run. All but one run in demo
+mode ([RIM-21](../requirements.md#demo-mode)) and never touch the real Notification Center; the
+exception is the window-order scenario, which needs the real panel. The trust scenario is
+`@operator` and runs only attended.
 
 | Scenario                                                                | Validates           | Status                                         |
 | ----------------------------------------------------------------------- | ------------------- | ---------------------------------------------- |
@@ -42,11 +42,13 @@ only attended.
 | Entering demo mode opens the demo list (demo)                           | RIM-21              | ✅                                             |
 | Leaving demo mode closes the demo list (demo)                           | RIM-21              | ✅                                             |
 | Entering demo mode leaves an already open demo list open (demo)         | RIM-21              | ✅                                             |
+| Focus taken by another application is reclaimed (demo)                  | RIM-25, RIM-21      | ✅                                             |
+| A reply field in the panel takes focus until it is gone (demo)          | RIM-27, RIM-21      | ✅                                             |
 | Missing Accessibility trust is refused                                  | RIM-9               | ✅ `@operator` — attended; last run 2026-09-27 |
 
 ## What the harness adds
 
-Interactive mode is long-running and graphical, so the harness has six capabilities beyond what
+Interactive mode is long-running and graphical, so the harness has seven capabilities beyond what
 notification access uses. None needs a new framework.
 
 - **A spawned, retained process.** The existing world promisifies `execFile`, which awaits exit;
@@ -73,6 +75,13 @@ notification access uses. None needs a new framework.
   such a scenario. Teardown stops both processes.
 - **Keystrokes.** Movement and activator keys are posted through System Events, each step first
   asserting the overlay is frontmost so a mistimed key cannot reach another app.
+- **Focus changes.** "When another application is activated" activates Finder, standing in for the
+  user clicking away, and then waits for some application other than the overlay to be frontmost;
+  the scenario asserts the overlay is frontmost again. In the reply-field scenario the panel's text
+  field belongs to the demo application, so the steps assert that the demo application is frontmost
+  and stays so for longer than one polling cycle while the field is shown, and that its reply field
+  reports keyboard focus. Pressing Return in the reply field is posted only while the demo
+  application is frontmost, a guard of its own that does not depend on the overlay being frontmost.
 
 One scenario needs more: window **level** and **alpha** are not exposed through AX, so "panel above
 the overlay" and "translucent" need a small helper that dumps `CGWindowListCopyWindowInfo` (owner,

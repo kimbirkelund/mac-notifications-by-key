@@ -116,6 +116,11 @@ AXWindow  subrole=AXSystemDialog
 > The panel is open when Notification Center has an `AXSystemDialog` window with a descendant
 > `AXButton` whose identifier is `widget-editor-button`.
 
+An action that takes text, such as `Reply`, makes a text field appear in the panel: an `AXTextField`
+(or `AXTextArea`) descendant of the same window, at any depth, which disappears again when the field
+closes. Setting `kAXFocusedAttribute` on it puts the keyboard cursor in the field, provided
+Notification Center is the active application.
+
 Search for the button at any depth rather than along the exact path above. A panel mid-close can
 still read as open for a moment, so let the reading settle before acting on it.
 
@@ -180,11 +185,13 @@ come back in the tree's natural order, surfaced to the CLI as index `0..n` ("new
 | `kAXValueAttribute`       | static text        | the actual text content                                 |
 | `kAXDescriptionAttribute` | notification group | `"App, Title, Subtitle, Body"` — first field = app name |
 | `kAXFocusedAttribute`     | notification group | set to focus before Close                               |
+| `kAXFocusedAttribute`     | panel text field   | set to put the keyboard cursor in the field             |
 
 ### Roles matched
 
 `kAXGroupRole` (`AXGroup`) — the window subtree and the notification itself; `kAXStaticTextRole`
-(`AXStaticText`) — the text fields.
+(`AXStaticText`) — the notification's texts; `kAXTextFieldRole` (`AXTextField`) and
+`kAXTextAreaRole` (`AXTextArea`) — a reply field shown in the panel.
 
 ---
 

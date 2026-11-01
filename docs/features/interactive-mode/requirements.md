@@ -182,6 +182,9 @@ for `C-*`/`X-*`.
   its notification. Where the file schedules a notification's arrival or departure, the demo
   application shall present it only from its arrival until its departure, and where the file says an
   entry on a notification takes some seconds, the notification shall leave only after that delay.
+  The demo application can also present a reply field: where the file says an entry opens one, the
+  entry shows a text field in the list without closing its notification, so [RIM-27](#mode-signal)
+  can be exercised in demo mode.
 
 ## Safe failure
 
@@ -202,9 +205,6 @@ for `C-*`/`X-*`.
 
 - **Escape inside a reply field.** Notification Center consumes Escape to close the field, after
   which [RIM-25](#mode-signal) reclaims focus; whether a further Escape must end the mode is not
-  specified.
-- **Text fields in demo mode.** The demo application's list ([RIM-21](#demo-mode)) has no text
-  field; how [RIM-27](#mode-signal) is exercised without a real Notification Center is not
   specified.
 - **Collapsing a stack.** [RIM-18](#selection-and-actions) expands a stack from the overlay;
   collapsing it again is not specified.

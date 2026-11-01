@@ -53,7 +53,13 @@ That makes its required properties unusually strict, and each one is observable:
 - **Takes focus.** Entering the mode makes the overlay the active, focused window. This is what
   later features are built on: once the overlay holds focus, keystrokes arrive at it directly, so
   selecting a notification and invoking its actions needs no system-wide event tap and no
-  cooperation from the hotkey daemon.
+  cooperation from the hotkey daemon. Focus is also kept: when another application becomes active —
+  the user clicks away, or something raises itself — the overlay takes focus back, retrying until it
+  sticks, and the mode, the panel and the selection stay as they were (RIM-25, RIM-26). The one
+  exception is a reply field: when an action such as `Reply` makes a text field appear in the panel,
+  focus goes to Notification Center with the cursor in that field so the user can type, and the
+  overlay does not reclaim it while the field is shown; once the field is gone, the overlay takes
+  focus back (RIM-27).
 - **Owns input.** Keyboard and mouse events go to the overlay, not to the windows underneath. While
   the mode is active the desktop is inert.
 - **No application presence.** No Dock icon, no menu bar, no entry in the window cycler. It holds
