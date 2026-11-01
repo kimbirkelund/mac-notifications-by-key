@@ -265,7 +265,22 @@ const FRONTMOST_PID_SCRIPT = `
 ObjC.import('AppKit')
 $.NSWorkspace.sharedWorkspace.frontmostApplication.processIdentifier`
 
-const KEY_CODES = { Escape: 53, Space: 49, Down: 125, Up: 126 }
+const KEY_CODES = { Escape: 53, Space: 49, Down: 125, Up: 126, Return: 36 }
+
+const demoReplyFieldFocusedScript = (pid) => `
+const se = Application('System Events')
+const procs = se.processes.whose({ unixId: ${pid} })()
+let focused = false
+for (const proc of procs) {
+  for (const win of proc.windows()) {
+    for (const el of win.entireContents()) {
+      try {
+        if (el.role() === 'AXTextField' && el.attributes.byName('AXFocused').value()) focused = true
+      } catch (e) {}
+    }
+  }
+}
+focused`
 
 const SCREEN_SIZES_SCRIPT = `
 ObjC.import('AppKit')
@@ -671,6 +686,35 @@ export class NbkWorld extends World {
     )
   }
 
+  async frontmostPid() {
+    return Number(await osascript(FRONTMOST_PID_SCRIPT, 'JavaScript'))
+  }
+
+  async isDemoFrontmost() {
+    return (await this.frontmostPid()) === this.demo.nc.child.pid
+  }
+
+  async isDemoReplyFieldFocused() {
+    const pid = this.demo.nc.child.pid
+    return (await osascript(demoReplyFieldFocusedScript(pid), 'JavaScript')) === 'true'
+  }
+
+  async activateFinderUntilNotFrontmost(pid) {
+    const script = `
+ObjC.import('AppKit')
+const finder = Application('Finder')
+let seen = false
+for (let attempt = 0; attempt < 5 && !seen; attempt++) {
+  finder.activate()
+  for (let i = 0; i < 100 && !seen; i++) {
+    seen = $.NSWorkspace.sharedWorkspace.frontmostApplication.processIdentifier !== ${pid}
+    if (!seen) $.NSRunLoop.currentRunLoop.runUntilDate($.NSDate.dateWithTimeIntervalSinceNow(0.005))
+  }
+}
+seen`
+    return (await osascript(script, 'JavaScript')) === 'true'
+  }
+
   async dockItemNames() {
     const names = await osascript(
       'tell application "System Events" to get name of UI elements of list 1 of application process "Dock"'
@@ -702,6 +746,28 @@ export class NbkWorld extends World {
       await osascript(`tell application "System Events" to keystroke ${JSON.stringify(spec)}`)
     } else {
       throw new Error(`unknown key: ${JSON.stringify(spec)}`)
+    }
+  }
+
+  async pressDemoKey(spec) {
+    const keyCode = KEY_CODES[spec]
+    if (keyCode === undefined) throw new Error(`unknown key: ${JSON.stringify(spec)}`)
+    const pid = this.demo.nc.child.pid
+    const posted = await osascript(
+      `
+ObjC.import('AppKit')
+if ($.NSWorkspace.sharedWorkspace.frontmostApplication.processIdentifier === ${pid}) {
+  Application('System Events').keyCode(${keyCode})
+  'true'
+} else {
+  'false'
+}`,
+      'JavaScript'
+    )
+    if (posted !== 'true') {
+      throw new Error(
+        `refusing to post ${JSON.stringify(spec)}: the demo application is not the frontmost application`
+      )
     }
   }
 

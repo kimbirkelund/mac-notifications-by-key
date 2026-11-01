@@ -307,6 +307,30 @@ Feature: Interactive mode
     And the selected panel shows activator "s" before "Snooze"
     And interactive mode is still running
 
+  # Validates RIM-25: focus taken by another application is reclaimed.
+  @demo
+  Scenario: Focus taken by another application is reclaimed
+    Given interactive mode is running with demo file "one.json"
+    And the overlay is the frontmost application
+    When another application is activated
+    Then the overlay is the frontmost application
+    And the selection is unchanged
+    And interactive mode is still running
+
+  # Validates RIM-27: a reply field in the panel holds focus until it is gone.
+  @demo
+  Scenario: A reply field in the panel takes focus until it is gone
+    Given interactive mode is running with demo file "reply.json"
+    And the overlay is the frontmost application
+    When I press "r"
+    Then the demo application is the frontmost application
+    And the demo reply field is focused
+    And the demo application stays frontmost
+    When I press Return in the demo reply field
+    Then the notification titled "Ping" is no longer presented
+    And the overlay is the frontmost application
+    And interactive mode is still running
+
   # Validates RIM-28: with no demo application running, --demo is refused before any window
   # appears.
   @demo

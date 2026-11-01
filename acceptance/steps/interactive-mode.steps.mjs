@@ -210,6 +210,39 @@ When('I press {string}', STEP, async function (key) {
   await pressRecordingSelection(this, key)
 })
 
+// Longer than the overlay's poll plus its retry, so a reclaim fighting the yield would show.
+const DEMO_HOLD_MS = 1500
+
+When('another application is activated', STEP, async function () {
+  this.selectionBeforeKey = (await settledSelection(this)).index
+  const seen = await this.activateFinderUntilNotFrontmost(this.interactive.child.pid)
+  assert.ok(seen, 'expected another application to become frontmost')
+})
+
+Then('the demo application is the frontmost application', STEP, async function () {
+  const frontmost = await this.pollUntil(() => this.isDemoFrontmost(), SETTLE_MS)
+  assert.ok(frontmost, 'expected the demo application to be the frontmost application')
+})
+
+Then('the demo application stays frontmost', STEP, async function () {
+  const deadline = Date.now() + DEMO_HOLD_MS
+  do {
+    assert.ok(
+      await this.isDemoFrontmost(),
+      'expected the demo application to stay the frontmost application'
+    )
+  } while (Date.now() < deadline)
+})
+
+Then('the demo reply field is focused', STEP, async function () {
+  const focused = await this.pollUntil(() => this.isDemoReplyFieldFocused(), SETTLE_MS)
+  assert.ok(focused, 'expected a focused text field in the demo window')
+})
+
+When('I press Return in the demo reply field', STEP, async function () {
+  await this.pressDemoKey('Return')
+})
+
 When('I press the Down arrow', STEP, async function () {
   await pressRecordingSelection(this, 'Down')
 })
