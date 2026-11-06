@@ -20,7 +20,14 @@ for `C-*`/`X-*`.
 
 - **RNA-4 (event) — Dismiss by index.** When the user runs `dismiss <n>`, the system shall dismiss
   the notification at index `n` (a collapsed stack as a whole), focusing the element first per the
-  AX `Close` quirk, and exit `0`.
+  AX `Close` quirk, and exit `0`. Which action dismisses it is [RNA-14](#act).
+- **RNA-14 (complex) — An explicit `Dismiss` action is preferred.** When the system dismisses a
+  notification — for `dismiss <n>` ([RNA-4](#act)), `clear-all` ([RNA-11](#act)) or
+  `clear-all-for-app <n>` ([RNA-12](#act)) — while that notification exposes a named action
+  `Dismiss` ([RNA-1](#read)), the system shall perform `Dismiss` on it in place of `Close`; while it
+  does not, `Close`. A collapsed stack is unaffected: it is cleared as a whole either way. Some apps
+  (Outlook meeting reminders, for one) expose `Dismiss` beside `Close`, and only `Dismiss` tells the
+  app the reminder is dealt with.
 - **RNA-5 (event) — Trigger a named action.** When the user runs `action <n> <name>`, the system
   shall perform the action `<name>` on the notification at index `n`, provided that notification
   exposes it.
@@ -29,10 +36,11 @@ for `C-*`/`X-*`.
 - **RNA-11 (event) — Clear all.** When the user runs `clear-all`, the system shall dismiss every
   notification currently presented — a collapsed stack as a whole — and exit `0`; with nothing
   presented it shall perform nothing and exit `0`. Presented means what Notification Center exposes
-  at the time: banners when the panel is closed, the list when it is open.
+  at the time: banners when the panel is closed, the list when it is open. Each is dismissed per
+  [RNA-14](#act).
 - **RNA-12 (event) — Clear all for an app.** When the user runs `clear-all-for-app <n>`, the system
   shall dismiss every presented notification from the same app as the notification at index `n`,
-  including that one, and exit `0`; [RNA-7](#safe-failure) applies to `n`.
+  including that one, each per [RNA-14](#act), and exit `0`; [RNA-7](#safe-failure) applies to `n`.
 
 ## Safe failure
 

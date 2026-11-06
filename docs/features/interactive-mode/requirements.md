@@ -76,7 +76,8 @@ for `C-*`/`X-*`.
   notification shall have a panel. The panel shall list `Activate`, `Dismiss` (labelled
   `Dismiss this / app / all`), and the names of the actions that notification exposes
   ([RNA-1](../notification-access/requirements.md)), in that order, one entry per line. The panel
-  shall not list `Close`, which the `Dismiss` entry already performs.
+  shall not list `Close`, nor a named action called `Dismiss`: the `Dismiss` entry already performs
+  whichever of the two applies ([RNA-14](../notification-access/requirements.md)).
 
 - **RIM-11 (state) — Exactly one notification is selected.** While interactive mode is active and at
   least one notification is presented, exactly one notification shall be selected; on entering the

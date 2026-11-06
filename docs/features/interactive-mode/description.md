@@ -81,22 +81,23 @@ Exactly one notification is selected at a time, and on entering the mode it is t
 The overlay shows one small **action panel**, immediately to the left of the selected notification
 and aligned with its top edge; the other notifications have none, so the panel is what marks the
 selection. It lists `Activate`, `Dismiss this / app / all`, and then the names of that
-notification's own actions, in that order, one per line (RIM-10); `Close` is not listed because the
-`Dismiss` entry is it. The panel is only as wide as its entries need, and at least as tall as the
-notification: with more entries or movement hints than fit beside it, the panel grows downwards past
-the notification's bottom edge rather than clipping. The panel is drawn as a sheet of Liquid Glass,
-the translucent material of macOS 26, and a second sheet hugs the notification so the two merge into
-one shape that holds the panel and the notification together. The panel stays in step with what is
-presented: when a notification arrives or goes away while the mode runs, the panel is redrawn to
-match, and the selection stays on the same notification wherever it moves to in the list (RIM-22).
-Down or `j` moves the selection to the next older notification, Up or `k` to the next newer, and it
-stops at either end rather than wrapping (RIM-12); the panel moves with it. Between the entries and
-the notification the panel hints at which moves are possible: an up-pointing mark with `k` beneath
-it at the top when a newer notification is presented, and `j` with a down-pointing mark beneath it
-level with the bottom of the selected notification when an older one is, or just below the `k` hint
-when both are shown and the notification is too short to hold both; a hint is absent where the move
-would go nowhere (RIM-23). The panel shows a key to the left of each entry, the keys right-aligned
-in a column of their own: `space` for `Activate`, `d / D / X` for `Dismiss this / app / all`, and a
+notification's own actions, in that order, one per line (RIM-10); `Close` is not listed, nor a named
+action called `Dismiss`, because the `Dismiss` entry is whichever of them applies (RNA-14). The
+panel is only as wide as its entries need, and at least as tall as the notification: with more
+entries or movement hints than fit beside it, the panel grows downwards past the notification's
+bottom edge rather than clipping. The panel is drawn as a sheet of Liquid Glass, the translucent
+material of macOS 26, and a second sheet hugs the notification so the two merge into one shape that
+holds the panel and the notification together. The panel stays in step with what is presented: when
+a notification arrives or goes away while the mode runs, the panel is redrawn to match, and the
+selection stays on the same notification wherever it moves to in the list (RIM-22). Down or `j`
+moves the selection to the next older notification, Up or `k` to the next newer, and it stops at
+either end rather than wrapping (RIM-12); the panel moves with it. Between the entries and the
+notification the panel hints at which moves are possible: an up-pointing mark with `k` beneath it at
+the top when a newer notification is presented, and `j` with a down-pointing mark beneath it level
+with the bottom of the selected notification when an older one is, or just below the `k` hint when
+both are shown and the notification is too short to hold both; a hint is absent where the move would
+go nowhere (RIM-23). The panel shows a key to the left of each entry, the keys right-aligned in a
+column of their own: `space` for `Activate`, `d / D / X` for `Dismiss this / app / all`, and a
 lower-case letter for each of the notification's own actions, so `r` and `m` for `Reply` and
 `Mark as Read` (RIM-13). Pressing a shown key performs that entry on the selected notification: `d`
 dismisses it, Space activates it and ends the mode (RIM-29), and a named action's key performs that

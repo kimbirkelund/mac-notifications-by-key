@@ -11,7 +11,9 @@ notification is an element with readable title/subtitle/body and a set of named 
 - **list** — enumerate the currently-presented notifications, newest first, each with its app,
   title, subtitle, body, available action names, and a 0-based index. Output is JSON
   ([X-2](../../cross-cutting.md)).
-- **dismiss `<index>`** — dismiss the notification at that index.
+- **dismiss `<index>`** — dismiss the notification at that index. A notification that exposes a
+  named `Dismiss` action (Outlook meeting reminders do) is dismissed through it rather than through
+  `Close`, so the app learns the reminder is dealt with; the same holds for the two clear commands.
 - **clear-all** — dismiss every presented notification, a collapsed stack as a whole.
 - **clear-all-for-app `<index>`** — dismiss every presented notification from the same app as the
   notification at that index, including that one.
@@ -42,7 +44,8 @@ one act command against index `0` (the newest notification).
   before concluding "none present" ([C-3](../../constraints.md)).
 - **Focus-before-close.** Performing the `Close` action without first focusing the element returns
   success but is a no-op. Dismissal must set the element focused, let it settle briefly, then
-  perform `Close`. This quirk is internal to the AX adapter; it is not visible at the CLI.
+  perform `Close` (or the notification's own `Dismiss`). This quirk is internal to the AX adapter;
+  it is not visible at the CLI.
 
 ## Scope
 
