@@ -36,7 +36,7 @@ public enum ActionPanelLayout {
     public static let gap: CGFloat = 8
 
     public static func entries(for item: NotificationItem) -> [String] {
-        let actions = item.actions.filter { $0 != "Close" }
+        let actions = item.actions.filter { $0 != "Close" && $0 != "Dismiss" }
         if item.isCollapsedStack {
             return ["Expand", "Dismiss"] + actions.filter { $0 != "Clear All" }
         }
