@@ -124,14 +124,10 @@ public struct DefaultNotificationCenterAX: NotificationCenterAccess {
 
     public func dismiss(index n: Int) throws {
         let element = try elementAt(n)
-        if CollapsedStack.matches(actions: displayActions(element)) {
-            try close(element, with: "Clear All")
-        } else {
-            try close(element)
-        }
+        try close(element, with: DismissAction.name(for: displayActions(element)))
     }
 
-    private func close(_ element: AXUIElement, with action: String = "Close") throws {
+    private func close(_ element: AXUIElement, with action: String) throws {
         // Focus-before-close: required, else Close silently no-ops.
         AXUIElementSetAttributeValue(element, kAXFocusedAttribute as CFString, kCFBooleanTrue)
         Thread.sleep(forTimeInterval: 0.3)
@@ -189,7 +185,8 @@ public struct DefaultNotificationCenterAX: NotificationCenterAccess {
             let items = elements.enumerated().map { item(from: $0.element, index: $0.offset) }
             guard let step = ClearStep.next(in: items, app: app) else { return }
             switch step {
-            case .close(let index): try close(elements[index])
+            case .close(let index):
+                try close(elements[index], with: DismissAction.name(for: items[index].actions))
             case .clearAll(let index): try perform(displayName: "Clear All", on: elements[index])
             }
             Thread.sleep(forTimeInterval: 0.3)
