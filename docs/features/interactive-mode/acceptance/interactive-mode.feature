@@ -257,6 +257,37 @@ Feature: Interactive mode
     And the selected panel shows activator "a" before "Archive"
     And the selected panel does not list "Close"
 
+  # Validates RIM-10: an explicit Dismiss action is performed by the dismiss keys, so it is not a
+  # separate entry.
+  @demo
+  Scenario: An explicit Dismiss action is not listed as an entry
+    Given interactive mode is running with demo file "dismiss-action.json"
+    Then the selected panel shows activator "space" before "Activate"
+    And the selected panel shows activator "d / D / X" before "Dismiss this / app / all"
+    And the selected panel shows activator "s" before "Snooze"
+    And the selected panel does not list "Dismiss"
+
+  # Validates RNA-14, RIM-14: the fixture's Dismiss does not close, so the notification stays only
+  # if d performed Dismiss rather than the system Close.
+  @demo
+  Scenario: Pressing d dismisses through an explicit Dismiss action
+    Given interactive mode is running with demo file "dismiss-action.json"
+    And the overlay is the frontmost application
+    When I press "d"
+    Then the notification titled "Standup" is still presented
+    And interactive mode is still running
+
+  # Validates RNA-14, RNA-12, RIM-20: D dismisses the app's notifications through their Dismiss.
+  # This Dismiss never removes the card, so D keeps retrying in the background until teardown;
+  # the scenario only asserts the card is still there.
+  @demo
+  Scenario: Pressing D dismisses the app's notifications through their explicit Dismiss action
+    Given interactive mode is running with demo file "dismiss-action.json"
+    And the overlay is the frontmost application
+    When I press "D"
+    Then the notification titled "Standup" is still presented
+    And interactive mode is still running
+
   # Validates RIM-18: a collapsed stack offers Expand in place of Activate, on the same key.
   @demo
   Scenario: A collapsed stack offers Expand instead of Activate

@@ -22,6 +22,9 @@ observable output and exit status.
 | Doctor reports the environment                           | RNA-10        | ✅                                             |
 | Missing Accessibility trust is reported                  | RNA-9         | ✅ `@operator` — attended; last run 2026-09-27 |
 
+RNA-14 is verified by the interactive-mode demo scenarios, not here: `display notification` cannot
+expose a `Dismiss` action.
+
 ## Walking skeleton
 
 The first milestone was only that `nbk list` reads the currently-presented notifications and prints

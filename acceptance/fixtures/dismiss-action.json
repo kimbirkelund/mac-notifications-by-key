@@ -1,0 +1,11 @@
+{
+  "notifications": [
+    {
+      "app": "Outlook",
+      "title": "Standup",
+      "subtitle": null,
+      "body": null,
+      "actions": [{ "name": "Dismiss", "closes": false }, "Snooze"]
+    }
+  ]
+}
