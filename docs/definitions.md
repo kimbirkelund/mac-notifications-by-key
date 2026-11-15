@@ -51,3 +51,25 @@ Shared domain vocabulary used across all features.
   themselves have `members`, nor `arrivesAfter` or `leavesAfter`; both are non-negative numbers of
   seconds. Unknown keys are ignored. A file that is missing, unreadable or not valid is reported by
   `demo-nc` on standard error with a non-zero exit status, before any window appears.
+- **Demo state.** What the demo application presents at a moment, as a JSON object with two keys:
+  `notifications`, the list of presented notifications in list order, and `listOpen`, whether its
+  list is open. Each notification has an `id` that stays the same while it is presented (an expanded
+  stack's members get ids of their own), its `app`, `title`, `subtitle` and `body` (left out when it
+  has none), `actions`, the list of its action names, `collapsedStack`, whether it is a collapsed
+  stack, `hiddenMembers`, how many members a collapsed stack hides (0 otherwise), and `replyField`,
+  whether its reply field is shown. Notifications that have not yet arrived or have already left are
+  not part of it.
+- **Demo event.** A report from the demo application that something happened, written to standard
+  output as one JSON object per line. Every event has a `seq`, a number that starts at 1 and grows
+  by one with each event, an `event` name and the full demo state, under `state`, as it is right
+  after the event. An event is written only once the demo application's window shows that state, so
+  a reader that has seen it may rely on what the window exposes. The event names are `ready` (once,
+  when the window and menu bar item exist), `arrived` and `departed` (a notification became
+  presented or stopped being presented because of its schedule, with its `id`), `list-opened` and
+  `list-closed`, and `action`. An `action` event says what was done to a notification and with what
+  result: its `kind` is `press`, `close`, `named`, `expand`, `clear-all` or `submit-field`, with the
+  target `id` when there is one, the `action` name for `named`, the typed `text` for `submit-field`,
+  and an `outcome` of `applied` (it took effect), `kept` (it was performed and the notification
+  stayed) or `failed` (it was refused, with the reason in `error`). A failed action changes nothing,
+  and the event is still written. The event stream is for the harness and tests that start the demo
+  application; `nbk` never reads it.
