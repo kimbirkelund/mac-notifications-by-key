@@ -80,7 +80,7 @@ import Testing
         clearAll()
         #expect(deliver(title: "AXClearAllProbeA"))
         #expect(deliver(title: "AXClearAllProbeB"))
-        try nc.setPanelOpen(true)
+        try openPanelAndExpectItStaysOpen()
         let deadline = Date().addingTimeInterval(Self.deliveryReadTimeout)
         var stacked = false
         while !stacked, Date() < deadline {
@@ -131,7 +131,7 @@ import Testing
     /// stack. While their banners are on screen the open panel lists them beside the stack, so
     /// this waits for the banners to retire.
     func presentScriptEditorStack() throws -> NotificationItem {
-        try nc.setPanelOpen(true)
+        try openPanelAndExpectItStaysOpen()
         try nc.clearAll()
         #expect(deliver(title: "StackProbe A"))
         #expect(deliver(title: "StackProbe B"))
@@ -140,6 +140,15 @@ import Testing
                 let members = try scriptEditorItems()
                 return members.count == 1 && members[0].isCollapsedStack ? members[0] : nil
             }, "delivered pair did not present as a single collapsed stack")
+    }
+
+    /// On macOS 27.2 a panel can open and then close by itself about a third of a second later,
+    /// so an open reading straight after opening is not enough.
+    func openPanelAndExpectItStaysOpen() throws {
+        try nc.setPanelOpen(true)
+        #expect(nc.isPanelOpen)
+        Thread.sleep(forTimeInterval: 1)
+        #expect(nc.isPanelOpen, "the panel closed again within 1 s of opening")
     }
 
     func poll<T>(
@@ -160,12 +169,26 @@ import Testing
         #expect(!nc.isPanelOpen)
         try nc.setPanelOpen(false)
         #expect(!nc.isPanelOpen)
-        try nc.setPanelOpen(true)
-        #expect(nc.isPanelOpen)
+        try openPanelAndExpectItStaysOpen()
         try nc.setPanelOpen(true)
         #expect(nc.isPanelOpen)
         try nc.setPanelOpen(false)
         #expect(!nc.isPanelOpen)
+    }
+
+    @Test(.enabled(if: NotificationAXIntegrationTests.available))
+    func openingThePanelPutsThePointerBack() throws {
+        defer { try? nc.setPanelOpen(false) }
+        try nc.setPanelOpen(false)
+        let away = CGPoint(x: 200, y: 300)
+        CGWarpMouseCursorPosition(away)
+        Thread.sleep(forTimeInterval: 0.1)
+        let before = try #require(CGEvent(source: nil)?.location)
+        try nc.setPanelOpen(true)
+        let after = try #require(CGEvent(source: nil)?.location)
+        #expect(
+            abs(after.x - before.x) <= 1 && abs(after.y - before.y) <= 1,
+            "pointer moved from \(before) to \(after)")
     }
 
     func notificationCenterWindowSubroles() -> [String] {

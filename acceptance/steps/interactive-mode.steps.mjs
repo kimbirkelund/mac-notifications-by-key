@@ -251,10 +251,6 @@ When('I press the Up arrow', STEP, async function () {
   await pressRecordingSelection(this, 'Up')
 })
 
-// The panel's window level. A banner shares it, so this proves order only; that the
-// panel is the open window comes from the AX check in 'interactive mode is running'.
-const PANEL_LAYER = 21
-
 // Window level and front-to-back order are not exposed through AX; the
 // window-list helper reads them from CGWindowList.
 Then(
@@ -265,14 +261,17 @@ Then(
     const ncPid = await this.notificationCenterPid()
     const rows = await this.windowList()
     const overlayIdx = rows.findIndex((r) => r.pid === pid && r.name === OVERLAY_WINDOW_NAME)
-    const panelIdx = rows.findIndex((r) => r.pid === ncPid && r.layer === PANEL_LAYER)
+    // The panel's level differs between macOS releases, and a banner shares it, so this
+    // proves order only; that the panel is the open window comes from the AX check in
+    // 'interactive mode is running'.
+    const panelIdx = rows.findIndex((r) => r.pid === ncPid)
     assert.ok(
       overlayIdx !== -1,
       `no nbk window named "${OVERLAY_WINDOW_NAME}" in the window list: ${JSON.stringify(rows)}`
     )
     assert.ok(
       panelIdx !== -1,
-      `no Notification Center window at layer ${PANEL_LAYER} in the window list: ${JSON.stringify(rows)}`
+      `no Notification Center window in the window list: ${JSON.stringify(rows)}`
     )
     assert.ok(
       panelIdx < overlayIdx && rows[panelIdx].layer > rows[overlayIdx].layer,

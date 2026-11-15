@@ -206,15 +206,56 @@ public struct DefaultNotificationCenterAX: NotificationCenterAccess {
         let pid = try requirePID()
         if settledPanelIsOpen(pid) == open { return }
         let name = open ? "open panel" : "close panel"
-        guard let clock = clockMenuExtra(),
-            AXUIElementPerformAction(clock, kAXPressAction as CFString) == .success
-        else { throw NbkError.actionFailed(name: name) }
-        let deadline = Date().addingTimeInterval(2)
+        guard let clock = clockMenuExtra() else { throw NbkError.actionFailed(name: name) }
+        let toggled = Date()
+        var pointer: CGPoint?
+        defer { if let pointer { restorePointer(to: pointer) } }
+        if open && demoExecutableName == nil {
+            pointer = CGEvent(source: nil)?.location
+            guard click(clock) else { throw NbkError.actionFailed(name: name) }
+        } else if AXUIElementPerformAction(clock, kAXPressAction as CFString) != .success {
+            throw NbkError.actionFailed(name: name)
+        }
+        let deadline = toggled.addingTimeInterval(2)
         while panelIsOpen(pid) != open {
             guard Date() < deadline else {
                 throw NbkError.actionFailed(name: "\(name) (unconfirmed)")
             }
             Thread.sleep(forTimeInterval: 0.1)
+        }
+        if let restored = pointer {
+            restorePointer(to: restored)
+            pointer = nil
+        }
+        guard open else { return }
+        let settle = toggled.addingTimeInterval(1).timeIntervalSinceNow
+        if settle > 0 { Thread.sleep(forTimeInterval: settle) }
+        if !panelIsOpen(pid) { throw NbkError.actionFailed(name: "\(name) (closed again)") }
+    }
+
+    /// A panel opened with `AXPress` on the clock closes by itself on macOS 27.2;
+    /// one opened by a click stays open.
+    private func click(_ element: AXUIElement) -> Bool {
+        guard let frame = frame(of: element) else { return false }
+        let target = CGPoint(x: frame.midX, y: frame.midY)
+        let types: [CGEventType] = [.leftMouseDown, .leftMouseUp]
+        let events = types.compactMap {
+            CGEvent(
+                mouseEventSource: nil, mouseType: $0, mouseCursorPosition: target,
+                mouseButton: .left)
+        }
+        guard events.count == types.count else { return false }
+        for event in events { event.post(tap: .cghidEventTap) }
+        return true
+    }
+
+    /// Posted events can land after a warp, so the warp is repeated until it holds.
+    private func restorePointer(to point: CGPoint) {
+        for _ in 0..<10 {
+            CGWarpMouseCursorPosition(point)
+            Thread.sleep(forTimeInterval: 0.05)
+            guard let now = CGEvent(source: nil)?.location else { return }
+            if abs(now.x - point.x) < 1, abs(now.y - point.y) < 1 { return }
         }
     }
 
