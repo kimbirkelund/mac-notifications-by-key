@@ -89,7 +89,7 @@ final class DemoController: NSObject, NSApplicationDelegate {
             case .named(let name):
                 try? model.perform(action: name, id: id)
             case .submitField:
-                try? model.submitField(id: id)
+                try? model.submitField(id: id, text: "")
             case .cancelField:
                 try? model.cancelField(id: id)
             }

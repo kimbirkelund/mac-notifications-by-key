@@ -158,7 +158,7 @@ import Testing
         let model = Self.replyModel()
         try model.perform(action: "Reply", index: 0)
         let id = try #require(model.presented().first).id
-        try model.submitField(id: id)
+        try model.submitField(id: id, text: "")
         #expect(Self.titles(model) == [])
     }
 
