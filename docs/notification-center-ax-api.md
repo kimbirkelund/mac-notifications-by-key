@@ -26,7 +26,7 @@ Every AX read/act requires the **calling process** to hold Accessibility trust.
   `*PerformAction` returns failure or empty; there is no partial mode.
 - Trust is per-_host_ (the terminal, `skhd`, etc.), not per-user.
 - There is **no** programmatic API to grant or revoke trust — only System Settings → Privacy &
-  Security → Accessibility.
+  Security → Device Control and Data Access ("Accessibility" on older macOS).
 
 `nbk` checks trust before every operation and reports its absence actionably rather than returning
 empty results ([C-2](constraints.md)).

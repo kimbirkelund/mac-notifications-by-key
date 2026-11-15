@@ -35,8 +35,9 @@ xattr -d com.apple.quarantine nbk
 ```
 
 Then grant Accessibility permission to whatever process runs `nbk` (your terminal, or the hotkey
-daemon) under System Settings → Privacy & Security → Accessibility. `nbk doctor` reports whether it
-is granted. Only recent versions of macOS are supported.
+daemon) under System Settings → Privacy & Security → Device Control and Data Access ("Accessibility"
+on older macOS). `nbk doctor` reports whether it is granted. Only recent versions of macOS are
+supported.
 
 ## Development flow
 
