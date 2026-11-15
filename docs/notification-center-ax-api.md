@@ -77,8 +77,8 @@ verified on 26 only:
   as `AXWindow` titled `"Notification Center"`, subrole `AXSystemDialog`. This is what makes the
   panel-only surface (per-app clear, `Clear All`, the persistent list) reachable at all.
 - **Opening it does not steal focus.** The frontmost application is unchanged across the press.
-- **The panel is sticky.** It is _not_ dismissed by another application taking focus, nor by that
-  application quitting. Whatever opens it owns closing it.
+- **The panel is sticky on macOS 26.** It is _not_ dismissed by another application taking focus,
+  nor by that application quitting. Whatever opens it owns closing it.
 - **The panel window sits at window level 21** _(also 27.0)_. Measured on the on-screen window list:
   an overlay at level 25 or above (`statusBar`, `popUpMenu`, `screenSaver`) draws in front of the
   panel; at level 3 or 0 (`floating`, `normal`) the panel draws in front. Relevant to anything that
@@ -86,11 +86,35 @@ verified on 26 only:
   i.e. above the panel.
 - Sibling extras are addressable the same way (`com.apple.menuextra.battery`, `.bluetooth`, `.wifi`,
   `.controlcenter`, `.now-playing`), several with an empty identifier and description.
-- nbk's interactive-mode overlay sits at window level 20, the dock window level and the highest
-  level that still draws beneath the panel's 21.
+- nbk's interactive-mode overlay sits at window level 20, the dock window level, which draws beneath
+  the panel on every release checked: the highest level below the panel's 21 here, and below 23 on
+  macOS 27.2.1.
 
 > The identifier is an undocumented Apple string like everything else here ([C-3](constraints.md)).
 > Match on it, but fall back to subrole `AXMenuExtra` plus description rather than failing hard.
+
+On **macOS 27.2.1 (26B131)** the panel no longer stays open when opened with `AXPress`. The
+following are verified there:
+
+- **A panel opened by `AXPress` closes by itself.** The panel opens about 0.1 s after the press and
+  closes again about 0.33 s later, in every trial, whichever application is frontmost. A second
+  press while it is open is ignored, so this is not a double toggle. A panel opened by a click on
+  the clock, by hand or by a posted mouse event, stays open. Another application's panel taking
+  focus, such as a launcher, can still close it. An immediate reading misses the self-close: only a
+  reading a second after opening shows whether the panel stayed open.
+- **nbk opens the panel with a click and closes it with `AXPress`.** The click is a posted mouse
+  click at the centre of the clock element's frame as the Accessibility API reports it at that
+  moment, and the pointer is put back where it was ([C-1](constraints.md)). `AXPress` on the clock
+  closes a panel opened this way. On entering interactive mode nbk counts the panel as opened as
+  soon as it reads open, and shows the mode at once; if the panel closes later, the mode reopens it.
+  A reopen counts only when the panel is still open one second after the click.
+- **A closed panel is not an empty panel.** An open panel with no notifications keeps its window and
+  its "Edit Widgets" button
+  ([Telling whether the panel is open](#telling-whether-the-panel-is-open)); a closed one has
+  neither. Reading the list alone cannot tell the two apart, since both yield no notifications, so
+  check whether the panel is open before treating an empty list as nothing left.
+- **The panel window sits at window level 23**, up from 21. The menu bar is at level 24, still above
+  the panel, and nbk's overlay at level 20 still draws beneath it.
 
 ### Telling whether the panel is open
 
@@ -137,8 +161,8 @@ factory branch, not a change rippling through callers. One implementation exists
 
 The AX window only exists **while a banner is on screen or the panel is open**. With nothing
 presented there are no notification windows — a clean, non-error "empty" state. The panel half of
-that condition is controllable: press the menu bar clock extra (§1) to bring the window into
-existence on demand.
+that condition is controllable: open the panel from the menu bar clock extra (§1) to bring the
+window into existence on demand.
 
 Verified shape (macOS 26.5.1):
 

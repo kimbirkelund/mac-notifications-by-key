@@ -42,6 +42,7 @@ public enum InteractiveSession {
 final class Session {
     private let access: NotificationCenterAccess
     private let dispatchQueue: DispatchQueue
+    private let panelQueue: DispatchQueue
     private var window: OverlayWindow?
     private var panelsWindow: ActionPanelsWindow?
     private var drawnPresented: [PresentedNotification] = []
@@ -56,6 +57,7 @@ final class Session {
     private var panelHidden = false
     private var dispatchGeneration = 0
     private var hasDrawn = false
+    private var reopening = false
     private var textFieldVisible = false
     private var reclaimGeneration = 0
     private var activationObserver: NSObjectProtocol?
@@ -67,16 +69,19 @@ final class Session {
     static let endingHold: TimeInterval = 1
     static let endingFade: TimeInterval = 0.5
     static let endingLabel = "No more jobs!"
+    static let couldNotKeepOpenLabel = "Notification Center could not be kept open"
 
     init(
         access: NotificationCenterAccess,
         dispatchQueue: DispatchQueue = .global(qos: .userInitiated),
+        panelQueue: DispatchQueue = DispatchQueue(label: "nbk.panel"),
         endingHold: TimeInterval = Session.endingHold,
         endingFade: TimeInterval = Session.endingFade,
         terminate: @escaping () -> Void = { exit(0) }
     ) {
         self.access = access
         self.dispatchQueue = dispatchQueue
+        self.panelQueue = panelQueue
         self.endingHold = endingHold
         self.endingFade = endingFade
         self.terminate = terminate
@@ -184,8 +189,12 @@ final class Session {
                 isReady: { access.isPanelOpen },
                 emptyAgreement: Self.presentedEmptyAgreement,
                 deadline: Date().addingTimeInterval(Self.presentedReadTimeout))
+            let panelOpen = access.isPanelOpen
             DispatchQueue.main.async {
-                MainActor.assumeIsolated { self.refreshActionPanels(with: presented) }
+                MainActor.assumeIsolated {
+                    self.refreshActionPanels(
+                        with: self.judged(presented, panelOpen: panelOpen))
+                }
             }
         }
     }
@@ -194,6 +203,8 @@ final class Session {
     private nonisolated static let presentedReadInterval: TimeInterval = 0.15
     private nonisolated static let presentedEmptyAgreement = 2
     private static let refreshInterval: TimeInterval = 0.5
+    /// A panel that is going to close by itself does so well within this.
+    private nonisolated static let reopenConfirmation: TimeInterval = 1
     private static let reclaimRecheckInterval: TimeInterval = 0.1
 
     /// The panel fills in over several reads and its rows slide into place, so a
@@ -240,7 +251,7 @@ final class Session {
     }
 
     private func dispatchEntry(forKey key: String) {
-        guard !dispatching, !panelHidden, let selected = selection.selectedIndex,
+        guard !dispatching, !panelHidden, !reopening, let selected = selection.selectedIndex,
             drawnPresented.indices.contains(selected)
         else { return }
         let item = drawnPresented[selected].item
@@ -266,7 +277,7 @@ final class Session {
     }
 
     private func dispatchGlobal(_ command: GlobalCommand) {
-        guard !dispatching, !panelHidden else { return }
+        guard !dispatching, !panelHidden, !reopening else { return }
         switch command {
         case .clearAll:
             dispatch(hidingPanel: command.hidesPanel) { try $0.clearAll() }
@@ -362,11 +373,51 @@ final class Session {
         let generation = dispatchGeneration
         DispatchQueue.global(qos: .userInitiated).async {
             let presented = try? access.readPresented()
+            let panelOpen = access.isPanelOpen
             let textField = access.panelShowsTextField()
             DispatchQueue.main.async {
                 MainActor.assumeIsolated {
                     self.textFieldPolled(textField)
-                    apply(self, generation == self.dispatchGeneration ? presented : nil)
+                    guard generation == self.dispatchGeneration else { return apply(self, nil) }
+                    apply(self, presented.flatMap { self.judged($0, panelOpen: panelOpen) })
+                }
+            }
+        }
+    }
+
+    /// Reads taken while the panel is closed or being reopened are discarded.
+    private func judged(_ presented: [PresentedNotification], panelOpen: Bool)
+        -> [PresentedNotification]?
+    {
+        guard !reopening else { return nil }
+        switch PanelReading.classify(isEmpty: presented.isEmpty, panelOpen: panelOpen) {
+        case .notifications, .nothingLeft: return presented
+        case .panelClosed:
+            reopenPanel()
+            return nil
+        }
+    }
+
+    private func reopenPanel() {
+        guard !reopening, !tearingDown, !ending else { return }
+        reopening = true
+        nonisolated(unsafe) let access = access
+        panelQueue.async {
+            let started = Date()
+            let opened = (try? access.setPanelOpen(true)) != nil
+            let remaining = started.addingTimeInterval(Self.reopenConfirmation).timeIntervalSinceNow
+            if opened, remaining > 0 { Thread.sleep(forTimeInterval: remaining) }
+            let confirmed = opened && access.isPanelOpen
+            DispatchQueue.main.async {
+                MainActor.assumeIsolated {
+                    self.reopening = false
+                    guard !self.tearingDown, !self.ending else { return }
+                    switch PanelReading.afterReopen(confirmed: confirmed) {
+                    case .readAgain: self.readNow()
+                    case .endCouldNotKeepOpen:
+                        self.hidePanel()
+                        self.beginEnding(label: Self.couldNotKeepOpenLabel)
+                    }
                 }
             }
         }
@@ -395,9 +446,9 @@ final class Session {
         panels.show(panel, primaryScreenHeight: primary.frame.height)
     }
 
-    private func beginEnding() {
+    private func beginEnding(label: String = Session.endingLabel) {
         ending = true
-        window?.showEndingLabel(Self.endingLabel)
+        window?.showEndingLabel(label)
         DispatchQueue.main.asyncAfter(deadline: .now() + endingHold) { [weak self] in
             MainActor.assumeIsolated { self?.fadeOut() }
         }
@@ -447,7 +498,7 @@ final class Session {
         window?.orderOut(nil)
         nonisolated(unsafe) let access = access
         nonisolated(unsafe) let completion = completion
-        dispatchQueue.async {
+        panelQueue.async {
             do {
                 try access.setPanelOpen(false)
             } catch {
