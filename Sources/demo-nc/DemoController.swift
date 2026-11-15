@@ -8,13 +8,13 @@ final class DemoController: NSObject, NSApplicationDelegate {
     private var window: DemoWindow?
     private var timer: Timer?
     private var statusItem: NSStatusItem?
-    private var isOpen: Bool
     private var staysClosed = false
     private var signalSources: [DispatchSourceSignal] = []
+    private let pending = PendingEvents()
 
-    init(model: DemoNotificationsModel, isOpen: Bool) {
+    init(model: DemoNotificationsModel) {
         self.model = model
-        self.isOpen = isOpen
+        model.observer = { [pending] event in pending.append(event) }
     }
 
     func applicationDidFinishLaunching(_ notification: Notification) {
@@ -25,11 +25,13 @@ final class DemoController: NSObject, NSApplicationDelegate {
         statusItem = makeStatusItem()
         signalSources = [
             onSignal(SIGUSR1) {
-                $0.isOpen = false
+                $0.model.setListOpen(false)
                 $0.staysClosed = true
             }
         ]
         render()
+        model.ready()
+        publish(pending.take(through: .max))
         timer = Timer.scheduledTimer(withTimeInterval: 0.1, repeats: true) { [weak self] _ in
             MainActor.assumeIsolated { self?.render() }
         }
@@ -64,34 +66,60 @@ final class DemoController: NSObject, NSApplicationDelegate {
     }
 
     @objc private func toggle() {
-        isOpen = !isOpen && !staysClosed
+        model.setListOpen(!model.isListOpen && !staysClosed)
         render()
     }
 
     private func render() {
         guard let window else { return }
-        window.show(model.presented())
+        model.advance()
+        let snapshot = model.renderSnapshot()
+        window.show(snapshot.presented)
+        let isOpen = snapshot.listOpen
         if isOpen, !window.isVisible {
             window.orderFrontRegardless()
         } else if !isOpen, window.isVisible {
             window.orderOut(nil)
+        }
+        publish(pending.take(through: snapshot.seq))
+    }
+
+    private func publish(_ events: [DemoEvent]) {
+        let encoder = JSONEncoder()
+        encoder.outputFormatting = [.sortedKeys, .withoutEscapingSlashes]
+        for event in events {
+            var line: Data
+            do { line = try encoder.encode(event) } catch {
+                FileHandle.standardError.write(Data("demo-nc: \(error)\n".utf8))
+                continue
+            }
+            line.append(0x0A)
+            do { try FileHandle.standardOutput.write(contentsOf: line) } catch { return }
         }
     }
 
     private func perform(_ action: NotificationAction, id: Int, isStack: Bool) {
         let model = model
         actions.async { [weak self] in
-            switch action {
-            case .press:
-                try? isStack ? model.expand(id: id) : model.press(id: id)
-            case .close, .clearAll:
-                try? model.dismiss(id: id)
-            case .named(let name):
-                try? model.perform(action: name, id: id)
-            case .submitField:
-                try? model.submitField(id: id, text: "")
-            case .cancelField:
-                try? model.cancelField(id: id)
+            do {
+                switch action {
+                case .press:
+                    if isStack { try model.expand(id: id) } else { try model.press(id: id) }
+                case .close:
+                    try model.dismiss(id: id)
+                case .clearAll:
+                    try model.clearAll(id: id)
+                case .named(let name):
+                    try model.perform(action: name, id: id)
+                case .submitField(let text):
+                    try model.submitField(id: id, text: text)
+                case .cancelField:
+                    try model.cancelField(id: id)
+                }
+            } catch {
+                if case .cancelField = action {
+                    FileHandle.standardError.write(Data("demo-nc: \(error)\n".utf8))
+                }
             }
             DispatchQueue.main.async {
                 MainActor.assumeIsolated { self?.render() }

@@ -1,6 +1,8 @@
 import AppKit
 import DemoNotifications
 
+signal(SIGPIPE, SIG_IGN)
+
 var arguments = Array(CommandLine.arguments.dropFirst())
 let isOpen = arguments.first == "--open"
 if isOpen { arguments.removeFirst() }
@@ -30,7 +32,7 @@ if let (location, notification) = missingApp {
 
 let app = NSApplication.shared
 let controller = DemoController(
-    model: DemoNotificationsModel(notifications: file.notifications), isOpen: isOpen)
+    model: DemoNotificationsModel(notifications: file.notifications, isListOpen: isOpen))
 app.delegate = controller
 app.setActivationPolicy(.accessory)
 app.run()
