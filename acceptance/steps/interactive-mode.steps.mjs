@@ -651,3 +651,47 @@ Then('the notification at position {int} is selected', STEP, async function (pos
     `the notification at position ${position}`
   )
 })
+
+// The action event names its target by id; the title comes from the latest earlier state that
+// still presented it, because the action's own state may no longer list it.
+function actionTitle(world, action) {
+  const events = world.demoEvents()
+  for (let i = events.indexOf(action) - 1; i >= 0; i--) {
+    const n = events[i].state.notifications.find((x) => x.id === action.id)
+    if (n) return n.title
+  }
+  return null
+}
+
+function isAction(name) {
+  return (e) =>
+    e.event === 'action' &&
+    (name === 'Activate'
+      ? e.kind === 'press'
+      : name === 'Close'
+        ? e.kind === 'close'
+        : e.kind === 'named' && e.action === name)
+}
+
+Then(
+  'the demo application received the action {string} for {string}',
+  STEP,
+  async function (name, title) {
+    const match = isAction(name)
+    const found = await this.awaitDemoEvent((e) => match(e) && actionTitle(this, e) === title)
+    assert.ok(
+      found,
+      `expected the demo application to receive ${JSON.stringify(name)} for ${JSON.stringify(title)}; events: ${JSON.stringify(this.demoEvents())}`
+    )
+  }
+)
+
+Then('the demo application received no {string} for {string}', STEP, async function (name, title) {
+  const match = isAction(name)
+  const found = this.demoEvents().filter((e) => match(e) && actionTitle(this, e) === title)
+  assert.deepEqual(
+    found,
+    [],
+    `expected the demo application to receive no ${JSON.stringify(name)} for ${JSON.stringify(title)}`
+  )
+})
