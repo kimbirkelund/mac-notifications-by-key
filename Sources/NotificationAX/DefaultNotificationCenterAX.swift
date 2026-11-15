@@ -208,18 +208,27 @@ public struct DefaultNotificationCenterAX: NotificationCenterAccess {
         let name = open ? "open panel" : "close panel"
         guard let clock = clockMenuExtra() else { throw NbkError.actionFailed(name: name) }
         let toggled = Date()
+        let clockFrame = open ? frame(of: clock) : nil
+        let pointerAtToggle = CGEvent(source: nil)?.location
         var pointer: CGPoint?
         defer { if let pointer { restorePointer(to: pointer) } }
         if open && demoExecutableName == nil {
-            pointer = CGEvent(source: nil)?.location
-            guard click(clock) else { throw NbkError.actionFailed(name: name) }
+            pointer = pointerAtToggle
+            guard click(at: clockFrame) else { throw NbkError.actionFailed(name: name) }
         } else if AXUIElementPerformAction(clock, kAXPressAction as CFString) != .success {
             throw NbkError.actionFailed(name: name)
         }
         let deadline = toggled.addingTimeInterval(2)
         while panelIsOpen(pid) != open {
             guard Date() < deadline else {
-                throw NbkError.actionFailed(name: "\(name) (unconfirmed)")
+                guard open else { throw NbkError.actionFailed(name: "\(name) (unconfirmed)") }
+                let front = NSWorkspace.shared.frontmostApplication
+                let diagnostic = PanelOpenDiagnostic.describe(
+                    clock: clockFrame, pointer: pointerAtToggle,
+                    frontmost: front.map {
+                        ($0.localizedName ?? "pid \($0.processIdentifier)", $0.bundleIdentifier)
+                    })
+                throw NbkError.actionFailed(name: "\(name) (unconfirmed; \(diagnostic))")
             }
             Thread.sleep(forTimeInterval: 0.1)
         }
@@ -227,8 +236,8 @@ public struct DefaultNotificationCenterAX: NotificationCenterAccess {
 
     /// A panel opened with `AXPress` on the clock closes by itself on macOS 27.2;
     /// one opened by a click stays open.
-    private func click(_ element: AXUIElement) -> Bool {
-        guard let frame = frame(of: element) else { return false }
+    private func click(at frame: CGRect?) -> Bool {
+        guard let frame else { return false }
         let target = CGPoint(x: frame.midX, y: frame.midY)
         let types: [CGEventType] = [.leftMouseDown, .leftMouseUp]
         let events = types.compactMap {
