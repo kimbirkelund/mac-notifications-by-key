@@ -54,7 +54,18 @@ Given('the demo list starts open', STEP, function () {
   this.demoStartsOpen = true
 })
 
-async function waitForDemoList(world, want) {
+async function waitForDemoReady(world, want) {
+  const ready = await world.awaitDemoEvent((e) => e.event === 'ready', SETTLE_MS)
+  assert.ok(
+    ready,
+    `expected demo-nc to report ready; events: ${JSON.stringify(world.demoEvents())}; stderr: ${world.demo.nc.stderr}`
+  )
+  assert.equal(
+    ready.state.notifications.length,
+    want,
+    `expected demo-nc ready with ${want} notifications; got: ${JSON.stringify(ready.state)}`
+  )
+  if (!world.demoStartsOpen) return
   let last = null
   const shown = await world.pollUntil(async () => {
     last = await world.demoFrames()
@@ -66,29 +77,19 @@ async function waitForDemoList(world, want) {
   )
 }
 
-async function waitForDemoToggle(world) {
-  let last = null
-  const ready = await world.pollUntil(async () => {
-    last = await world.demoExtras()
-    return last.some((e) => e.identifier === 'demo-nc-toggle')
-  }, SETTLE_MS)
-  assert.ok(
-    ready,
-    `expected demo-nc to expose its toggle; last extras: ${JSON.stringify(last)}; stderr: ${world.demo.nc.stderr}`
-  )
-}
-
 // Running means demo-nc shows every fixture notification and nbk has drawn its first
 // action panel, so no key can fire before nbk's first read. A list that starts closed is
 // opened by nbk itself, so the list is awaited after nbk starts.
 Given('interactive mode is running with demo file {string}', STEP, async function (file) {
   this.startDemoNc(file)
   const want = this.demoInitiallyPresented().length
-  if (this.demoStartsOpen) await waitForDemoList(this, want)
-  else await waitForDemoToggle(this)
+  await waitForDemoReady(this, want)
   this.startInteractive(['--demo'])
   await waitForOverlay(this)
-  if (!this.demoStartsOpen) await waitForDemoList(this, want)
+  if (!this.demoStartsOpen) {
+    const opened = await this.awaitDemoState((state) => state.listOpen)
+    assert.ok(opened, 'expected nbk to open the demo list')
+  }
   if (want > 0) {
     const drawn = await this.pollUntil(
       async () => (await this.actionPanels()).length > 0,
@@ -141,7 +142,7 @@ Then('the Notification Center panel is closed', STEP, async function () {
 
 Then('the demo list is open', STEP, async function () {
   assert.ok(
-    await this.pollUntil(() => this.isDemoListOpen(), SETTLE_MS),
+    await this.awaitDemoState((state) => state.listOpen),
     'expected the demo list to be open'
   )
 })
@@ -149,7 +150,7 @@ Then('the demo list is open', STEP, async function () {
 Then('the demo list is closed', STEP, async function () {
   assert.equal(this.demo.nc.child.exitCode, null, 'expected demo-nc to still be running')
   assert.ok(
-    await this.pollUntil(async () => !(await this.isDemoListOpen()), SETTLE_MS),
+    await this.awaitDemoState((state) => !state.listOpen),
     'expected the demo list to be closed'
   )
 })
@@ -497,7 +498,12 @@ Then(
   'the selected panel shows activator {string} before {string}',
   STEP,
   async function (activator, name) {
-    assertActivator(await selectedPanel(this), activator, name)
+    let panel = null
+    await this.pollUntil(async () => {
+      panel = await selectedPanel(this)
+      return panel.entries.some((e) => e.name === name && e.activator === activator)
+    }, SETTLE_MS)
+    assertActivator(panel, activator, name)
   }
 )
 
@@ -549,13 +555,6 @@ Then('the selection is unchanged', STEP, async function () {
   } while (Date.now() < deadline)
 })
 
-// Under --demo the notifications exist only in the mode, so presence is read from
-// its demo window; a read that finds no window proves nothing about absence.
-async function demoTitles(world) {
-  const read = await world.demoFrames()
-  return { read, titles: read.window ? read.frames.map((f) => f.title) : null }
-}
-
 // A failed or unparsable list proves nothing about absence, so only a successful read counts.
 async function assertGone(world, titles) {
   if (world.demo) {
@@ -568,9 +567,8 @@ async function assertGone(world, titles) {
       .filter((t) => !world.demoRemoved.includes(t))
     let last = null
     const gone = await world.pollUntil(async () => {
-      const { read, titles: shown } = await demoTitles(world)
-      last = read
-      return shown !== null && JSON.stringify(shown) === JSON.stringify(want)
+      last = world.demoPresentedTitles()
+      return last !== null && JSON.stringify(last) === JSON.stringify(want)
     }, SETTLE_MS)
     assert.ok(
       gone,
@@ -612,9 +610,8 @@ Then('the notification titled {string} becomes presented', STEP, async function 
   assert.ok(this.demo, 'presence is only observable under --demo')
   let last = null
   const presented = await this.pollUntil(async () => {
-    const { read, titles } = await demoTitles(this)
-    last = read
-    return titles !== null && titles.includes(title)
+    last = this.demoPresentedTitles()
+    return last !== null && last.includes(title)
   }, SETTLE_MS)
   assert.ok(
     presented,
@@ -628,15 +625,22 @@ Then('the notification titled {string} is still presented', STEP, async function
   assert.ok(this.demo, 'presence is only observable under --demo')
   // demo-nc applies an action asynchronously, so a title an action reveals (a stack's
   // member) may take a moment to appear; once it has, it must stay.
-  await this.pollUntil(async () => (await demoTitles(this)).titles?.includes(title), SETTLE_MS)
-  const deadline = Date.now() + UNCHANGED_HOLD_MS
-  do {
-    const { read, titles } = await demoTitles(this)
+  await this.pollUntil(async () => this.demoPresentedTitles()?.includes(title), SETTLE_MS)
+  const startSeq = this.demoLastSeq()
+  await new Promise((resolve) => setTimeout(resolve, UNCHANGED_HOLD_MS))
+  const states = [
+    ...this.demoEvents()
+      .filter((e) => e.seq > startSeq)
+      .map((e) => e.state),
+    this.demoState()
+  ]
+  for (const state of states) {
+    const titles = state.notifications.map((n) => n.title)
     assert.ok(
-      titles?.includes(title),
-      `expected a notification titled ${JSON.stringify(title)} to stay presented; read: ${JSON.stringify(read)}`
+      titles.includes(title),
+      `expected a notification titled ${JSON.stringify(title)} to stay presented; presented: ${JSON.stringify(titles)}`
     )
-  } while (Date.now() < deadline)
+  }
 })
 
 // Positions count top-down from 1, as the scenario reads the stack.
