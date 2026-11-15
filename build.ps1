@@ -448,7 +448,7 @@ if ($DoTest)
   if ($needTrust -and -not $trusted)
   {
     Write-Host 'Accessibility trust not granted for this host (nbk doctor != 0).' -ForegroundColor Yellow
-    Write-Host 'Grant it in System Settings > Privacy & Security > Accessibility, then rerun.' -ForegroundColor Yellow
+    Write-Host 'Grant it in System Settings > Privacy & Security > Device Control and Data Access ("Accessibility" on older macOS), then rerun.' -ForegroundColor Yellow
   }
 
   $guarded = $trusted -and (($selected -contains 'Integration') -or ($selected -contains 'Acceptance'))

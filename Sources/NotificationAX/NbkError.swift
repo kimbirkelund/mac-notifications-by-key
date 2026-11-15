@@ -11,8 +11,9 @@ public enum NbkError: Error, Sendable {
         switch self {
         case .notTrusted:
             return "Accessibility permission not granted. Grant it in System Settings → "
-                + "Privacy & Security → Accessibility for the process that runs nbk (e.g. your "
-                + "terminal or skhd), then retry."
+                + "Privacy & Security → Device Control and Data Access (\"Accessibility\" on "
+                + "older macOS) for the process that runs nbk (e.g. your terminal or skhd), "
+                + "then retry."
         case .noNotificationCenter:
             return
                 "Could not find the Notification Center process (com.apple.notificationcenterui)."
