@@ -51,6 +51,20 @@ for `C-*`/`X-*`.
   that the notification list and the panel-only controls exist for the duration of the mode rather
   than depending on a banner happening to be on screen.
 
+- **RIM-31 (event) — A panel that closes is reopened.** When the Notification Center panel closes
+  while interactive mode is active and the user has not ended the mode, the system shall reopen the
+  panel and continue the mode with the notifications it then presents. A closed panel is not an
+  empty one: the panel closing shall not by itself end the mode, and
+  [RIM-16](#selection-and-actions) applies only to a panel that is open and presents no
+  notification. The reopen counts as done only when the panel is still open one second after it was
+  reopened.
+
+- **RIM-32 (unwanted) — The panel cannot be reopened.** If the Notification Center panel is not open
+  one second after the system reopened it ([RIM-31](#notification-center-panel)), then the system
+  shall show a message on the overlay saying Notification Center could not be kept open, and end
+  interactive mode with the same teardown as [RIM-6](#ending-the-mode). It shall not show
+  `No more jobs!`.
+
 ## Ending the mode
 
 - **RIM-6 (event) — Terminate on signal.** When interactive mode receives `SIGINT` or `SIGTERM`, the

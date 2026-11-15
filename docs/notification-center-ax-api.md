@@ -77,8 +77,20 @@ verified on 26 only:
   as `AXWindow` titled `"Notification Center"`, subrole `AXSystemDialog`. This is what makes the
   panel-only surface (per-app clear, `Clear All`, the persistent list) reachable at all.
 - **Opening it does not steal focus.** The frontmost application is unchanged across the press.
-- **The panel is sticky.** It is _not_ dismissed by another application taking focus, nor by that
-  application quitting. Whatever opens it owns closing it.
+- **The panel is sticky on macOS 26.** It is _not_ dismissed by another application taking focus,
+  nor by that application quitting. Whatever opens it owns closing it.
+- **On macOS 27.2 a panel opened by `AXPress` closes by itself.** Verified on **macOS 27.2.1
+  (26B131)**: the panel opens about 0.1 s after the press and closes again about 0.33 s later, in
+  every trial, whichever application is frontmost. A second press while it is open is ignored, so
+  this is not a double toggle. A panel opened by a click on the clock, by hand or by a posted mouse
+  event, stays open. Another application's panel taking focus, such as a launcher, can still close
+  it. Read the panel as open only if it is still open a second after opening it; an immediate
+  reading misses the self-close.
+- **A closed panel is not an empty panel.** An open panel with no notifications keeps its window and
+  its "Edit Widgets" button
+  ([Telling whether the panel is open](#telling-whether-the-panel-is-open)); a closed one has
+  neither. Reading the list alone cannot tell the two apart, since both yield no notifications, so
+  check whether the panel is open before treating an empty list as nothing left.
 - **The panel window sits at window level 21** _(also 27.0)_. Measured on the on-screen window list:
   an overlay at level 25 or above (`statusBar`, `popUpMenu`, `screenSaver`) draws in front of the
   panel; at level 3 or 0 (`floating`, `normal`) the panel draws in front. Relevant to anything that
