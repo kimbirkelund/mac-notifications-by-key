@@ -25,7 +25,9 @@ the acceptance harness, so verify dependency bumps that touch it (e.g. cucumber-
 ## Mechanism
 
 Interaction with notifications is **Accessibility-API only** ([C-1](docs/constraints.md)) — no
-screenshots/OCR, no fixed-coordinate mouse simulation, no private APIs. The AX hierarchy of
+screenshots/OCR, no fixed-coordinate mouse simulation, no private APIs. One exception: opening the
+Notification Center panel uses a synthetic mouse click on the menu bar clock, positioned from the
+clock's AX frame at click time; everything done to a notification stays AX-only. The AX hierarchy of
 Notification Center is version-sensitive ([C-3](docs/constraints.md)); locate elements structurally,
 never by hardcoded pid/index. Two known quirks live in the AX adapter: focus-before-close, and
 poll-for-render-delay.

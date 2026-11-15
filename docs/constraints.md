@@ -11,6 +11,14 @@ direct acceptance test.
   macOS 26.5.1 exposes title/subtitle/body and `Close`/`Show`/`Show Details` actions per
   notification element.)
 
+  One exception: to open or close the Notification Center panel, the system may post a synthetic
+  mouse click on the menu bar clock. The click lands inside the clock element's frame, read from the
+  Accessibility API at the time of the click, never at a fixed coordinate, and the pointer is put
+  back where it was afterwards. The exception covers the panel only: everything done to a
+  notification stays Accessibility-only. Rationale: on macOS 27.2 a panel opened through the
+  Accessibility API closes again by itself, and no Accessibility-only opener keeps it open; a click
+  on the clock does.
+
 - **C-2 — Accessibility permission required.** The system requires the invoking host to be granted
   Accessibility trust (`AXIsProcessTrusted`). It shall detect the absence of this trust and report
   it actionably (how to grant it, which process needs it) rather than failing opaquely.
