@@ -123,3 +123,12 @@ includes `Operator`, because it waits for a human at the terminal. The underlyin
 `swift test --filter NotificationCoreTests --filter NotificationAXUnitTests --filter InteractiveModeTests`,
 `swift test --filter NotificationAXIntegrationTests`, and `npx cucumber-js`. `@wip` and `@operator`
 scenarios are excluded from the acceptance run via `tags` in `cucumber.mjs`.
+
+To run less than a whole tier, pass `-UnitFilter` or `-IntegrationFilter` (one or more
+`swift test --filter` names) and `-AcceptancePaths` (one or more feature files or directories).
+Each, when given, replaces that tier's default suites or feature paths; omitting them runs the
+defaults.
+
+```sh
+./build.ps1 -DoTest -Kinds All -UnitFilter DemoNotificationsTests -IntegrationFilter DemoNotificationCenterAXTests -AcceptancePaths docs/features/interactive-mode/acceptance/interactive-mode.feature
+```
