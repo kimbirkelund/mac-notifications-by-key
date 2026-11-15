@@ -212,7 +212,9 @@ for `C-*`/`X-*`.
   entry on a notification takes some seconds, the notification shall leave only after that delay.
   The demo application can also present a reply field: where the file says an entry opens one, the
   entry shows a text field in the list without closing its notification, so [RIM-27](#mode-signal)
-  can be exercised in demo mode.
+  can be exercised in demo mode. The demo application can also be told to close its list on its own,
+  and to refuse to open it again, so [RIM-31](#notification-center-panel) and
+  [RIM-32](#notification-center-panel) can be exercised in demo mode.
 
 ## Safe failure
 

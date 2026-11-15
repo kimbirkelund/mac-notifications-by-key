@@ -9,6 +9,8 @@ final class DemoController: NSObject, NSApplicationDelegate {
     private var timer: Timer?
     private var statusItem: NSStatusItem?
     private var isOpen: Bool
+    private var staysClosed = false
+    private var signalSources: [DispatchSourceSignal] = []
 
     init(model: DemoNotificationsModel, isOpen: Bool) {
         self.model = model
@@ -21,6 +23,12 @@ final class DemoController: NSObject, NSApplicationDelegate {
         }
         self.window = window
         statusItem = makeStatusItem()
+        signalSources = [
+            onSignal(SIGUSR1) {
+                $0.isOpen = false
+                $0.staysClosed = true
+            }
+        ]
         render()
         timer = Timer.scheduledTimer(withTimeInterval: 0.1, repeats: true) { [weak self] _ in
             MainActor.assumeIsolated { self?.render() }
@@ -39,8 +47,24 @@ final class DemoController: NSObject, NSApplicationDelegate {
         return item
     }
 
+    private func onSignal(_ signal: Int32, _ handle: @escaping (DemoController) -> Void)
+        -> DispatchSourceSignal
+    {
+        Darwin.signal(signal, SIG_IGN)
+        let source = DispatchSource.makeSignalSource(signal: signal, queue: .main)
+        source.setEventHandler { [weak self] in
+            MainActor.assumeIsolated {
+                guard let self else { return }
+                handle(self)
+                self.render()
+            }
+        }
+        source.resume()
+        return source
+    }
+
     @objc private func toggle() {
-        isOpen.toggle()
+        isOpen = !isOpen && !staysClosed
         render()
     }
 

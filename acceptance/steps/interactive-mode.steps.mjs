@@ -186,6 +186,14 @@ Then('interactive mode is still running', function () {
   )
 })
 
+When('the demo list closes by itself', async function () {
+  await this.closeDemoList()
+})
+
+When('the demo list closes and refuses to reopen', async function () {
+  await this.closeDemoList({ staysClosed: true })
+})
+
 When('interactive mode is sent SIGTERM', function () {
   this.sendSignal('SIGTERM')
 })

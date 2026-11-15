@@ -65,6 +65,25 @@ Feature: Interactive mode
     And the Notification Center panel is above the overlay in the window order
     And the overlay is translucent
 
+  # Validates RIM-31: a list that closes under the mode is reopened, not read as empty.
+  @demo
+  Scenario: A panel that closes by itself is reopened
+    Given interactive mode is running with demo file "three.json"
+    When the demo list closes by itself
+    Then the demo list is open
+    And interactive mode is still running
+    And exactly one action panel is present
+    And the overlay shows no label
+
+  # Validates RIM-32: a list that will not reopen ends the mode with its own message.
+  @demo
+  Scenario: A panel that cannot be reopened ends the mode
+    Given interactive mode is running with demo file "three.json"
+    When the demo list closes and refuses to reopen
+    Then the overlay shows the label "Notification Center could not be kept open"
+    And interactive mode exits with status 0
+    And no overlay window is present
+
   # Validates RIM-10: one panel, beside the selected notification only, listing
   # Activate, Dismiss, then that notification's actions, immediately left of it,
   # top-aligned and no shorter than it.

@@ -4,10 +4,10 @@ BDD scenarios (Gherkin) specifying interactive mode. These `.feature` files **ar
 acceptance tests: [cucumber-js](https://github.com/cucumber/cucumber-js) runs them against the
 compiled `nbk` binary as a black box, using the step definitions in `acceptance/steps/`.
 
-The thirty-six unattended scenarios run in the default acceptance run. All but one run in demo mode
-([RIM-21](../requirements.md#demo-mode)) and never touch the real Notification Center; the exception
-is the window-order scenario, which needs the real panel. The trust scenario is `@operator` and runs
-only attended.
+The thirty-eight unattended scenarios run in the default acceptance run. All but one run in demo
+mode ([RIM-21](../requirements.md#demo-mode)) and never touch the real Notification Center; the
+exception is the window-order scenario, which needs the real panel. The trust scenario is
+`@operator` and runs only attended.
 
 | Scenario                                                                                  | Validates              | Status                                         |
 | ----------------------------------------------------------------------------------------- | ---------------------- | ---------------------------------------------- |
@@ -45,6 +45,8 @@ only attended.
 | Entering demo mode opens the demo list (demo)                                             | RIM-21                 | ✅                                             |
 | Leaving demo mode closes the demo list (demo)                                             | RIM-21                 | ✅                                             |
 | Entering demo mode leaves an already open demo list open (demo)                           | RIM-21                 | ✅                                             |
+| A panel that closes by itself is reopened (demo)                                          | RIM-31, RIM-21         | ✅                                             |
+| A panel that cannot be reopened ends the mode (demo)                                      | RIM-32, RIM-21         | ✅                                             |
 | Focus taken by another application is reclaimed (demo)                                    | RIM-25, RIM-21         | ✅                                             |
 | A reply field in the panel takes focus until it is gone (demo)                            | RIM-27, RIM-21         | ✅                                             |
 | Missing Accessibility trust is refused                                                    | RIM-9                  | ✅ `@operator` — attended; last run 2026-09-27 |
@@ -76,6 +78,10 @@ notification access uses. None needs a new framework.
   departure with `arrivesAfter` / `leavesAfter` seconds. The harness reads presented notifications
   from the demo application's window instead of Notification Center, and never runs `nbk list` in
   such a scenario. Teardown stops both processes.
+- **Closing the demo list underneath the mode.** "When the demo list closes by itself" presses the
+  demo application's menu bar item, standing in for Notification Center closing its panel on its
+  own; "When the demo list closes and refuses to reopen" signals the demo application to close its
+  list and ignore every later request to open it.
 - **Keystrokes.** Movement and activator keys are posted through System Events, each step first
   asserting the overlay is frontmost so a mistimed key cannot reach another app.
 - **Focus changes.** "When another application is activated" activates Finder, standing in for the

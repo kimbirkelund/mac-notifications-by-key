@@ -267,6 +267,12 @@ $.NSWorkspace.sharedWorkspace.frontmostApplication.processIdentifier`
 
 const KEY_CODES = { Escape: 53, Space: 49, Down: 125, Up: 126, Return: 36 }
 
+const pressDemoToggleScript = (pid) => `
+const se = Application('System Events')
+const proc = se.processes.whose({ unixId: ${pid} })[0]
+proc.menuBars[0].menuBarItems[0].actions.byName('AXPress').perform()
+`
+
 const demoReplyFieldFocusedScript = (pid) => `
 const se = Application('System Events')
 const procs = se.processes.whose({ unixId: ${pid} })()
@@ -513,6 +519,15 @@ export class NbkWorld extends World {
   // Those presented when the mode starts: a notification with arrivesAfter is absent until then.
   demoInitiallyPresented() {
     return this.demoNotifications().filter((n) => n.arrivesAfter === 0)
+  }
+
+  // Pressing the toggle closes the list as the user would; SIGUSR1 closes it and makes
+  // demo-nc ignore every later open.
+  async closeDemoList({ staysClosed = false } = {}) {
+    if (staysClosed) this.demo.nc.child.kill('SIGUSR1')
+    else await osascript(pressDemoToggleScript(this.demo.nc.child.pid), 'JavaScript')
+    const closed = await pollUntil(async () => !(await this.isDemoListOpen()), 2000, 20)
+    if (!closed) throw new Error('the demo list did not close')
   }
 
   sendSignal(sig) {
