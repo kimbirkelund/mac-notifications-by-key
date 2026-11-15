@@ -100,13 +100,14 @@ following are verified there:
   closes again about 0.33 s later, in every trial, whichever application is frontmost. A second
   press while it is open is ignored, so this is not a double toggle. A panel opened by a click on
   the clock, by hand or by a posted mouse event, stays open. Another application's panel taking
-  focus, such as a launcher, can still close it. Read the panel as open only if it is still open a
-  second after opening it; an immediate reading misses the self-close.
+  focus, such as a launcher, can still close it. An immediate reading misses the self-close: only a
+  reading a second after opening shows whether the panel stayed open.
 - **nbk opens the panel with a click and closes it with `AXPress`.** The click is a posted mouse
   click at the centre of the clock element's frame as the Accessibility API reports it at that
   moment, and the pointer is put back where it was ([C-1](constraints.md)). `AXPress` on the clock
-  closes a panel opened this way. nbk counts the panel as opened only when it is still open one
-  second after the click.
+  closes a panel opened this way. On entering interactive mode nbk counts the panel as opened as
+  soon as it reads open, and shows the mode at once; if the panel closes later, the mode reopens it.
+  A reopen counts only when the panel is still open one second after the click.
 - **A closed panel is not an empty panel.** An open panel with no notifications keeps its window and
   its "Edit Widgets" button
   ([Telling whether the panel is open](#telling-whether-the-panel-is-open)); a closed one has

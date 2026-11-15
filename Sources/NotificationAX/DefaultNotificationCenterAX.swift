@@ -223,14 +223,6 @@ public struct DefaultNotificationCenterAX: NotificationCenterAccess {
             }
             Thread.sleep(forTimeInterval: 0.1)
         }
-        if let restored = pointer {
-            restorePointer(to: restored)
-            pointer = nil
-        }
-        guard open else { return }
-        let settle = toggled.addingTimeInterval(1).timeIntervalSinceNow
-        if settle > 0 { Thread.sleep(forTimeInterval: settle) }
-        if !panelIsOpen(pid) { throw NbkError.actionFailed(name: "\(name) (closed again)") }
     }
 
     /// A panel opened with `AXPress` on the clock closes by itself on macOS 27.2;

@@ -203,6 +203,8 @@ final class Session {
     private nonisolated static let presentedReadInterval: TimeInterval = 0.15
     private nonisolated static let presentedEmptyAgreement = 2
     private static let refreshInterval: TimeInterval = 0.5
+    /// A panel that is going to close by itself does so well within this.
+    private nonisolated static let reopenConfirmation: TimeInterval = 1
     private static let reclaimRecheckInterval: TimeInterval = 0.1
 
     /// The panel fills in over several reads and its rows slide into place, so a
@@ -401,7 +403,11 @@ final class Session {
         reopening = true
         nonisolated(unsafe) let access = access
         panelQueue.async {
-            let confirmed = (try? access.setPanelOpen(true)) != nil
+            let started = Date()
+            let opened = (try? access.setPanelOpen(true)) != nil
+            let remaining = started.addingTimeInterval(Self.reopenConfirmation).timeIntervalSinceNow
+            if opened, remaining > 0 { Thread.sleep(forTimeInterval: remaining) }
+            let confirmed = opened && access.isPanelOpen
             DispatchQueue.main.async {
                 MainActor.assumeIsolated {
                     self.reopening = false
