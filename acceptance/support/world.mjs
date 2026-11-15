@@ -380,7 +380,8 @@ export class NbkWorld extends World {
   // toggle can't silently pass.
   async operatorSetTrust(wantTrusted) {
     const verb = wantTrusted ? 'Grant' : 'Revoke'
-    const where = 'System Settings -> Privacy & Security -> Accessibility'
+    const where =
+      'System Settings -> Privacy & Security -> Device Control and Data Access ("Accessibility" on older macOS)'
     let attempt = 0
     while ((await this.isTrusted()) !== wantTrusted) {
       const message =

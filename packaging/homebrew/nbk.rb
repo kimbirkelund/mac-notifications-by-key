@@ -26,7 +26,7 @@ class Nbk < Formula
       process that runs it (your terminal, or skhd) must be granted Accessibility
       permission:
 
-        System Settings → Privacy & Security → Accessibility
+        System Settings → Privacy & Security → Device Control and Data Access ("Accessibility" on older macOS)
 
       Check status any time with:  nbk doctor
     EOS
