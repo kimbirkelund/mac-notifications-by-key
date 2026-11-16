@@ -5,7 +5,7 @@
       "title": "Late",
       "subtitle": null,
       "body": null,
-      "arrivesAfter": 4,
+      "arrivesOn": "signal",
       "actions": []
     },
     {

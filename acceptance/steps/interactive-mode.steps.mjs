@@ -195,6 +195,10 @@ When('the demo list closes and refuses to reopen', async function () {
   await this.closeDemoList({ staysClosed: true })
 })
 
+When('the held notifications arrive or leave', async function () {
+  await this.releaseHeldDemoNotifications()
+})
+
 When('interactive mode is sent SIGTERM', function () {
   this.sendSignal('SIGTERM')
 })
@@ -562,7 +566,7 @@ async function assertGone(world, titles) {
     const arrived = new Set(world.demoArrived ?? [])
     const want = world
       .demoNotifications()
-      .filter((n) => n.arrivesAfter === 0 || arrived.has(n.title))
+      .filter((n) => !n.arrivesLater || arrived.has(n.title))
       .map((n) => n.title)
       .filter((t) => !world.demoRemoved.includes(t))
     let last = null
@@ -617,7 +621,7 @@ Then('the notification titled {string} becomes presented', STEP, async function 
     presented,
     `expected a notification titled ${JSON.stringify(title)} to become presented; last read: ${JSON.stringify(last)}`
   )
-  this.demoArrived = [...(this.demoArrived ?? []), title]
+  this.recordDemoArrived([title])
 })
 
 // Nothing marks a non-closing entry as done, so hold for a window in which a removal would show.
