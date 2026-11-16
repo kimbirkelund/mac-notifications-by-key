@@ -28,6 +28,10 @@ public struct DemoAction: Equatable, Sendable, Codable {
     }
 }
 
+public enum DemoTrigger: String, Equatable, Sendable, Codable {
+    case signal
+}
+
 public struct DemoNotification: Equatable, Sendable, Codable {
     public var app: String?
     public var title: String?
@@ -38,6 +42,8 @@ public struct DemoNotification: Equatable, Sendable, Codable {
     public var members: [DemoNotification]
     public var arrivesAfter: TimeInterval?
     public var leavesAfter: TimeInterval?
+    public var arrivesOn: DemoTrigger?
+    public var leavesOn: DemoTrigger?
     public var takes: TimeInterval?
 
     public init(
@@ -50,6 +56,8 @@ public struct DemoNotification: Equatable, Sendable, Codable {
         members: [DemoNotification] = [],
         arrivesAfter: TimeInterval? = nil,
         leavesAfter: TimeInterval? = nil,
+        arrivesOn: DemoTrigger? = nil,
+        leavesOn: DemoTrigger? = nil,
         takes: TimeInterval? = nil
     ) {
         self.app = app
@@ -61,12 +69,14 @@ public struct DemoNotification: Equatable, Sendable, Codable {
         self.members = members
         self.arrivesAfter = arrivesAfter
         self.leavesAfter = leavesAfter
+        self.arrivesOn = arrivesOn
+        self.leavesOn = leavesOn
         self.takes = takes
     }
 
     private enum CodingKeys: String, CodingKey {
         case app, title, subtitle, body, activateCloses, actions, members
-        case arrivesAfter, leavesAfter, takes
+        case arrivesAfter, leavesAfter, arrivesOn, leavesOn, takes
     }
 
     public init(from decoder: Decoder) throws {
@@ -81,10 +91,14 @@ public struct DemoNotification: Equatable, Sendable, Codable {
             members: try c.decodeIfPresent([DemoNotification].self, forKey: .members) ?? [],
             arrivesAfter: try c.decodeIfPresent(TimeInterval.self, forKey: .arrivesAfter),
             leavesAfter: try c.decodeIfPresent(TimeInterval.self, forKey: .leavesAfter),
+            arrivesOn: try c.decodeIfPresent(DemoTrigger.self, forKey: .arrivesOn),
+            leavesOn: try c.decodeIfPresent(DemoTrigger.self, forKey: .leavesOn),
             takes: try c.decodeIfPresent(TimeInterval.self, forKey: .takes))
     }
 
-    public var hasTiming: Bool { arrivesAfter != nil || leavesAfter != nil }
+    public var hasTiming: Bool {
+        arrivesAfter != nil || leavesAfter != nil || arrivesOn != nil || leavesOn != nil
+    }
 
     public var isCollapsedStack: Bool { !members.isEmpty }
 
@@ -129,7 +143,8 @@ public struct DemoFile: Equatable, Sendable, Codable {
             if notification.members.contains(where: \.hasTiming) {
                 throw DemoFileError(
                     description:
-                        "\"arrivesAfter\" and \"leavesAfter\" are not supported on \"members\"")
+                        "\"arrivesAfter\", \"leavesAfter\", \"arrivesOn\" and \"leavesOn\" are not supported on \"members\""
+                )
             }
         }
         return file

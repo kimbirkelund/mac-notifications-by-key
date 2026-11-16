@@ -38,19 +38,25 @@ Shared domain vocabulary used across all features.
   `subtitle`, a `body`, an `activateCloses` flag (default true) saying whether activating it removes
   it, and `actions` (default none), and may schedule its `arrivesAfter` (it is absent from the list
   until that many seconds after the demo application starts, whether or not the list is open) and
-  its `leavesAfter` (it is removed after that many seconds), and may give a `takes` delay, the
-  seconds after an entry that removes it is performed before it leaves; the entry itself returns at
-  once. An action is either a bare name, which removes the notification when performed, or an object
-  with a `name`, a `closes` flag and a `field` flag (default false). Performing a `field` action
-  opens an editable reply field on the notification, exposed through AX as a text field, and keeps
-  the notification; Return in the field removes the notification, after any `takes` delay, whatever
-  `closes` says, and Escape drops the field and keeps the notification. A notification with a
-  non-empty `members` array (each member a notification of the same shape, newest first) is a
-  collapsed stack presented under its own `app` and `title`: expanding it replaces it with its
-  members, dismissing it removes it with its members, and it cannot be activated. Members cannot
-  themselves have `members`, nor `arrivesAfter` or `leavesAfter`; both are non-negative numbers of
-  seconds. Unknown keys are ignored. A file that is missing, unreadable or not valid is reported by
-  `demo-nc` on standard error with a non-zero exit status, before any window appears.
+  its `leavesAfter` (it is removed after that many seconds). Instead of, or as well as, a number of
+  seconds, its arrival or departure may wait for a signal: `arrivesOn` or `leavesOn` set to
+  `"signal"` keeps it absent, or present, until the demo application receives `SIGUSR2`, which makes
+  every such pending arrival and departure happen at once. A notification with both a delay and
+  `arrivesOn` arrives once both have passed; one with both `leavesAfter` and `leavesOn` leaves at
+  whichever comes first. It may also give a `takes` delay, the seconds after an entry that removes
+  it is performed before it leaves; the entry itself returns at once. An action is either a bare
+  name, which removes the notification when performed, or an object with a `name`, a `closes` flag
+  and a `field` flag (default false). Performing a `field` action opens an editable reply field on
+  the notification, exposed through AX as a text field, and keeps the notification; Return in the
+  field removes the notification, after any `takes` delay, whatever `closes` says, and Escape drops
+  the field and keeps the notification. A notification with a non-empty `members` array (each member
+  a notification of the same shape, newest first) is a collapsed stack presented under its own `app`
+  and `title`: expanding it replaces it with its members, dismissing it removes it with its members,
+  and it cannot be activated. Members cannot themselves have `members`, nor `arrivesAfter`,
+  `leavesAfter`, `arrivesOn` or `leavesOn`; `arrivesAfter` and `leavesAfter` are non-negative
+  numbers of seconds, and `"signal"` is the only value `arrivesOn` and `leavesOn` accept. Unknown
+  keys are ignored. A file that is missing, unreadable or not valid is reported by `demo-nc` on
+  standard error with a non-zero exit status, before any window appears.
 - **Demo state.** What the demo application presents at a moment, as a JSON object with two keys:
   `notifications`, the list of presented notifications in list order, and `listOpen`, whether its
   list is open. Each notification has an `id` that stays the same while it is presented (an expanded
@@ -65,11 +71,11 @@ Shared domain vocabulary used across all features.
   after the event. An event is written only once the demo application's window shows that state, so
   a reader that has seen it may rely on what the window exposes. The event names are `ready` (once,
   when the window and menu bar item exist), `arrived` and `departed` (a notification became
-  presented or stopped being presented because of its schedule, with its `id`), `list-opened` and
-  `list-closed`, and `action`. An `action` event says what was done to a notification and with what
-  result: its `kind` is `press`, `close`, `named`, `expand`, `clear-all` or `submit-field`, with the
-  target `id` when there is one, the `action` name for `named`, the typed `text` for `submit-field`,
-  and an `outcome` of `applied` (it took effect), `kept` (it was performed and the notification
-  stayed) or `failed` (it was refused, with the reason in `error`). A failed action changes nothing,
-  and the event is still written. The event stream is for the harness and tests that start the demo
-  application; `nbk` never reads it.
+  presented or stopped being presented because of its schedule or a `SIGUSR2`, with its `id`),
+  `list-opened` and `list-closed`, and `action`. An `action` event says what was done to a
+  notification and with what result: its `kind` is `press`, `close`, `named`, `expand`, `clear-all`
+  or `submit-field`, with the target `id` when there is one, the `action` name for `named`, the
+  typed `text` for `submit-field`, and an `outcome` of `applied` (it took effect), `kept` (it was
+  performed and the notification stayed) or `failed` (it was refused, with the reason in `error`). A
+  failed action changes nothing, and the event is still written. The event stream is for the harness
+  and tests that start the demo application; `nbk` never reads it.

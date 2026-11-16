@@ -394,4 +394,129 @@ import Testing
         #expect(Self.titles(model) == ["late", "m"])
     }
 
+    private final class Events: @unchecked Sendable {
+        private let lock = NSLock()
+        private var all: [DemoEvent] = []
+        var recorded: [DemoEvent] { lock.withLock { all } }
+        func record(_ event: DemoEvent) { lock.withLock { all.append(event) } }
+    }
+
+    @Test func aSignalGatedArrivalIsAbsentUntilTheSignalAndIsReportedOnIt() {
+        let clock = Clock()
+        let model = Self.timed(
+            [DemoNotification(title: "late", arrivesOn: .signal), DemoNotification(title: "A")],
+            clock: clock)
+        let events = Events()
+        model.observer = events.record
+        clock.advance(60)
+        model.advance()
+        #expect(Self.titles(model) == ["A"])
+        #expect(events.recorded.isEmpty)
+        model.signal()
+        #expect(Self.titles(model) == ["late", "A"])
+        #expect(events.recorded.map(\.event) == [.arrived])
+        #expect(events.recorded.map(\.id) == [0])
+        #expect(events.recorded.first?.state.notifications.map(\.title) == ["late", "A"])
+    }
+
+    @Test func aSignalGatedDepartureIsPresentUntilTheSignalAndIsReportedOnIt() {
+        let clock = Clock()
+        let model = Self.timed(
+            [DemoNotification(title: "A", leavesOn: .signal), DemoNotification(title: "B")],
+            clock: clock)
+        let events = Events()
+        model.observer = events.record
+        clock.advance(60)
+        model.advance()
+        #expect(Self.titles(model) == ["A", "B"])
+        #expect(events.recorded.isEmpty)
+        model.signal()
+        #expect(Self.titles(model) == ["B"])
+        #expect(events.recorded.map(\.event) == [.departed])
+        #expect(events.recorded.map(\.id) == [0])
+        #expect(events.recorded.first?.state.notifications.map(\.title) == ["B"])
+    }
+
+    @Test func oneSignalReleasesEveryPendingArrivalAndDeparture() {
+        let model = Self.model([
+            DemoNotification(title: "in1", arrivesOn: .signal),
+            DemoNotification(title: "out", leavesOn: .signal),
+            DemoNotification(title: "in2", arrivesOn: .signal),
+            DemoNotification(title: "stays"),
+        ])
+        #expect(Self.titles(model) == ["out", "stays"])
+        model.signal()
+        #expect(Self.titles(model) == ["in1", "in2", "stays"])
+        model.signal()
+        #expect(Self.titles(model) == ["in1", "in2", "stays"])
+    }
+
+    @Test func timerFieldsKeepWorkingAlongsideSignalGatedNotifications() {
+        let clock = Clock()
+        let model = Self.timed(
+            [
+                DemoNotification(title: "timed-in", arrivesAfter: 2),
+                DemoNotification(title: "timed-out", leavesAfter: 3),
+                DemoNotification(title: "signal-out", leavesOn: .signal),
+            ], clock: clock)
+        #expect(Self.titles(model) == ["timed-out", "signal-out"])
+        clock.advance(2)
+        #expect(Self.titles(model) == ["timed-in", "timed-out", "signal-out"])
+        clock.advance(1)
+        #expect(Self.titles(model) == ["timed-in", "signal-out"])
+        model.signal()
+        #expect(Self.titles(model) == ["timed-in"])
+    }
+
+    @Test func aNotificationWithATimedArrivalAndASignalledDepartureNeedsBoth() {
+        let clock = Clock()
+        let model = Self.timed(
+            [DemoNotification(title: "A", arrivesAfter: 2, leavesOn: .signal)], clock: clock)
+        #expect(Self.titles(model).isEmpty)
+        clock.advance(2)
+        #expect(Self.titles(model) == ["A"])
+        model.signal()
+        #expect(Self.titles(model).isEmpty)
+    }
+
+    @Test func aSignalledArrivalWithATimerArrivesOnlyOnceBothHaveHappened() {
+        let clock = Clock()
+        let model = Self.timed(
+            [DemoNotification(title: "A", arrivesAfter: 2, arrivesOn: .signal)], clock: clock)
+        model.signal()
+        #expect(Self.titles(model).isEmpty)
+        clock.advance(2)
+        #expect(Self.titles(model) == ["A"])
+    }
+
+    @Test func aSignalledDepartureWithATimerLeavesOnWhicheverComesFirst() {
+        let clock = Clock()
+        let model = Self.timed(
+            [DemoNotification(title: "A", leavesAfter: 3, leavesOn: .signal)], clock: clock)
+        clock.advance(3)
+        #expect(Self.titles(model).isEmpty)
+    }
+
+    @Test func aSignalledDepartureWithATimerLeavesOnTheSignalBeforeTheTimer() {
+        let clock = Clock()
+        let model = Self.timed(
+            [DemoNotification(title: "A", leavesAfter: 3, leavesOn: .signal)], clock: clock)
+        #expect(Self.titles(model) == ["A"])
+        model.signal()
+        #expect(Self.titles(model).isEmpty)
+    }
+
+    @Test func expandedMembersLeaveOnTheSignalWhenTheStackWould() throws {
+        let model = Self.model([
+            DemoNotification(
+                title: "S",
+                members: [DemoNotification(title: "m1"), DemoNotification(title: "m2")],
+                leavesOn: .signal),
+            DemoNotification(title: "B"),
+        ])
+        try model.expand(index: 0)
+        #expect(Self.titles(model) == ["m1", "m2", "B"])
+        model.signal()
+        #expect(Self.titles(model) == ["B"])
+    }
 }
