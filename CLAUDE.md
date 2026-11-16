@@ -9,6 +9,12 @@ Feature requirements live under `docs/features/<name>/`. The flow is: EARS requi
 acceptance scenarios (`.feature`) → implementation. Acceptance scenarios are the executable spec;
 code exists to make them pass.
 
+Docs explain **what** the app does, not **how**: describe capabilities and external surface — no
+`file:line` citations, internal symbol names, or code-structure narration. Architecture and
+constraint facts belong in `docs/constraints.md` and feature `description.md`, not in user-facing
+prose. Keep code and docs in sync: a change that renames or moves code, or adds a constraint,
+updates every doc that references it (README, CLAUDE.md, `docs/`) in the same change.
+
 ## Testing
 
 Three tiers (see [`docs/testing.md`](docs/testing.md)): **unit** (swift-testing, no AX),
@@ -43,6 +49,14 @@ validates is fine in test comments.
 
 - Before committing, run `./build.ps1 -DoLint` and `./build.ps1 -DoTest` (builds, then runs all test
   tiers) and fix any failures. Never commit code that does not build, lint clean, and pass tests.
+  - Exception: a change touching only markdown needs `./build.ps1 -DoLint` alone. Anything touching
+    Swift, scripts, `.feature` files or test support still gets the full run.
+  - While iterating on visual tweaks (tint, spacing, look), build and screenshot per tweak; run lint
+    and the full suite once before committing, or as soon as logic changes.
+- Label every PR so the auto-generated release notes (`.github/release.yml`) categorize it — the
+  changelog is label-driven, not commit-title-driven: feature → `enhancement`, bugfix → `bug`, docs
+  → `documentation`, CI/chore/tooling → `chore`. Unlabelled PRs land in "Other Changes". `ignore`
+  (excluded from the changelog) is for the automated version-bump and merge-back PRs only.
 - Only commit if explicitly allowed by the human.
 - Only push if explicitly allowed by the human.
 - Use [Conventional Commits](https://www.conventionalcommits.org) (`type: subject`, e.g. `feat:`,
