@@ -54,11 +54,16 @@ exactly what the fixture says. The demo application exposes them through the Acc
 Notification Center, so `nbk` reads and acts on them through its real adapter. Teardown stops both
 processes. Scenarios that use a fixture never run `nbk list`. Tag them `@demo`: the hooks then skip
 the Notification Center clearing (which opens and closes the panel) around them and only stop the
-mode and the demo application. The harness reads the overlay windows and their action panels from
-`nbk`, and the notification boxes from the demo application's window, through `axdump`, a small
-helper built next to `nbk` that dumps the accessibility windows of a process in one pass, together
-with the menu bar items the process owns (the harness uses the demo application's item to tell that
-it is ready, and its window to tell whether its list is open).
+mode and the demo application. The demo application also reports its own state and what was done to
+it as a stream of events on standard output (see [definitions](definitions.md)): that it is ready,
+which notifications are presented and in what order, whether its list is open, and each action
+performed on a notification with its outcome and any reply text. Each event is written after the
+window shows the state it describes. The harness reads this stream for readiness and presented-state
+checks, and to tell which action an entry received, instead of inferring them from the window. The
+accessibility tree stays the source for geometry and for everything `nbk` sees: the harness reads
+the overlay windows and their action panels from `nbk`, and the notification boxes from the demo
+application's window, through `axdump`, a small helper built next to `nbk` that dumps the
+accessibility windows of a process in one pass.
 
 Demo mode proves the key handling, selection and panel logic of the overlay, and that entries act on
 the list the way the file says. It does not prove that Notification Center's accessibility tree is
@@ -123,3 +128,12 @@ includes `Operator`, because it waits for a human at the terminal. The underlyin
 `swift test --filter NotificationCoreTests --filter NotificationAXUnitTests --filter InteractiveModeTests`,
 `swift test --filter NotificationAXIntegrationTests`, and `npx cucumber-js`. `@wip` and `@operator`
 scenarios are excluded from the acceptance run via `tags` in `cucumber.mjs`.
+
+To run less than a whole tier, pass `-UnitFilter` or `-IntegrationFilter` (one or more
+`swift test --filter` names) and `-AcceptancePaths` (one or more feature files or directories).
+Each, when given, replaces that tier's default suites or feature paths; omitting them runs the
+defaults.
+
+```sh
+./build.ps1 -DoTest -Kinds All -UnitFilter DemoNotificationsTests -IntegrationFilter DemoNotificationCenterAXTests -AcceptancePaths docs/features/interactive-mode/acceptance/interactive-mode.feature
+```

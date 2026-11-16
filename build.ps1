@@ -9,6 +9,9 @@
     Unit         swift test --filter NotificationCoreTests|DemoNotificationsTests|NotificationAXUnitTests|InteractiveModeTests (no AX)
     Integration  swift test --filter NotificationAXIntegrationTests  (needs AX trust)
     Acceptance   cucumber-js driving the compiled nbk binary         (needs AX trust)
+  Narrow a tier with -UnitFilter / -IntegrationFilter (swift test --filter names) and
+  -AcceptancePaths (feature files or directories passed to cucumber-js). Each, when
+  given, replaces that tier's default suites or feature paths.
   Operator runs the attended @operator scenarios (cucumber-js -p operator); it
   prompts a human at the terminal, so it is never part of All.
   Integration/Acceptance/Operator are skipped (not failed) when Accessibility trust is absent.
@@ -39,6 +42,8 @@
 .EXAMPLE
   ./build.ps1 -DoBuild
   ./build.ps1 -DoTest -Kinds Unit
+  ./build.ps1 -DoTest -Kinds Unit -UnitFilter DemoNotificationsTests
+  ./build.ps1 -DoTest -Kinds Acceptance -AcceptancePaths docs/features/interactive-mode/acceptance/interactive-mode.feature
   ./build.ps1 -DoTest -Kinds Operator      # attended scenarios; needs a human at the terminal
   ./build.ps1 -DoLint            # check only (fails on violations)
   ./build.ps1 -DoLint -Fix       # auto-format Swift + docs in place
@@ -87,6 +92,15 @@ param(
   [ValidateSet('All', 'Unit', 'Integration', 'Acceptance', 'Operator')]
   [string[]]$Kinds = @('All'),
 
+  [Parameter(ParameterSetName = 'Test')]
+  [string[]]$UnitFilter = @(),
+
+  [Parameter(ParameterSetName = 'Test')]
+  [string[]]$IntegrationFilter = @(),
+
+  [Parameter(ParameterSetName = 'Test')]
+  [string[]]$AcceptancePaths = @(),
+
   [Parameter(ParameterSetName = 'Build')]
   [Parameter(ParameterSetName = 'Test')]
   [Parameter(ParameterSetName = 'Run')]
@@ -120,6 +134,28 @@ function Invoke-Checked($file, [string[]]$argv)
 {
   & $file @argv
   if ($LASTEXITCODE -ne 0) { throw "$file $($argv -join ' ') exited $LASTEXITCODE" }
+}
+
+# Comma-separated values arrive as one string through `pwsh -File`, so split them.
+function Split-List([string[]]$values)
+{
+  @($values | ForEach-Object { $_ -split ',' } | ForEach-Object { $_.Trim() } | Where-Object { $_ })
+}
+
+# A filter that matches nothing makes swift test exit 0 with zero tests run; refuse that.
+function Invoke-SwiftTestFiltered([string[]]$suites)
+{
+  $argv = @('test') + ($suites | ForEach-Object { '--filter', $_ })
+  $lines = [System.Collections.Generic.List[string]]::new()
+  & swift @argv 2>&1 | ForEach-Object { $lines.Add("$_"); Write-Host $_ }
+  if ($LASTEXITCODE -ne 0) { throw "swift $($argv -join ' ') exited $LASTEXITCODE" }
+  $ran = 0
+  foreach ($line in $lines)
+  {
+    if ($line -match 'Test run with (\d+) tests?') { $ran += [int]$Matches[1] }
+    elseif ($line -match 'Executed (\d+) tests?,') { $ran += [int]$Matches[1] }
+  }
+  if ($ran -eq 0) { throw "swift $($argv -join ' ') ran no tests" }
 }
 
 # Invoke-ScriptAnalyzer in-process intermittently throws a rule-level NRE and then leaves
@@ -439,8 +475,11 @@ if ($DoTest)
 {
   if ($selected -contains 'Unit')
   {
-    Write-Step 'Unit tier (NotificationCoreTests, DemoNotificationsTests, NotificationAXUnitTests, InteractiveModeTests)'
-    Invoke-Checked 'swift' @('test', '--filter', 'NotificationCoreTests', '--filter', 'DemoNotificationsTests', '--filter', 'NotificationAXUnitTests', '--filter', 'InteractiveModeTests')
+    $unitFilters = Split-List $UnitFilter
+    $unitSuites = if ($unitFilters.Count -gt 0) { $unitFilters } else { @('NotificationCoreTests', 'DemoNotificationsTests', 'NotificationAXUnitTests', 'InteractiveModeTests') }
+    Write-Step "Unit tier ($($unitSuites -join ', '))"
+    if ($unitFilters.Count -gt 0) { Invoke-SwiftTestFiltered $unitSuites }
+    else { Invoke-Checked 'swift' (@('test') + ($unitSuites | ForEach-Object { '--filter', $_ })) }
   }
 
   $needTrust = ($selected -contains 'Integration') -or ($selected -contains 'Acceptance') -or ($selected -contains 'Operator')
@@ -461,8 +500,11 @@ if ($DoTest)
     {
       if ($trusted)
       {
-        Write-Step 'AX-integration tier (NotificationAXIntegrationTests)'
-        Invoke-Checked 'swift' @('test', '--filter', 'NotificationAXIntegrationTests')
+        $integrationFilters = Split-List $IntegrationFilter
+        $integrationSuites = if ($integrationFilters.Count -gt 0) { $integrationFilters } else { @('NotificationAXIntegrationTests') }
+        Write-Step "AX-integration tier ($($integrationSuites -join ', '))"
+        if ($integrationFilters.Count -gt 0) { Invoke-SwiftTestFiltered $integrationSuites }
+        else { Invoke-Checked 'swift' (@('test') + ($integrationSuites | ForEach-Object { '--filter', $_ })) }
       }
       else { Write-Skip 'Integration tier (no Accessibility trust)' }
     }
@@ -475,7 +517,18 @@ if ($DoTest)
         if (-not (Test-Path 'node_modules')) { Invoke-Checked 'npm' @('install') }
         $env:NBK_BIN = (Resolve-Path $binPath).Path
         $env:DEMO_NC_BIN = Join-Path (Split-Path $env:NBK_BIN -Parent) 'demo-nc'
-        Invoke-Checked 'npx' @('cucumber-js')
+        $acceptancePaths = Split-List $AcceptancePaths
+        if ($acceptancePaths.Count -gt 0)
+        {
+          # cucumber-js merges CLI paths with the config's paths, so narrowing needs a config override.
+          $baseConfig = ConvertTo-Json -InputObject ([uri]::new("file://$((Resolve-Path 'cucumber.mjs').Path)")).AbsoluteUri -Compress
+          $narrowConfig = Join-Path ([System.IO.Path]::GetTempPath()) "cucumber-narrow-$PID.mjs"
+          $pathsJson = ConvertTo-Json -InputObject @($acceptancePaths | ForEach-Object { $spec = [regex]::Match($_, '^(.*?)((?::\d+)*)$'); (Resolve-Path $spec.Groups[1].Value).Path + $spec.Groups[2].Value }) -Compress
+          Set-Content -Path $narrowConfig -Value "import base from $baseConfig; export default { ...base, paths: $pathsJson };"
+          try { Invoke-Checked 'npx' @('cucumber-js', '--config', [System.IO.Path]::GetRelativePath((Get-Location).Path, $narrowConfig)) }
+          finally { Remove-Item $narrowConfig -ErrorAction SilentlyContinue }
+        }
+        else { Invoke-Checked 'npx' @('cucumber-js') }
       }
       else { Write-Skip 'Acceptance tier (no Accessibility trust)' }
     }

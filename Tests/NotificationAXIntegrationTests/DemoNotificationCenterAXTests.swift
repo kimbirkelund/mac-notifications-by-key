@@ -26,14 +26,102 @@ import Testing
         NotificationCenterAccessFactory.make().isTrusted && demoBinary != nil
     }
 
-    private func launchDemo(fixture: String, open: Bool = true) throws -> Process {
+    private struct DemoEvent: Decodable {
+        struct Notification: Decodable {
+            var id: Int
+            var title: String?
+            var replyField: Bool
+        }
+        struct State: Decodable {
+            var listOpen: Bool
+            var notifications: [Notification]
+        }
+        var seq: Int
+        var event: String
+        var id: Int?
+        var kind: String?
+        var action: String?
+        var outcome: String?
+        var state: State
+    }
+
+    private final class DemoProcess: @unchecked Sendable {
         let process = Process()
-        process.executableURL = try #require(Self.demoBinary)
-        process.arguments =
-            (open ? ["--open"] : [])
-            + [Self.repoRoot.appendingPathComponent("acceptance/fixtures/\(fixture)").path]
-        try process.run()
-        return process
+        private let condition = NSCondition()
+        private var events: [DemoEvent] = []
+        private var undecodable: [String] = []
+        private var buffer = Data()
+
+        init(arguments: [String]) throws {
+            process.executableURL = try #require(DemoNotificationCenterAXTests.demoBinary)
+            process.arguments = arguments
+            let pipe = Pipe()
+            process.standardOutput = pipe
+            pipe.fileHandleForReading.readabilityHandler = { [weak self] handle in
+                self?.receive(handle.availableData)
+            }
+            try process.run()
+        }
+
+        private func receive(_ data: Data) {
+            condition.lock()
+            defer { condition.unlock() }
+            buffer.append(data)
+            while let newline = buffer.firstIndex(of: 0x0A) {
+                let line = buffer[buffer.startIndex..<newline]
+                buffer.removeSubrange(buffer.startIndex...newline)
+                if let event = try? JSONDecoder().decode(DemoEvent.self, from: Data(line)) {
+                    events.append(event)
+                } else {
+                    undecodable.append(String(decoding: line, as: UTF8.self))
+                }
+            }
+            condition.broadcast()
+        }
+
+        var lastSeq: Int {
+            condition.lock()
+            defer { condition.unlock() }
+            return events.last?.seq ?? 0
+        }
+
+        @discardableResult
+        func waitFor(
+            timeout: TimeInterval = 6, afterSeq: Int = 0, _ matches: (DemoEvent) -> Bool
+        ) throws -> DemoEvent {
+            let deadline = Date().addingTimeInterval(timeout)
+            condition.lock()
+            defer { condition.unlock() }
+            while true {
+                if let event = events.first(where: { $0.seq > afterSeq && matches($0) }) {
+                    return event
+                }
+                guard condition.wait(until: deadline) else {
+                    let skipped = undecodable.isEmpty ? "" : "; undecodable lines: \(undecodable)"
+                    throw NbkError.actionFailed(name: "await demo-nc event\(skipped)")
+                }
+            }
+        }
+
+        @discardableResult
+        func awaitEvent(
+            _ name: String, afterSeq: Int = 0, timeout: TimeInterval = 6
+        ) throws -> DemoEvent {
+            try waitFor(timeout: timeout, afterSeq: afterSeq) { $0.event == name }
+        }
+
+        func terminate() {
+            (process.standardOutput as? Pipe)?.fileHandleForReading.readabilityHandler = nil
+            process.terminate()
+        }
+    }
+
+    private func launchDemo(fixture: String, open: Bool = true) throws -> DemoProcess {
+        let demo = try DemoProcess(
+            arguments: (open ? ["--open"] : [])
+                + [Self.repoRoot.appendingPathComponent("acceptance/fixtures/\(fixture)").path])
+        try demo.awaitEvent("ready")
+        return demo
     }
 
     @Test(.enabled(if: DemoNotificationCenterAXTests.available))
@@ -45,15 +133,18 @@ import Testing
         let items = try ax.read(wait: 6)
         #expect(items.map(\.title) == ["Inbox", "Meeting"])
         #expect(items.map(\.app) == ["Mail", "Calendar"])
-        #expect(items[0].isCollapsedStack)
-        #expect(items[0].actions.contains("Clear All"))
-        #expect(!items[0].actions.contains("Close"))
-        #expect(!items[1].isCollapsedStack)
-        #expect(items[1].actions.contains("Snooze"))
-        #expect(items[1].actions.contains("Close"))
+        let stack = try #require(items.first)
+        let meeting = try #require(items.dropFirst().first)
+        #expect(stack.isCollapsedStack)
+        #expect(stack.actions.contains("Clear All"))
+        #expect(!stack.actions.contains("Close"))
+        #expect(!meeting.isCollapsedStack)
+        #expect(meeting.actions.contains("Snooze"))
+        #expect(meeting.actions.contains("Close"))
 
         let presented = try ax.readPresented()
-        #expect(presented[0].extentBelow > 0)
+        let first = try #require(presented.first)
+        #expect(first.extentBelow > 0)
     }
 
     @Test(.enabled(if: DemoNotificationCenterAXTests.available))
@@ -63,24 +154,28 @@ import Testing
         let ax = DefaultNotificationCenterAX(executableNamed: "demo-nc")
 
         let deadline = Date().addingTimeInterval(6)
-        while ax.notificationCenterPID() == nil, Date() < deadline {
-            Thread.sleep(forTimeInterval: 0.1)
-        }
-        Thread.sleep(forTimeInterval: 1)
         #expect(!ax.isPanelOpen)
+        let beforeOpen = demo.lastSeq
         while true {
             do {
                 try ax.setPanelOpen(true)
                 break
             } catch {
+                if (try? demo.awaitEvent("list-opened", afterSeq: beforeOpen, timeout: 0.5)) != nil
+                {
+                    break
+                }
                 guard Date() < deadline else { throw error }
                 Thread.sleep(forTimeInterval: 0.1)
             }
         }
+        try demo.awaitEvent("list-opened", afterSeq: beforeOpen)
         #expect(ax.isPanelOpen)
         #expect(try ax.read(wait: 6).map(\.title) == ["Inbox", "Meeting"])
 
+        let beforeClose = demo.lastSeq
         try ax.setPanelOpen(false)
+        try demo.awaitEvent("list-closed", afterSeq: beforeClose)
         #expect(try ax.read(wait: 0).isEmpty)
         #expect(!ax.isPanelOpen)
     }
@@ -91,8 +186,6 @@ import Testing
         defer { demo.terminate() }
         let ax = DefaultNotificationCenterAX(executableNamed: "demo-nc")
 
-        let deadline = Date().addingTimeInterval(6)
-        while !ax.isPanelOpen, Date() < deadline { Thread.sleep(forTimeInterval: 0.1) }
         #expect(ax.isPanelOpen)
         try ax.setPanelOpen(true)
         #expect(ax.isPanelOpen)
@@ -140,12 +233,13 @@ import Testing
         let pid = try #require(ax.notificationCenterPID())
         #expect(panelTextFieldIdentifiers(pid).isEmpty)
 
+        let beforeReply = demo.lastSeq
         try ax.perform(action: "Reply", index: 0)
 
-        let deadline = Date().addingTimeInterval(6)
-        while panelTextFieldIdentifiers(pid).isEmpty, Date() < deadline {
-            Thread.sleep(forTimeInterval: 0.1)
+        let event = try demo.waitFor(afterSeq: beforeReply) {
+            $0.event == "action" && $0.action == "Reply"
         }
+        #expect(event.outcome == "kept")
         #expect(panelTextFieldIdentifiers(pid) == ["reply"])
         #expect(try ax.read(wait: 0).count == 2)
     }
@@ -168,14 +262,34 @@ import Testing
         let ax = DefaultNotificationCenterAX(executableNamed: "demo-nc")
 
         #expect(try ax.read(wait: 6).count == 2)
+        let beforeReply = demo.lastSeq
         try ax.perform(action: "Reply", index: 0)
-        let deadline = Date().addingTimeInterval(6)
-        while !ax.panelShowsTextField(), Date() < deadline { Thread.sleep(forTimeInterval: 0.1) }
+        try demo.waitFor(afterSeq: beforeReply) { $0.event == "action" && $0.action == "Reply" }
         #expect(ax.panelShowsTextField())
 
         try ax.focusPanelTextField()
 
         let pid = try #require(ax.notificationCenterPID())
         #expect(panelTextFields(pid).map(\.focused) == [true])
+    }
+
+    @Test(.enabled(if: DemoNotificationCenterAXTests.available))
+    func aNamedActionPerformedThroughTheAdapterIsReportedOnTheChannel() throws {
+        let demo = try launchDemo(fixture: "reply.json")
+        defer { demo.terminate() }
+        let ax = DefaultNotificationCenterAX(executableNamed: "demo-nc")
+
+        #expect(try ax.read(wait: 6).count == 2)
+        let beforeArchive = demo.lastSeq
+        try ax.perform(action: "Archive", index: 1)
+
+        let event = try demo.waitFor(afterSeq: beforeArchive) {
+            $0.event == "action" && $0.action == "Archive"
+        }
+        #expect(event.kind == "named")
+        #expect(event.id == 1)
+        #expect(event.outcome == "applied")
+        #expect(event.state.notifications.map(\.title) == ["Ping"])
+        #expect(try ax.read(wait: 0).map(\.title) == ["Ping"])
     }
 }

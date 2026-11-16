@@ -6,7 +6,7 @@ enum NotificationAction: Sendable {
     case close
     case clearAll
     case named(String)
-    case submitField
+    case submitField(String)
     case cancelField
 
     var name: String {
@@ -83,7 +83,7 @@ final class NotificationView: NSView, NSTextFieldDelegate {
         self.field = field
     }
 
-    @objc private func submitField() { onAction(.submitField) }
+    @objc private func submitField() { onAction(.submitField(field?.stringValue ?? "")) }
 
     override func cancelOperation(_ sender: Any?) { onAction(.cancelField) }
 

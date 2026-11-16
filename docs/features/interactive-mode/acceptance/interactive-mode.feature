@@ -220,17 +220,19 @@ Feature: Interactive mode
     Given interactive mode is running with demo file "three.json"
     And the overlay is the frontmost application
     When I press "a"
-    Then the notification titled "First" is no longer presented
+    Then the demo application received the action "Archive" for "First"
+    And the notification titled "First" is no longer presented
     And interactive mode is still running
 
   # Validates RIM-14, RIM-21: an action the demo file marks as not closing leaves the
-  # notification presented; the later d proves the key reached the mode.
+  # notification presented; the later d shows the mode still handles keys.
   @demo
   Scenario: An action that does not close keeps the notification
     Given interactive mode is running with demo file "keep-open.json"
     And the overlay is the frontmost application
     When I press "r"
-    Then the notification titled "Pinned" is still presented
+    Then the demo application received the action "Remind" for "Pinned"
+    And the notification titled "Pinned" is still presented
     And interactive mode is still running
     When I press "d"
     Then the notification titled "Pinned" is no longer presented
@@ -241,7 +243,8 @@ Feature: Interactive mode
     Given interactive mode is running with demo file "three.json"
     And the overlay is the frontmost application
     When I press "Space"
-    Then the notification titled "First" is no longer presented
+    Then the demo application received the action "Activate" for "First"
+    And the notification titled "First" is no longer presented
     And interactive mode exits with status 0
     And no overlay window is present
 
@@ -286,25 +289,29 @@ Feature: Interactive mode
     And the selected panel shows activator "s" before "Snooze"
     And the selected panel does not list "Dismiss"
 
-  # Validates RNA-14, RIM-14: the fixture's Dismiss does not close, so the notification stays only
-  # if d performed Dismiss rather than the system Close.
+  # Validates RNA-14, RIM-14: d performs the fixture's Dismiss action and not the system Close.
+  # The fixture's Dismiss does not close, so the notification stays presented.
   @demo
   Scenario: Pressing d dismisses through an explicit Dismiss action
     Given interactive mode is running with demo file "dismiss-action.json"
     And the overlay is the frontmost application
     When I press "d"
-    Then the notification titled "Standup" is still presented
+    Then the demo application received the action "Dismiss" for "Standup"
+    And the notification titled "Standup" is still presented
+    And the demo application received no "Close" for "Standup"
     And interactive mode is still running
 
   # Validates RNA-14, RNA-12, RIM-20: D dismisses the app's notifications through their Dismiss.
   # This Dismiss never removes the card, so D keeps retrying in the background until teardown;
-  # the scenario only asserts the card is still there.
+  # the card therefore stays presented.
   @demo
   Scenario: Pressing D dismisses the app's notifications through their explicit Dismiss action
     Given interactive mode is running with demo file "dismiss-action.json"
     And the overlay is the frontmost application
     When I press "D"
-    Then the notification titled "Standup" is still presented
+    Then the demo application received the action "Dismiss" for "Standup"
+    And the notification titled "Standup" is still presented
+    And the demo application received no "Close" for "Standup"
     And interactive mode is still running
 
   # Validates RIM-18: a collapsed stack offers Expand in place of Activate, on the same key.

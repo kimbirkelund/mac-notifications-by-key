@@ -495,13 +495,74 @@ export class NbkWorld extends World {
       fixture = JSON.parse(fs.readFileSync(demoPath, 'utf8'))
     } catch {}
     const child = spawn(DEMO_NC_BIN, [...(this.demoStartsOpen ? ['--open'] : []), demoPath], {
-      stdio: ['ignore', 'ignore', 'pipe']
+      stdio: ['ignore', 'pipe', 'pipe']
     })
-    const nc = { child, stderr: '' }
+    const nc = { child, stderr: '', events: [], pending: '' }
     child.on('error', (e) => (nc.stderr += e.message))
     child.stderr.on('data', (chunk) => (nc.stderr += chunk))
+    child.stdout.on('error', () => {})
+    child.stderr.on('error', () => {})
+    child.stdout.on('data', (chunk) => {
+      nc.pending += chunk
+      const lines = nc.pending.split('\n')
+      nc.pending = lines.pop()
+      for (const line of lines.filter(Boolean)) {
+        try {
+          nc.events.push(JSON.parse(line))
+        } catch {
+          nc.stderr += `unparsable demo-nc event: ${line}\n`
+        }
+      }
+    })
     this.demo = { path: demoPath, fixture, nc }
     return nc
+  }
+
+  // The events demo-nc has published so far, oldest first.
+  demoEvents() {
+    return this.demo.nc.events
+  }
+
+  // The state carried by the latest event, or null before the first.
+  demoState() {
+    return this.demoEvents().at(-1)?.state ?? null
+  }
+
+  // The seq of the latest event, 0 before the first.
+  demoLastSeq() {
+    return this.demoEvents().at(-1)?.seq ?? 0
+  }
+
+  // Titles presented now, top-down, or null before the first event.
+  demoPresentedTitles() {
+    return this.demoState()?.notifications.map((n) => n.title) ?? null
+  }
+
+  // Resolves with the first event with seq > afterSeq that satisfies `match`, or null on
+  // timeout. Pass the seq recorded before a key press to ignore events from before it.
+  async awaitDemoEvent(match, timeoutMs = 5000, afterSeq = 0) {
+    let found = null
+    await pollUntil(
+      async () => {
+        found = this.demoEvents().find((e) => e.seq > afterSeq && match(e)) ?? null
+        return found
+      },
+      timeoutMs,
+      20
+    )
+    return found
+  }
+
+  // Resolves once the latest state satisfies `match`, or null on timeout.
+  async awaitDemoState(match, timeoutMs = 5000) {
+    return pollUntil(
+      async () => {
+        const state = this.demoState()
+        return state && match(state) ? state : null
+      },
+      timeoutMs,
+      20
+    )
   }
 
   // The file's notifications as { title, actions: [name], arrivesAfter }, newest first.
@@ -527,7 +588,7 @@ export class NbkWorld extends World {
   async closeDemoList({ staysClosed = false } = {}) {
     if (staysClosed) this.demo.nc.child.kill('SIGUSR1')
     else await osascript(pressDemoToggleScript(this.demo.nc.child.pid), 'JavaScript')
-    const closed = await pollUntil(async () => !(await this.isDemoListOpen()), 2000, 20)
+    const closed = await this.awaitDemoState((state) => !state.listOpen, 2000)
     if (!closed) throw new Error('the demo list did not close')
   }
 
@@ -662,15 +723,6 @@ export class NbkWorld extends World {
 
   async axTree(pid) {
     return (await this.axDump(pid)).windows
-  }
-
-  async demoExtras(pid = this.demo.nc.child.pid) {
-    return (await this.axDump(pid)).extras
-  }
-
-  async isDemoListOpen(pid = this.demo.nc.child.pid) {
-    const windows = await this.axTree(pid)
-    return windows.some((w) => hasIdentifier(w, 'widget-editor-button'))
   }
 
   // Sorted top-down, like the real panel's tree order (newest on top).
