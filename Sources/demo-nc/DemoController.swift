@@ -27,7 +27,8 @@ final class DemoController: NSObject, NSApplicationDelegate {
             onSignal(SIGUSR1) {
                 $0.model.setListOpen(false)
                 $0.staysClosed = true
-            }
+            },
+            onSignal(SIGUSR2) { $0.model.signal() },
         ]
         render()
         model.ready()

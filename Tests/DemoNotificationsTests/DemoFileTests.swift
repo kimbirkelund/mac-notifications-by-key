@@ -161,4 +161,39 @@ import Testing
             #"{"notifications":[{"arrivesAfter":2,"members":[{"title":"a"}]}]}"#)
         #expect(file.notifications[0].arrivesAfter == 2)
     }
+
+    @Test func signalTriggersDecodeAndDefaultToNil() throws {
+        let file = try decode(
+            #"{"notifications":[{"title":"a","arrivesOn":"signal","leavesOn":"signal"},{"title":"b"}]}"#
+        )
+        #expect(file.notifications[0].arrivesOn == .signal)
+        #expect(file.notifications[0].leavesOn == .signal)
+        #expect(file.notifications[1].arrivesOn == nil)
+        #expect(file.notifications[1].leavesOn == nil)
+    }
+
+    @Test func signalTriggersCoexistWithTimerFields() throws {
+        let file = try decode(
+            #"{"notifications":[{"title":"a","arrivesAfter":1,"leavesOn":"signal"}]}"#)
+        #expect(file.notifications[0].arrivesAfter == 1)
+        #expect(file.notifications[0].leavesOn == .signal)
+    }
+
+    @Test func anUnknownTriggerIsRejected() {
+        #expect(throws: DemoFileError.self) {
+            try decode(#"{"notifications":[{"arrivesOn":"click"}]}"#)
+        }
+        #expect(throws: DemoFileError.self) {
+            try decode(#"{"notifications":[{"leavesOn":1}]}"#)
+        }
+    }
+
+    @Test func signalTriggersOnAStackMemberAreRejected() {
+        #expect(throws: DemoFileError.self) {
+            try decode(#"{"notifications":[{"members":[{"title":"a","arrivesOn":"signal"}]}]}"#)
+        }
+        #expect(throws: DemoFileError.self) {
+            try decode(#"{"notifications":[{"members":[{"title":"a","leavesOn":"signal"}]}]}"#)
+        }
+    }
 }

@@ -565,7 +565,8 @@ export class NbkWorld extends World {
     )
   }
 
-  // The file's notifications as { title, actions: [name], arrivesAfter }, newest first.
+  // The file's notifications as { title, actions: [name], arrivesLater, arrivesOnSignal,
+  // leavesOnSignal }, newest first.
   demoNotifications() {
     const notifications = this.demo?.fixture?.notifications
     if (!Array.isArray(notifications)) {
@@ -574,13 +575,40 @@ export class NbkWorld extends World {
     return notifications.map((n) => ({
       title: n.title,
       actions: (n.actions ?? []).map((a) => (typeof a === 'string' ? a : a.name)),
-      arrivesAfter: n.arrivesAfter ?? 0
+      arrivesLater: (n.arrivesAfter ?? 0) > 0 || n.arrivesOn === 'signal',
+      arrivesOnSignal: n.arrivesOn === 'signal',
+      leavesOnSignal: n.leavesOn === 'signal'
     }))
   }
 
-  // Those presented when the mode starts: a notification with arrivesAfter is absent until then.
+  // Those presented when the mode starts: a notification that arrives later is absent until then.
   demoInitiallyPresented() {
-    return this.demoNotifications().filter((n) => n.arrivesAfter === 0)
+    return this.demoNotifications().filter((n) => !n.arrivesLater)
+  }
+
+  // SIGUSR2 makes demo-nc release every signal-held arrival and departure at once.
+  async releaseHeldDemoNotifications() {
+    const held = this.demoNotifications()
+    const arriving = held.filter((n) => n.arrivesOnSignal).map((n) => n.title)
+    const leaving = held.filter((n) => n.leavesOnSignal).map((n) => n.title)
+    if (arriving.length + leaving.length === 0) {
+      throw new Error(`demo file holds no notification for a signal: ${this.demo.path}`)
+    }
+    this.demo.nc.child.kill('SIGUSR2')
+    const released = await this.awaitDemoState((state) => {
+      const titles = state.notifications.map((n) => n.title)
+      return arriving.every((t) => titles.includes(t)) && !leaving.some((t) => titles.includes(t))
+    }, 2000)
+    if (!released) {
+      throw new Error(
+        `demo-nc did not release ${JSON.stringify({ arriving, leaving })}; last state: ${JSON.stringify(this.demoState())}`
+      )
+    }
+    this.recordDemoArrived(arriving)
+  }
+
+  recordDemoArrived(titles) {
+    this.demoArrived = [...new Set([...(this.demoArrived ?? []), ...titles])]
   }
 
   // Pressing the toggle closes the list as the user would; SIGUSR1 closes it and makes

@@ -131,22 +131,26 @@ private final class RecordingAccess: NotificationCenterAccess, @unchecked Sendab
 
 @MainActor @Suite struct SessionReleaseScreenTests {
     /// RIM-6: the panel is closed exactly once however often the screen is released.
-    @Test func releaseScreenClosesThePanelOnce() async throws {
+    @Test func releaseScreenClosesThePanelOnce() {
         let access = RecordingAccess()
-        let session = Session(access: access)
+        let queue = DispatchQueue(label: "release-test")
+        let session = Session(access: access, panelQueue: queue, terminate: {})
         session.releaseScreen()
         session.releaseScreen()
-        try await Task.sleep(for: .milliseconds(100))
+        queue.sync {}
         #expect(access.calls == [.setPanelOpen(false)])
     }
 
     /// The overlay is hidden before the panel is closed, never the other way round.
-    @Test func releaseScreenClosesThePanelOnlyAfterTheCurrentPass() async throws {
+    @Test func releaseScreenClosesThePanelOnlyAfterTheCurrentPass() {
         let access = RecordingAccess()
-        let session = Session(access: access)
+        let queue = DispatchQueue(label: "release-test")
+        let session = Session(access: access, panelQueue: queue, terminate: {})
+        queue.suspend()
         session.releaseScreen()
         #expect(access.calls.isEmpty)
-        try await Task.sleep(for: .milliseconds(100))
+        queue.resume()
+        queue.sync {}
         #expect(access.calls == [.setPanelOpen(false)])
     }
 }

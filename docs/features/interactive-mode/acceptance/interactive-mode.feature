@@ -345,7 +345,8 @@ Feature: Interactive mode
     And the overlay is the frontmost application
     When I press "j"
     Then the notification at position 2 is selected
-    And the notification titled "Late" becomes presented
+    When the held notifications arrive or leave
+    Then the notification titled "Late" becomes presented
     And exactly one action panel is present
     And the notification at position 3 is selected
     And the selected panel shows activator "s" before "Snooze"
@@ -359,7 +360,8 @@ Feature: Interactive mode
     And the overlay is the frontmost application
     When I press "j"
     Then the notification at position 2 is selected
-    And the notification titled "First" is no longer presented
+    When the held notifications arrive or leave
+    Then the notification titled "First" is no longer presented
     And exactly one action panel is present
     And the topmost notification is selected
     And the selected panel shows activator "s" before "Snooze"

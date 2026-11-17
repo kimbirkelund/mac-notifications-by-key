@@ -60,6 +60,7 @@ public final class DemoNotificationsModel: @unchecked Sendable {
     private var outbox: [DemoEvent] = []
     private var eventObserver: (@Sendable (DemoEvent) -> Void)?
     private var nextID: Int
+    private var signalled = false
     private let now: () -> Date
     private let start: Date
 
@@ -103,6 +104,14 @@ public final class DemoNotificationsModel: @unchecked Sendable {
             guard listOpen != open else { return }
             listOpen = open
             enqueue(open ? .listOpened : .listClosed)
+        }
+        flush()
+    }
+
+    public func signal() {
+        lock.withLock {
+            signalled = true
+            advanceLocked()
         }
         flush()
     }
@@ -306,6 +315,7 @@ public final class DemoNotificationsModel: @unchecked Sendable {
         let members = stack.notification.members.map { member -> Entry in
             var member = member
             member.leavesAfter = stack.notification.leavesAfter
+            member.leavesOn = stack.notification.leavesOn
             defer { nextID += 1 }
             return Entry(id: nextID, notification: member)
         }
@@ -383,8 +393,12 @@ public final class DemoNotificationsModel: @unchecked Sendable {
     private func presentedEntries() -> [Entry] {
         let elapsed = now().timeIntervalSince(start)
         return entries.filter { entry in
-            let arrived = elapsed >= (entry.notification.arrivesAfter ?? 0)
-            let left = entry.notification.leavesAfter.map { elapsed >= $0 } ?? false
+            let n = entry.notification
+            let arrived =
+                elapsed >= (n.arrivesAfter ?? 0) && (n.arrivesOn != .signal || signalled)
+            let left =
+                (n.leavesAfter.map { elapsed >= $0 } ?? false)
+                || (n.leavesOn == .signal && signalled)
             return arrived && !left
         }
     }

@@ -5,7 +5,7 @@
       "title": "First",
       "subtitle": null,
       "body": null,
-      "leavesAfter": 4,
+      "leavesOn": "signal",
       "actions": ["Archive"]
     },
     {

@@ -75,9 +75,10 @@ notification access uses. None needs a new framework.
   demo application's list starts closed and the mode opens it; a scenario that needs it already open
   first says "Given the demo list starts open", which launches the demo application with `--open`
   and waits for the list before the mode starts. A fixture may time a notification's arrival or
-  departure with `arrivesAfter` / `leavesAfter` seconds. The harness reads presented notifications
-  from the demo application's window instead of Notification Center, and never runs `nbk list` in
-  such a scenario. Teardown stops both processes.
+  departure with `arrivesAfter` / `leavesAfter` seconds, or hold it until the scenario signals the
+  demo application with `arrivesOn` / `leavesOn` set to `"signal"`. The harness reads presented
+  notifications from the demo application's window instead of Notification Center, and never runs
+  `nbk list` in such a scenario. Teardown stops both processes.
 - **Closing the demo list underneath the mode.** "When the demo list closes by itself" presses the
   demo application's menu bar item, standing in for Notification Center closing its panel on its
   own; "When the demo list closes and refuses to reopen" signals the demo application to close its
