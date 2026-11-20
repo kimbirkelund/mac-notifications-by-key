@@ -185,8 +185,8 @@ matches a notification **structurally**:
 
 > A notification element = **role `AXGroup`** _and_ its action list **contains `AXPress`**.
 
-This is deliberately loose so it survives the tree being reshuffled between OS versions. Matches
-come back in the tree's natural order, surfaced to the CLI as index `0..n` ("newest first").
+This is deliberately loose so it survives the tree being reshuffled between OS versions. Matches are
+put in on-screen order, top to bottom, and surfaced to the CLI as index `0..n`.
 
 ### AX primitives `nbk` uses
 
@@ -356,6 +356,8 @@ foundation for any "custom UI that mirrors Notification Center live" work.
   "default activation". It is deliberately hidden from the user-facing action list.
 - **Two behaviors need a settle/poll**, both timing-related and both fragile to tune: focus → Close,
   and the post-Close disappearance wait.
+- **A notification group's `Position`/`Size` can cover the whole list** on recent macOS, while the
+  frames of its static-text children stay correct. Take a notification's place from its texts.
 - **Identifiers are the reliable text key**, not child order. Key title/subtitle/body off
   `kAXIdentifierAttribute`; positions of the static-text children are not guaranteed.
 
@@ -366,7 +368,8 @@ foundation for any "custom UI that mirrors Notification Center live" work.
 **Used by `nbk` today:** `AXIsProcessTrusted`, `AXUIElementCreateApplication`,
 `AXUIElementCopyAttributeValue`, `AXUIElementCopyActionNames`, `AXUIElementPerformAction`,
 `AXUIElementSetAttributeValue`; attributes `Windows`, `Children`, `Role`, `Identifier`, `Value`,
-`Description`, `Focused`, `Subrole`, `Position`, `Size` (a notification's on-screen frame); roles
+`Description`, `Focused`, `Subrole`, `Position`, `Size` (a notification's on-screen frame, which can
+be list-sized, so its static-text children's `Position`/`Size` are read too to place it); roles
 `AXGroup`, `AXStaticText`, `AXButton` (the panel's "Edit Widgets" button, to tell the panel from a
 banner); actions `AXPress` (also expands a collapsed stack), `Close`, `Clear All`, `Show`,
 `Show Details`; the menu bar clock extra for opening and closing the panel (§1).

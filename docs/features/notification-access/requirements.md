@@ -8,8 +8,8 @@ for `C-*`/`X-*`.
 
 - **RNA-1 (event) — List presented notifications.** When the user runs `list`, the system shall
   emit, as JSON ([X-2](../../cross-cutting.md)), the notifications currently presented by
-  Notification Center — newest first — each with its app, title, subtitle, body, available action
-  names, and a 0-based index.
+  Notification Center, in the order it shows them top to bottom, each with its app, title, subtitle,
+  body, available action names, and a 0-based index.
 - **RNA-2 (state) — Empty when none presented.** While no notifications are presented, `list` shall
   emit an empty JSON array and exit `0`.
 - **RNA-3 (optional) — Wait for delivery.** Where a `--wait <seconds>` option is given, the system

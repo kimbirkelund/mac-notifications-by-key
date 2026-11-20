@@ -95,8 +95,8 @@ for `C-*`/`X-*`.
 
 - **RIM-11 (state) — Exactly one notification is selected.** While interactive mode is active and at
   least one notification is presented, exactly one notification shall be selected; on entering the
-  mode the newest is selected. The action panel ([RIM-10](#selection-and-actions)) shall mark the
-  selected notification: it sits beside that notification and no other.
+  mode the topmost (index 0) is selected. The action panel ([RIM-10](#selection-and-actions)) shall
+  mark the selected notification: it sits beside that notification and no other.
 
 - **RIM-12 (event) — Move the selection.** When the user presses Down or `j` while the overlay holds
   focus, the system shall select the next older notification; when Up or `k`, the next newer. At

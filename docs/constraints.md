@@ -28,7 +28,9 @@ direct acceptance test.
   notification elements by **structural role/attribute matching** (role, available actions, child
   identifiers), never by hardcoded process id or fixed child indices, and shall degrade gracefully —
   reporting "no notifications found / layout not recognized" — rather than crashing when the layout
-  changes.
+  changes. On recent macOS a notification can report a frame that covers the whole list instead of
+  its own; when a notification's frame covers another notification's text, the system shall take
+  that notification's place and size from where its own text is instead.
 
 - **C-4 — macOS only.** The system targets macOS exclusively (it is inherently coupled to the macOS
   Notification Center and AX API). Cross-platform portability is explicitly a non-goal.

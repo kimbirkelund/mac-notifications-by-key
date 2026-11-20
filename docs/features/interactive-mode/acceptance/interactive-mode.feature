@@ -124,11 +124,11 @@ Feature: Interactive mode
     When I press Escape
     Then interactive mode exits with status 0
 
-  # Validates RIM-11: on entering the mode the newest notification is selected,
+  # Validates RIM-11: on entering the mode the topmost notification is selected,
   # and the one panel marks it. Fixture notifications, so there is more than one
   # to choose between.
   @demo
-  Scenario: The newest notification is selected on entry
+  Scenario: The topmost notification is selected on entry
     Given interactive mode is running with demo file "three.json"
     Then exactly one action panel is selected
     And the panel sits beside the topmost notification

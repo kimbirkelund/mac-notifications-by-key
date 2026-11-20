@@ -77,7 +77,7 @@ Two consequences follow, and both matter:
 
 ## Action panels
 
-Exactly one notification is selected at a time, and on entering the mode it is the newest (RIM-11).
+Exactly one notification is selected at a time, and on entering the mode it is the topmost (RIM-11).
 The overlay shows one small **action panel**, immediately to the left of the selected notification
 and aligned with its top edge; the other notifications have none, so the panel is what marks the
 selection. It lists `Activate`, `Dismiss this / app / all`, and then the names of that
