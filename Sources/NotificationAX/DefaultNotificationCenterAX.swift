@@ -102,21 +102,23 @@ public struct DefaultNotificationCenterAX: NotificationCenterAccess {
     public func read(wait: TimeInterval) throws -> [NotificationItem] {
         let pid = try requirePID()
         let deadline = Date().addingTimeInterval(max(0, wait))
-        var elements = notificationElements(pid)
-        while elements.isEmpty, Date() < deadline {
+        while rawNotificationElements(pid).isEmpty, Date() < deadline {
             Thread.sleep(forTimeInterval: 0.2)
-            elements = notificationElements(pid)
         }
-        return elements.enumerated().map { item(from: $0.element, index: $0.offset) }
+        return notificationElements(pid).enumerated().map {
+            item(from: $0.element, index: $0.offset)
+        }
     }
 
     public func readPresented() throws -> [PresentedNotification] {
         let pid = try requirePID()
-        return notificationElements(pid).enumerated().compactMap { offset, element in
-            guard let frame = frame(of: element) else { return nil }
+        let cards = orderedCards(pid)
+        let corrected = cards.compactMap { card in card.frame.map { (card.element, $0) } }
+        return cards.enumerated().compactMap { offset, card in
+            guard let frame = card.frame else { return nil }
             return PresentedNotification(
-                item: item(from: element, index: offset), frame: frame,
-                extentBelow: layersExtent(of: element, frame: frame))
+                item: item(from: card.element, index: offset), frame: frame,
+                extentBelow: layersExtent(of: card.element, frame: frame, corrected: corrected))
         }
     }
 
@@ -138,7 +140,7 @@ public struct DefaultNotificationCenterAX: NotificationCenterAccess {
         let pid = try requirePID()
         let deadline = Date().addingTimeInterval(2)
         while Date() < deadline,
-            notificationElements(pid).contains(where: { CFEqual($0, element) })
+            rawNotificationElements(pid).contains(where: { CFEqual($0, element) })
         {
             Thread.sleep(forTimeInterval: 0.1)
         }
@@ -365,9 +367,44 @@ public struct DefaultNotificationCenterAX: NotificationCenterAccess {
         }
     }
 
+    private func notificationElements(_ pid: pid_t) -> [AXUIElement] {
+        orderedCards(pid).map(\.element)
+    }
+
+    /// Cards top to bottom with frames corrected from where their texts are, since a
+    /// card can report the whole list as its frame. Cards without a readable frame
+    /// follow in read order.
+    private func orderedCards(_ pid: pid_t) -> [(element: AXUIElement, frame: CGRect?)] {
+        let elements = rawNotificationElements(pid)
+        var framed: [(element: AXUIElement, geometry: CardGeometry)] = []
+        var unframed: [AXUIElement] = []
+        for element in elements {
+            guard let reported = frame(of: element) else {
+                unframed.append(element)
+                continue
+            }
+            let texts = axChildren(element)
+                .filter { axRole($0) == (kAXStaticTextRole as String) }
+                .compactMap { self.frame(of: $0) }
+                .filter { !$0.isEmpty }
+            framed.append(
+                (
+                    element,
+                    CardGeometry(
+                        frame: reported, contentTop: texts.map(\.minY).min(),
+                        contentBottom: texts.map(\.maxY).max())
+                ))
+        }
+        let corrected = CardFrameCorrection.correct(framed.map(\.geometry))
+        let ordered = corrected.map {
+            (element: framed[$0.source].element, frame: Optional($0.frame))
+        }
+        return ordered + unframed.map { (element: $0, frame: nil) }
+    }
+
     /// Notification elements are `AXGroup`s exposing an `AXPress` action, found by
     /// structurally walking the app's windows (never a hardcoded index — C-3).
-    private func notificationElements(_ pid: pid_t) -> [AXUIElement] {
+    private func rawNotificationElements(_ pid: pid_t) -> [AXUIElement] {
         let app = AXUIElementCreateApplication(pid)
         guard let windows = attr(app, kAXWindowsAttribute as String) as? [AXUIElement] else {
             return []
@@ -427,13 +464,18 @@ public struct DefaultNotificationCenterAX: NotificationCenterAccess {
     /// The layers drawn beneath a stack have no element of their own, and they stay
     /// once the front card is expanded and no longer reads as a stack; they take up
     /// room in the list, so the space before the next element reveals them.
-    private func layersExtent(of element: AXUIElement, frame: CGRect) -> CGFloat {
+    private func layersExtent(
+        of element: AXUIElement, frame: CGRect, corrected: [(AXUIElement, CGRect)]
+    ) -> CGFloat {
         guard let parent = attr(element, kAXParentAttribute as String),
             CFGetTypeID(parent) == AXUIElementGetTypeID()
         else { return 0 }
         let container = unsafeDowncast(parent, to: AXUIElement.self)
         let below = axChildren(container).compactMap { sibling -> (CGFloat, Bool)? in
-            guard let rect = self.frame(of: sibling), rect.minY >= frame.maxY else { return nil }
+            let reported = corrected.first { CFEqual($0.0, sibling) }?.1
+            guard let rect = reported ?? self.frame(of: sibling), rect.minY >= frame.maxY else {
+                return nil
+            }
             let role = axRole(sibling)
             let heading = role == (kAXHeadingRole as String) || role == (kAXButtonRole as String)
             return (rect.minY, heading)
