@@ -12,13 +12,13 @@ import Testing
         #expect(SelectionState.initial(count: 0).selectedIndex == nil)
     }
 
-    @Test func moveDownSelectsNextOlder() {
+    @Test func moveDownSelectsNextBelow() {
         var s = SelectionState.initial(count: 3)
         s.moveDown()
         #expect(s.selectedIndex == 1)
     }
 
-    @Test func moveUpSelectsNextNewer() {
+    @Test func moveUpSelectsNextAbove() {
         var s = SelectionState(count: 3, selectedIndex: 2)
         s.moveUp()
         #expect(s.selectedIndex == 1)

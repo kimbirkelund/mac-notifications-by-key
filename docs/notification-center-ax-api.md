@@ -358,6 +358,12 @@ foundation for any "custom UI that mirrors Notification Center live" work.
   and the post-Close disappearance wait.
 - **A notification group's `Position`/`Size` can cover the whole list** on recent macOS, while the
   frames of its static-text children stay correct. Take a notification's place from its texts.
+  Rebuild a wrong frame around its texts with the padding, x and width of a correctly reported group
+  of the same app (else any such group; else the texts' own extent), and clip its top to the bottom
+  of the group header row (`AXHeading` plus its `AXButton`s, siblings of the groups) above it, but
+  never below its texts' top. Padding differs per app, so borrowing across apps is a fallback.
+  Layers beneath a stack are inferred only for a collapsed stack, never for a plain or expanded
+  card.
 - **Identifiers are the reliable text key**, not child order. Key title/subtitle/body off
   `kAXIdentifierAttribute`; positions of the static-text children are not guaranteed.
 
