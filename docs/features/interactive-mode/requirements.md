@@ -28,10 +28,12 @@ for `C-*`/`X-*`.
   give it focus rather than drawing a second overlay; the new invocation shall exit `0` and the
   already-running instance shall continue to own the mode.
 
-- **RIM-25 (event) — Focus lost is reclaimed.** When an application other than the overlay becomes
-  the active application while interactive mode is active and the Notification Center panel shows no
-  text field, the system shall make the overlay the active application holding keyboard focus again,
-  keeping the mode, the panel and the selection unchanged.
+- **RIM-25 (event) — Focus lost is reclaimed.** When the overlay stops receiving keyboard input for
+  any reason — another application becoming the active application, or Notification Center taking
+  keyboard focus — while interactive mode is active and the Notification Center panel shows no text
+  field, the system shall make the overlay the active application receiving keyboard input again,
+  keeping the mode, the panel and the selection unchanged. The overlay is active again only once it
+  receives keyboard input.
 
 - **RIM-26 (unwanted) — Reclaiming focus fails.** If making the overlay the active application
   ([RIM-25](#mode-signal)) does not take effect, then the system shall retry until it succeeds or
@@ -41,8 +43,8 @@ for `C-*`/`X-*`.
   `AXTextField` or `AXTextArea` inside the Notification Center panel — becomes visible while
   interactive mode is active, the system shall make Notification Center the active application with
   keyboard focus in that field, and shall not reclaim focus ([RIM-25](#mode-signal)) while the field
-  stays visible. When the field is no longer visible, the system shall reclaim focus as
-  [RIM-25](#mode-signal) describes.
+  stays visible. A field dismissed with Escape counts as no longer visible. When the field is gone,
+  the system shall reclaim focus as [RIM-25](#mode-signal) describes.
 
 ## Notification Center panel
 
@@ -57,7 +59,8 @@ for `C-*`/`X-*`.
   empty one: the panel closing shall not by itself end the mode, and
   [RIM-16](#selection-and-actions) applies only to a panel that is open and presents no
   notification. The reopen counts as done only when the panel is still open one second after it was
-  reopened.
+  reopened. After the system reopens the panel, and while the panel shows no text field, the overlay
+  shall receive keyboard input again ([RIM-25](#mode-signal)).
 
 - **RIM-32 (unwanted) — The panel cannot be reopened.** If the Notification Center panel is not open
   one second after the system reopened it ([RIM-31](#notification-center-panel)), then the system
@@ -233,9 +236,6 @@ for `C-*`/`X-*`.
 
 ## Open seeds (not yet specified)
 
-- **Escape inside a reply field.** Notification Center consumes Escape to close the field, after
-  which [RIM-25](#mode-signal) reclaims focus; whether a further Escape must end the mode is not
-  specified.
 - **Collapsing a stack.** [RIM-18](#selection-and-actions) expands a stack from the overlay;
   collapsing it again is not specified.
 - **Launch on unlock.** Entering the mode when the machine is unlocked is part of the daemon seed in
