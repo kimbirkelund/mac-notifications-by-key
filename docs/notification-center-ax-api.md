@@ -108,6 +108,10 @@ following are verified there:
   closes a panel opened this way. On entering interactive mode nbk counts the panel as opened as
   soon as it reads open, and shows the mode at once; if the panel closes later, the mode reopens it.
   A reopen counts only when the panel is still open one second after the click.
+- **Opening the panel by a click may take keyboard focus** _(macOS 27.2, reported, not yet
+  confirmed)_. Unlike the `AXPress` above, which leaves the frontmost application unchanged, a click
+  on the clock is reported to leave Notification Center holding keyboard input, so an application
+  that expects to keep receiving keystrokes would need to take focus back after the panel opens.
 - **A closed panel is not an empty panel.** An open panel with no notifications keeps its window and
   its "Edit Widgets" button
   ([Telling whether the panel is open](#telling-whether-the-panel-is-open)); a closed one has

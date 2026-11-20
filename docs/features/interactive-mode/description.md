@@ -59,7 +59,8 @@ That makes its required properties unusually strict, and each one is observable:
   exception is a reply field: when an action such as `Reply` makes a text field appear in the panel,
   focus goes to Notification Center with the cursor in that field so the user can type, and the
   overlay does not reclaim it while the field is shown; once the field is gone, the overlay takes
-  focus back (RIM-27).
+  focus back (RIM-27). Focus is also reclaimed when Notification Center itself takes it, for example
+  after the mode reopens a panel that closed (RIM-25, RIM-31).
 - **Owns input.** Keyboard and mouse events go to the overlay, not to the windows underneath. While
   the mode is active the desktop is inert.
 - **No application presence.** No Dock icon, no menu bar, no entry in the window cycler. It holds
