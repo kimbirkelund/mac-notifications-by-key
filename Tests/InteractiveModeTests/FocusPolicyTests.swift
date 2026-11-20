@@ -41,6 +41,45 @@ import Testing
         #expect(decide(.overlay, field: false) == .none)
     }
 
+    private func decide(
+        overlayLostFocus: Bool = false, panelReopenCompleted: Bool = false, field: Bool
+    ) -> FocusPolicy.Decision {
+        FocusPolicy.decide(
+            activation: nil, textFieldVisible: field, previousTextFieldVisible: field,
+            overlayLostFocus: overlayLostFocus, panelReopenCompleted: panelReopenCompleted)
+    }
+
+    /// RIM-25
+    @Test func overlayLostFocusWithoutFieldReclaims() {
+        #expect(decide(overlayLostFocus: true, field: false) == .reclaim)
+    }
+
+    /// RIM-27
+    @Test func overlayLostFocusWithFieldDoesNothing() {
+        #expect(decide(overlayLostFocus: true, field: true) == .none)
+    }
+
+    /// RIM-31
+    @Test func panelReopenCompletedWithoutFieldReclaims() {
+        #expect(decide(panelReopenCompleted: true, field: false) == .reclaim)
+    }
+
+    /// RIM-27
+    @Test func panelReopenCompletedWithFieldDoesNothing() {
+        #expect(decide(panelReopenCompleted: true, field: true) == .none)
+    }
+
+    /// RIM-25
+    @Test func lostFocusOrCompletedReopenReclaimsEvenWhenOverlayIsFrontmost() {
+        for (lost, reopened) in [(true, false), (false, true)] {
+            #expect(
+                FocusPolicy.decide(
+                    activation: .overlay, textFieldVisible: false,
+                    previousTextFieldVisible: false, overlayLostFocus: lost,
+                    panelReopenCompleted: reopened) == .reclaim)
+        }
+    }
+
     @Test func quietPollDoesNothing() {
         #expect(decide(nil, field: false) == .none)
         #expect(decide(nil, field: true, was: true) == .none)
