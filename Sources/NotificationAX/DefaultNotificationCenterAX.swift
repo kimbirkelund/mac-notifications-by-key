@@ -116,9 +116,12 @@ public struct DefaultNotificationCenterAX: NotificationCenterAccess {
         let corrected = cards.compactMap { card in card.frame.map { (card.element, $0) } }
         return cards.enumerated().compactMap { offset, card in
             guard let frame = card.frame else { return nil }
+            let item = item(from: card.element, index: offset)
             return PresentedNotification(
-                item: item(from: card.element, index: offset), frame: frame,
-                extentBelow: layersExtent(of: card.element, frame: frame, corrected: corrected))
+                item: item, frame: frame,
+                extentBelow: layersExtent(
+                    of: card.element, frame: frame, corrected: corrected,
+                    isCollapsedStack: item.isCollapsedStack))
         }
     }
 
@@ -378,6 +381,7 @@ public struct DefaultNotificationCenterAX: NotificationCenterAccess {
         let elements = rawNotificationElements(pid)
         var framed: [(element: AXUIElement, geometry: CardGeometry)] = []
         var unframed: [AXUIElement] = []
+        var headerCache: [(parent: AXUIElement, pieces: [CGRect])] = []
         for element in elements {
             guard let reported = frame(of: element) else {
                 unframed.append(element)
@@ -387,12 +391,17 @@ public struct DefaultNotificationCenterAX: NotificationCenterAccess {
                 .filter { axRole($0) == (kAXStaticTextRole as String) }
                 .compactMap { self.frame(of: $0) }
                 .filter { !$0.isEmpty }
+            let contentTop = texts.map(\.minY).min()
             framed.append(
                 (
                     element,
                     CardGeometry(
-                        frame: reported, contentTop: texts.map(\.minY).min(),
-                        contentBottom: texts.map(\.maxY).max())
+                        frame: reported, contentTop: contentTop,
+                        contentBottom: texts.map(\.maxY).max(), app: appName(of: element),
+                        headerBottom: contentTop.flatMap {
+                            HeaderRows.bottom(
+                                above: $0, pieces: headerPieces(of: element, cache: &headerCache))
+                        })
                 ))
         }
         let corrected = CardFrameCorrection.correct(framed.map(\.geometry))
@@ -436,15 +445,39 @@ public struct DefaultNotificationCenterAX: NotificationCenterAccess {
             default: break
             }
         }
-        // Group AXDescription is "App, Title, Subtitle, Body" — first field is the app.
-        let app = (attr(element, kAXDescriptionAttribute as String) as? String)?
-            .split(separator: ",").first
-            .map { $0.trimmingCharacters(in: .whitespaces) }
+        let app = appName(of: element)
         let actions = displayActions(element)
         return NotificationItem(
             index: index, app: app, title: title, subtitle: subtitle, body: body, actions: actions,
             isCollapsedStack: CollapsedStack.matches(actions: actions)
         )
+    }
+
+    /// Group AXDescription is "App, Title, Subtitle, Body" — first field is the app.
+    private func appName(of element: AXUIElement) -> String? {
+        (attr(element, kAXDescriptionAttribute as String) as? String)?
+            .split(separator: ",").first
+            .map { $0.trimmingCharacters(in: .whitespaces) }
+    }
+
+    private func headerPieces(
+        of element: AXUIElement, cache: inout [(parent: AXUIElement, pieces: [CGRect])]
+    ) -> [CGRect] {
+        guard let parent = attr(element, kAXParentAttribute as String),
+            CFGetTypeID(parent) == AXUIElementGetTypeID()
+        else { return [] }
+        let container = unsafeDowncast(parent, to: AXUIElement.self)
+        if let cached = cache.first(where: { CFEqual($0.parent, container) }) {
+            return cached.pieces
+        }
+        let pieces = axChildren(container)
+            .filter {
+                let role = axRole($0)
+                return role == (kAXHeadingRole as String) || role == (kAXButtonRole as String)
+            }
+            .compactMap { frame(of: $0) }
+        cache.append((container, pieces))
+        return pieces
     }
 
     private func displayActions(_ element: AXUIElement) -> [String] {
@@ -461,11 +494,11 @@ public struct DefaultNotificationCenterAX: NotificationCenterAccess {
             ? value : nil
     }
 
-    /// The layers drawn beneath a stack have no element of their own, and they stay
-    /// once the front card is expanded and no longer reads as a stack; they take up
-    /// room in the list, so the space before the next element reveals them.
+    /// The layers drawn beneath a collapsed stack have no element of their own, but
+    /// they take up room in the list, so the space before the next element reveals them.
     private func layersExtent(
-        of element: AXUIElement, frame: CGRect, corrected: [(AXUIElement, CGRect)]
+        of element: AXUIElement, frame: CGRect, corrected: [(AXUIElement, CGRect)],
+        isCollapsedStack: Bool
     ) -> CGFloat {
         guard let parent = attr(element, kAXParentAttribute as String),
             CFGetTypeID(parent) == AXUIElementGetTypeID()
@@ -482,10 +515,13 @@ public struct DefaultNotificationCenterAX: NotificationCenterAccess {
         }
         if let next = below.min(by: { $0.0 < $1.0 }) {
             return StackExtent.below(
-                frame: frame, nextEdge: next.0, following: next.1 ? .heading : .row)
+                frame: frame, nextEdge: next.0, following: next.1 ? .heading : .row,
+                isCollapsedStack: isCollapsedStack)
         }
         guard let containerFrame = self.frame(of: container) else { return 0 }
-        return StackExtent.below(frame: frame, nextEdge: containerFrame.maxY, following: .end)
+        return StackExtent.below(
+            frame: frame, nextEdge: containerFrame.maxY, following: .end,
+            isCollapsedStack: isCollapsedStack)
     }
 
     private func frame(of element: AXUIElement) -> CGRect? {

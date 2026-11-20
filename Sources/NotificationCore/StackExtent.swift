@@ -23,8 +23,9 @@ public enum StackExtent {
     }
 
     public static func below(
-        frame: CGRect, nextEdge: CGFloat, following: Following
+        frame: CGRect, nextEdge: CGFloat, following: Following, isCollapsedStack: Bool
     ) -> CGFloat {
+        guard isCollapsedStack else { return 0 }
         let room = nextEdge - baseSpacing(before: following) - frame.maxY
         let layers = Int((room / layerHeight).rounded())
         return CGFloat(min(max(layers, 0), maxLayers)) * layerHeight
