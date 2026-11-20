@@ -5,11 +5,18 @@ public struct CardGeometry: Equatable, Sendable {
     public var frame: CGRect
     public var contentTop: CGFloat?
     public var contentBottom: CGFloat?
+    public var app: String?
+    public var headerBottom: CGFloat?
 
-    public init(frame: CGRect, contentTop: CGFloat? = nil, contentBottom: CGFloat? = nil) {
+    public init(
+        frame: CGRect, contentTop: CGFloat? = nil, contentBottom: CGFloat? = nil,
+        app: String? = nil, headerBottom: CGFloat? = nil
+    ) {
         self.frame = frame
         self.contentTop = contentTop
         self.contentBottom = contentBottom
+        self.app = app
+        self.headerBottom = headerBottom
     }
 
     var content: (top: CGFloat, bottom: CGFloat)? {
@@ -47,18 +54,31 @@ public enum CardFrameCorrection {
             return (a, $0) < (b, $1)
         }
 
-        let padding =
-            order.lazy.compactMap { i -> (top: CGFloat, bottom: CGFloat)? in
-                guard !wrong[i], let c = contents[i],
-                    cards[i].frame.minY <= c.top, cards[i].frame.maxY >= c.bottom
-                else { return nil }
-                return (c.top - cards[i].frame.minY, cards[i].frame.maxY - c.bottom)
-            }.first ?? (top: 0, bottom: 0)
+        let suppliers = order.filter { i in
+            guard !wrong[i], let c = contents[i] else { return false }
+            return cards[i].frame.minY <= c.top && cards[i].frame.maxY >= c.bottom
+        }
+
+        func supplier(for i: Int) -> Int? {
+            if let app = cards[i].app,
+                let same = suppliers.first(where: { cards[$0].app == app })
+            {
+                return same
+            }
+            return suppliers.first
+        }
 
         var vertical = cards.map { ($0.frame.minY, $0.frame.maxY) }
+        var horizontal = cards.map { ($0.frame.minX, $0.frame.width) }
         for i in cards.indices where wrong[i] {
             let c = contents[i]!
-            vertical[i] = (c.top - padding.top, c.bottom + padding.bottom)
+            if let s = supplier(for: i), let sc = contents[s] {
+                let f = cards[s].frame
+                vertical[i] = (c.top - (sc.top - f.minY), c.bottom + (f.maxY - sc.bottom))
+                horizontal[i] = (f.minX, f.width)
+            } else {
+                vertical[i] = (c.top, c.bottom)
+            }
         }
 
         for (position, i) in order.enumerated() where wrong[i] {
@@ -66,6 +86,9 @@ public enum CardFrameCorrection {
             var (top, bottom) = vertical[i]
             if position > 0 {
                 top = max(top, vertical[order[position - 1]].1)
+            }
+            if let headerBottom = cards[i].headerBottom {
+                top = max(top, headerBottom)
             }
             if position + 1 < order.count {
                 bottom = min(bottom, vertical[order[position + 1]].0)
@@ -75,6 +98,8 @@ public enum CardFrameCorrection {
 
         return order.map { i in
             var frame = cards[i].frame
+            frame.origin.x = horizontal[i].0
+            frame.size.width = horizontal[i].1
             frame.origin.y = vertical[i].0
             frame.size.height = vertical[i].1 - vertical[i].0
             return CorrectedCard(source: i, frame: frame)

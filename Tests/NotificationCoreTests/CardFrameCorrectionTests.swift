@@ -105,12 +105,79 @@ import Testing
         #expect(spans(result) == [[10, 30], [100, 160], [190, 230]])
     }
 
-    @Test func xAndWidthNeverChange() {
+    @Test func wellFormedCardsKeepXAndWidth() {
         let result = CardFrameCorrection.correct([
-            card(42, 206, content: (135, 185), x: 5, width: 111),
-            card(42, 117, content: (56, 104), x: 7, width: 222),
+            card(10, 70, content: (20, 60), x: 5, width: 111),
+            card(80, 140, content: (90, 130), x: 7, width: 222),
+        ])
+        #expect(result.map(\.frame.minX) == [5, 7])
+        #expect(result.map(\.frame.width) == [111, 222])
+    }
+
+    private func app(
+        _ name: String, _ top: CGFloat, _ bottom: CGFloat, content: (CGFloat, CGFloat),
+        header: CGFloat? = nil
+    ) -> CardGeometry {
+        var geometry = card(top, bottom, content: content)
+        geometry.app = name
+        geometry.headerBottom = header
+        return geometry
+    }
+
+    private func liveDump(headerBottom: CGFloat) -> [CardGeometry] {
+        [
+            app("Outlook", 42, 117, content: (56, 104)),
+            app("Outlook", 123, 198, content: (137, 185)),
+            app("Slack", 42, 530, content: (341, 391), header: headerBottom),
+            app("Slack", 42, 530, content: (260, 310), header: headerBottom),
+        ]
+    }
+
+    @Test func slackCardsBorrowOutlookPaddingBelowTheHeader() {
+        let result = CardFrameCorrection.correct(liveDump(headerBottom: 245))
+        #expect(result.map(\.source) == [0, 1, 3, 2])
+        #expect(spans(result) == [[42, 117], [123, 198], [246, 323], [327, 404]])
+    }
+
+    @Test func rebuiltTopIsClippedToTheHeaderBottom() {
+        let result = CardFrameCorrection.correct(liveDump(headerBottom: 250))
+        #expect(spans(result) == [[42, 117], [123, 198], [250, 323], [327, 404]])
+    }
+
+    @Test func headerBelowContentTopNeverCutsIntoTheContent() {
+        let result = CardFrameCorrection.correct(liveDump(headerBottom: 270))
+        #expect(spans(result) == [[42, 117], [123, 198], [260, 323], [327, 404]])
+    }
+
+    @Test func paddingComesFromAWellFormedCardOfTheSameAppFirst() {
+        var outlook = app("Outlook", 42, 117, content: (56, 104))
+        outlook.frame.origin.x = 100
+        outlook.frame.size.width = 200
+        var slack = app("Slack", 123, 199, content: (135, 188))
+        slack.frame.origin.x = 500
+        slack.frame.size.width = 300
+        let result = CardFrameCorrection.correct([
+            outlook, slack, app("Slack", 42, 530, content: (260, 310)),
+        ])
+        #expect(spans(result) == [[42, 117], [123, 199], [248, 321]])
+        #expect(result[2].frame.minX == 500)
+        #expect(result[2].frame.width == 300)
+    }
+
+    @Test func wrongCardTakesXAndWidthFromTheSupplier() {
+        var wide = card(0, 400, content: (200, 220), width: 720)
+        wide.app = "Slack"
+        let result = CardFrameCorrection.correct([card(42, 117, content: (56, 104)), wide])
+        #expect(result[1].frame.minX == 3080)
+        #expect(result[1].frame.width == 344)
+    }
+
+    @Test func withNoWellFormedCardXAndWidthStayAsReported() {
+        let result = CardFrameCorrection.correct([
+            card(0, 300, content: (200, 230), x: 5, width: 720),
+            card(0, 300, content: (20, 50), x: 7, width: 600),
         ])
         #expect(result.map(\.frame.minX) == [7, 5])
-        #expect(result.map(\.frame.width) == [222, 111])
+        #expect(result.map(\.frame.width) == [600, 720])
     }
 }
