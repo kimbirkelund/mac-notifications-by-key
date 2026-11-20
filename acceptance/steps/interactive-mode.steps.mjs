@@ -228,8 +228,8 @@ const DEMO_HOLD_MS = 1500
 
 When('another application is activated', STEP, async function () {
   this.selectionBeforeKey = (await settledSelection(this)).index
-  const seen = await this.activateFinderUntilNotFrontmost(this.interactive.child.pid)
-  assert.ok(seen, 'expected another application to become frontmost')
+  const activated = await this.activateFinderAndAwaitActivation()
+  assert.ok(activated, 'expected another application to be activated')
 })
 
 Then('the demo application is the frontmost application', STEP, async function () {

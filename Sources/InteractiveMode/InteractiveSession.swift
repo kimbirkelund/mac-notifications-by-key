@@ -61,6 +61,8 @@ final class Session {
     private var textFieldVisible = false
     private var reclaimGeneration = 0
     private var activationObserver: NSObjectProtocol?
+    private var resignActiveObserver: NSObjectProtocol?
+    private var resignKeyObserver: NSObjectProtocol?
     private let endingHold: TimeInterval
     private let endingFade: TimeInterval
     private let terminate: () -> Void
@@ -122,6 +124,23 @@ final class Session {
             let pid = activated?.processIdentifier
             MainActor.assumeIsolated { self?.applicationActivated(pid: pid) }
         }
+        resignActiveObserver = NotificationCenter.default.addObserver(
+            forName: NSApplication.didResignActiveNotification, object: nil, queue: .main
+        ) { [weak self] _ in
+            MainActor.assumeIsolated { self?.focusLost() }
+        }
+        resignKeyObserver = NotificationCenter.default.addObserver(
+            forName: NSWindow.didResignKeyNotification, object: window, queue: .main
+        ) { [weak self] _ in
+            MainActor.assumeIsolated { self?.focusLost() }
+        }
+    }
+
+    private func focusLost() {
+        apply(
+            FocusPolicy.decide(
+                activation: nil, textFieldVisible: textFieldVisible,
+                previousTextFieldVisible: textFieldVisible, overlayLostFocus: true))
     }
 
     private func applicationActivated(pid: pid_t?) {
@@ -156,7 +175,7 @@ final class Session {
 
     private func reclaimFocus(generation: Int) {
         guard generation == reclaimGeneration, !tearingDown, !ending, !endingDispatch,
-            !textFieldVisible, let window
+            !reopening, !textFieldVisible, let window
         else {
             return
         }
@@ -165,9 +184,9 @@ final class Session {
         DispatchQueue.main.asyncAfter(deadline: .now() + Self.reclaimRecheckInterval) {
             [weak self] in
             MainActor.assumeIsolated {
-                guard NSWorkspace.shared.frontmostApplication?.processIdentifier != getpid()
+                guard let self, !(NSApp.isActive && self.window?.isKeyWindow == true)
                 else { return }
-                self?.reclaimFocus(generation: generation)
+                self.reclaimFocus(generation: generation)
             }
         }
     }
@@ -316,8 +335,9 @@ final class Session {
                     if succeeded, endingOnSuccess { return self.teardown() }
                     if endingOnSuccess {
                         self.endingDispatch = false
-                        self.applicationActivated(
-                            pid: NSWorkspace.shared.frontmostApplication?.processIdentifier)
+                        if !(self.window?.isKeyWindow == true && NSApp.isActive) {
+                            self.focusLost()
+                        }
                     }
                     self.dispatching = false
                     self.dispatchGeneration += 1
@@ -413,7 +433,13 @@ final class Session {
                     self.reopening = false
                     guard !self.tearingDown, !self.ending else { return }
                     switch PanelReading.afterReopen(confirmed: confirmed) {
-                    case .readAgain: self.readNow()
+                    case .readAgain:
+                        self.apply(
+                            FocusPolicy.decide(
+                                activation: nil, textFieldVisible: self.textFieldVisible,
+                                previousTextFieldVisible: self.textFieldVisible,
+                                panelReopenCompleted: true))
+                        self.readNow()
                     case .endCouldNotKeepOpen:
                         self.hidePanel()
                         self.beginEnding(label: Self.couldNotKeepOpenLabel)
@@ -481,6 +507,11 @@ final class Session {
             NSWorkspace.shared.notificationCenter.removeObserver(observer)
             activationObserver = nil
         }
+        for observer in [resignActiveObserver, resignKeyObserver].compactMap({ $0 }) {
+            NotificationCenter.default.removeObserver(observer)
+        }
+        resignActiveObserver = nil
+        resignKeyObserver = nil
         guard let panelsWindow else { return closeScreen(then: completion) }
         panelsWindow.show(nil, primaryScreenHeight: NSScreen.screens.first?.frame.height ?? 0) {
             self.closeScreen(then: completion)
