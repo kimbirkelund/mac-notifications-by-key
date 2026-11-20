@@ -67,8 +67,13 @@ final class DemoController: NSObject, NSApplicationDelegate {
     }
 
     @objc private func toggle() {
-        model.setListOpen(!model.isListOpen && !staysClosed)
+        let opening = !model.isListOpen && !staysClosed
+        model.setListOpen(opening)
         render()
+        if opening {
+            NSApp.activate(ignoringOtherApps: true)
+            window?.makeKeyAndOrderFront(nil)
+        }
     }
 
     private func render() {

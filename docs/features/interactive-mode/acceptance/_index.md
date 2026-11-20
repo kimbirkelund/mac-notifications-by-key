@@ -4,10 +4,10 @@ BDD scenarios (Gherkin) specifying interactive mode. These `.feature` files **ar
 acceptance tests: [cucumber-js](https://github.com/cucumber/cucumber-js) runs them against the
 compiled `nbk` binary as a black box, using the step definitions in `acceptance/steps/`.
 
-The thirty-eight unattended scenarios run in the default acceptance run. All but one run in demo
-mode ([RIM-21](../requirements.md#demo-mode)) and never touch the real Notification Center; the
-exception is the window-order scenario, which needs the real panel. The trust scenario is
-`@operator` and runs only attended.
+The thirty-nine unattended scenarios run in the default acceptance run. All but one run in demo mode
+([RIM-21](../requirements.md#demo-mode)) and never touch the real Notification Center; the exception
+is the window-order scenario, which needs the real panel. The trust scenario is `@operator` and runs
+only attended.
 
 | Scenario                                                                                  | Validates              | Status                                         |
 | ----------------------------------------------------------------------------------------- | ---------------------- | ---------------------------------------------- |
@@ -49,6 +49,7 @@ exception is the window-order scenario, which needs the real panel. The trust sc
 | A panel that cannot be reopened ends the mode (demo)                                      | RIM-32, RIM-21         | ✅                                             |
 | Focus taken by another application is reclaimed (demo)                                    | RIM-25, RIM-21         | ✅                                             |
 | A reply field in the panel takes focus until it is gone (demo)                            | RIM-27, RIM-21         | ✅                                             |
+| Escape in a reply field returns focus to the overlay (demo)                               | RIM-25, RIM-27, RIM-21 | ✅                                             |
 | Missing Accessibility trust is refused                                                    | RIM-9                  | ✅ `@operator` — attended; last run 2026-09-27 |
 
 ## What the harness adds
@@ -91,7 +92,12 @@ notification access uses. None needs a new framework.
   field belongs to the demo application, so the steps assert that the demo application is frontmost
   and stays so for longer than one polling cycle while the field is shown, and that its reply field
   reports keyboard focus. Pressing Return in the reply field is posted only while the demo
-  application is frontmost, a guard of its own that does not depend on the overlay being frontmost.
+  application is frontmost, a guard of its own that does not depend on the overlay being frontmost;
+  the same step posts Escape in the Escape scenario. The demo application takes keyboard focus when
+  its list opens, so the reopen scenario fails unless the overlay reclaims focus after the reopen.
+  The Escape scenario guards that the overlay gets focus back once the field is dismissed with
+  Escape. Both prove it by effect: once the overlay is frontmost again, a movement key changes the
+  selection.
 
 One scenario needs more: window **level** and **alpha** are not exposed through AX, so "panel above
 the overlay" and "translucent" need a small helper that dumps `CGWindowListCopyWindowInfo` (owner,

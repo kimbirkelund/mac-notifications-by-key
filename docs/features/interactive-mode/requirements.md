@@ -207,16 +207,17 @@ for `C-*`/`X-*`.
   it ([RIM-6](#ending-the-mode)), and open and close no Notification Center panel; everything else
   shall behave as without `--demo`. The demo application is started separately with a
   [demo file](../../definitions.md); it starts with its list closed unless told to start it open,
-  and exposes a menu bar item that opens and closes the list. While open, the list shows the file's
-  notifications in the demo application's own window, exposes them to the Accessibility API the way
-  Notification Center does, and applies entries according to whether the file says each entry closes
-  its notification. Where the file schedules a notification's arrival or departure, the demo
-  application shall present it only from its arrival until its departure, and where the file says an
-  entry on a notification takes some seconds, the notification shall leave only after that delay.
-  The demo application can also present a reply field: where the file says an entry opens one, the
-  entry shows a text field in the list without closing its notification, so [RIM-27](#mode-signal)
-  can be exercised in demo mode. The demo application can also be told to close its list on its own,
-  and to refuse to open it again, so [RIM-31](#notification-center-panel) and
+  and exposes a menu bar item that opens and closes the list; the demo application takes keyboard
+  focus whenever its list is opened that way. While open, the list shows the file's notifications in
+  the demo application's own window, exposes them to the Accessibility API the way Notification
+  Center does, and applies entries according to whether the file says each entry closes its
+  notification. Where the file schedules a notification's arrival or departure, the demo application
+  shall present it only from its arrival until its departure, and where the file says an entry on a
+  notification takes some seconds, the notification shall leave only after that delay. The demo
+  application can also present a reply field: where the file says an entry opens one, the entry
+  shows a text field in the list without closing its notification, so [RIM-27](#mode-signal) can be
+  exercised in demo mode. The demo application can also be told to close its list on its own, and to
+  refuse to open it again, so [RIM-31](#notification-center-panel) and
   [RIM-32](#notification-center-panel) can be exercised in demo mode.
 
 ## Safe failure

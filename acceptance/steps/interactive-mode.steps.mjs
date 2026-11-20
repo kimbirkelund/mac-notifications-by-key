@@ -256,6 +256,10 @@ When('I press Return in the demo reply field', STEP, async function () {
   await this.pressDemoKey('Return')
 })
 
+When('I press Escape in the demo reply field', STEP, async function () {
+  await this.pressDemoKey('Escape')
+})
+
 When('I press the Down arrow', STEP, async function () {
   await pressRecordingSelection(this, 'Down')
 })
