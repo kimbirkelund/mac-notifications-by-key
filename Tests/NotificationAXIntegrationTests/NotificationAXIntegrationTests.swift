@@ -252,6 +252,38 @@ import Testing
         #expect(displays.contains { $0.contains(presented.frame) })
     }
 
+    @Test(.enabled(if: NotificationAXIntegrationTests.available))
+    func readPresentedFramesAreDisjointTopDownAndMatchReadOrder() throws {
+        defer {
+            try? nc.setPanelOpen(false)
+            clearAll()
+        }
+        try nc.setPanelOpen(false)
+        clearAll()
+        #expect(deliver(title: "AXOrderProbeA"))
+        #expect(deliver(title: "AXOrderProbeB"))
+        try nc.setPanelOpen(true)
+        let deadline = Date().addingTimeInterval(10)
+        var previous: [PresentedNotification] = []
+        var stable: [PresentedNotification] = []
+        while Date() < deadline {
+            let current = try nc.readPresented()
+            if current.count >= 2, current == previous {
+                stable = current
+                break
+            }
+            previous = current
+            Thread.sleep(forTimeInterval: 0.2)
+        }
+        try #require(stable.count >= 2, "fewer than two stable cards in the open panel")
+        for (upper, lower) in zip(stable, stable.dropFirst()) {
+            #expect(upper.frame.minY < lower.frame.minY)
+            #expect(upper.frame.maxY <= lower.frame.minY)
+        }
+        let read = try nc.read(wait: 0)
+        #expect(stable.map(\.item.title) == read.prefix(stable.count).map(\.title))
+    }
+
     /// Rows slide in and reshuffle while the panel settles, so wait for two identical reads.
     func stablePresented(
         title: String, timeout: TimeInterval = 10

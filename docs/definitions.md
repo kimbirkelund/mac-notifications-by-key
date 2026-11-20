@@ -28,8 +28,8 @@ Shared domain vocabulary used across all features.
   each with its **activator** — the single key that triggers that entry. Only the selected
   notification has one.
 - **Selector.** How a CLI invocation designates which notification to act on (e.g. an index into the
-  current list, newest-first). Selection logic is pure and unit-tested independently of the AX layer
-  (see [testing](testing.md)).
+  current list, top to bottom). Selection logic is pure and unit-tested independently of the AX
+  layer (see [testing](testing.md)).
 - **Demo file.** A JSON file given to `demo-nc`, the demo application, listing the notifications
   that it presents in its list (closed at launch unless `demo-nc` is started with `--open`; its menu
   bar item opens and closes it) and that [interactive mode](features/interactive-mode/_index.md)

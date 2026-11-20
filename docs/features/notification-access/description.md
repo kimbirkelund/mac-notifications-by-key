@@ -8,9 +8,9 @@ notification is an element with readable title/subtitle/body and a set of named 
 
 ## The operations
 
-- **list** — enumerate the currently-presented notifications, newest first, each with its app,
-  title, subtitle, body, available action names, and a 0-based index. Output is JSON
-  ([X-2](../../cross-cutting.md)).
+- **list** — enumerate the currently-presented notifications in the order Notification Center shows
+  them (top to bottom), each with its app, title, subtitle, body, available action names, and a
+  0-based index. Output is JSON ([X-2](../../cross-cutting.md)).
 - **dismiss `<index>`** — dismiss the notification at that index. A notification that exposes a
   named `Dismiss` action (Outlook meeting reminders do) is dismissed through it rather than through
   `Close`, so the app learns the reminder is dealt with; the same holds for the two clear commands.
@@ -26,7 +26,7 @@ notification is an element with readable title/subtitle/body and a set of named 
 ## Mental model
 
 ```
-nbk list ──► [ {index:0, app, title, subtitle, body, actions:[…]}, … ]  (JSON, newest first)
+nbk list ──► [ {index:0, app, title, subtitle, body, actions:[…]}, … ]  (JSON, top to bottom)
                        │
         choose an index n from that list
                        ▼

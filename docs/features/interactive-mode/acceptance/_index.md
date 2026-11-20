@@ -21,7 +21,7 @@ exception is the window-order scenario, which needs the real panel. The trust sc
 | Nothing presented on entry ends the mode (demo)                                           | RIM-10, RIM-16         | ✅                                             |
 | Dismissing the last notification ends the mode (demo)                                     | RIM-16                 | ✅                                             |
 | Escape during the farewell ends the mode at once (demo)                                   | RIM-16                 | ✅                                             |
-| The newest notification is selected on entry (demo)                                       | RIM-11                 | ✅                                             |
+| The topmost notification is selected on entry (demo)                                      | RIM-11                 | ✅                                             |
 | The selected panel shows lower-case activators (demo)                                     | RIM-13                 | ✅                                             |
 | Moving the selection between notifications (demo)                                         | RIM-12                 | ✅                                             |
 | Movement hints show only where a move is possible (demo)                                  | RIM-23, RIM-12         | ✅                                             |

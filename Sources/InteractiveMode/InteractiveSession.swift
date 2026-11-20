@@ -341,7 +341,7 @@ final class Session {
     }
 
     private func redraw(with presented: [PresentedNotification]?) {
-        guard !dispatching, let presented = presented.map(PresentedNotification.topDown) else {
+        guard !dispatching, let presented else {
             return
         }
         if panelHidden || presented != drawnPresented || !hasDrawn {

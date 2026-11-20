@@ -106,7 +106,7 @@ AX code thin.
 
 - **Unit** (`NotificationCoreTests`): decoding a captured AX element description into a
   `Notification` model; rendering a list of `Notification` to the documented JSON shape;
-  newest-first ordering and index assignment.
+  top-to-bottom ordering and index assignment.
 - **AX-integration** (`NotificationAXIntegrationTests`): with one delivered notification present,
   the adapter reads exactly one `Notification` whose title matches; `Close` after focusing removes
   it (count 1 → 0).

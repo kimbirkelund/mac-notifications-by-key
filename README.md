@@ -48,7 +48,7 @@ the compiled CLI) and used as the basis for coding. See [`docs/`](docs/_index.md
 ## CLI (target shape)
 
 ```
-nbk list [--wait <seconds>]      # JSON of presented notifications, newest first
+nbk list [--wait <seconds>]      # JSON of presented notifications, top to bottom
 nbk dismiss <index>              # dismiss the notification at <index>
 nbk action <index> <name>        # perform a named action (e.g. "Show")
 nbk press <index>                # default activation (open)

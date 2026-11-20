@@ -800,9 +800,9 @@ private final class PanelLog: @unchecked Sendable {
         }
     }
 
-    @Test func readPresentedIsOrderedTopDownBeforeThePanelAnchorsToTheFirst() async throws {
+    @Test func thePanelAnchorsToTheFirstPresentedNotificationInReadOrder() async throws {
         let (session, recorder) = session(
-            RecordingAccess(presented: Self.presented(atTops: 200, 100)))
+            RecordingAccess(presented: Self.presented(atTops: 100, 200)))
         session.showActionPanels()
         try await waitUntil { !recorder.panels.isEmpty }
         #expect(recorder.panels.count == 1)

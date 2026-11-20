@@ -12,11 +12,3 @@ public struct PresentedNotification: Equatable, Sendable {
         self.extentBelow = extentBelow
     }
 }
-
-extension PresentedNotification {
-    public static func topDown(_ presented: [PresentedNotification]) -> [PresentedNotification] {
-        presented.enumerated()
-            .sorted { ($0.element.frame.minY, $0.offset) < ($1.element.frame.minY, $1.offset) }
-            .map(\.element)
-    }
-}

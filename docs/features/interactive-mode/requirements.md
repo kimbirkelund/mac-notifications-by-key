@@ -95,11 +95,11 @@ for `C-*`/`X-*`.
 
 - **RIM-11 (state) — Exactly one notification is selected.** While interactive mode is active and at
   least one notification is presented, exactly one notification shall be selected; on entering the
-  mode the newest is selected. The action panel ([RIM-10](#selection-and-actions)) shall mark the
-  selected notification: it sits beside that notification and no other.
+  mode the topmost (index 0) is selected. The action panel ([RIM-10](#selection-and-actions)) shall
+  mark the selected notification: it sits beside that notification and no other.
 
 - **RIM-12 (event) — Move the selection.** When the user presses Down or `j` while the overlay holds
-  focus, the system shall select the next older notification; when Up or `k`, the next newer. At
+  focus, the system shall select the next notification below; when Up or `k`, the next one above. At
   either end of the list the selection shall stay where it is (clamp, no wrap).
 
 - **RIM-13 (state) — The panel shows key activators.** While a notification is selected, its action
@@ -189,10 +189,10 @@ for `C-*`/`X-*`.
 
 - **RIM-23 (state) — The panel shows which moves are possible.** While a notification is selected,
   its action panel shall show, in a column between the entries and the notification, an up-pointing
-  mark with `k` beneath it at the top of the panel when a newer notification is presented, and `j`
+  mark with `k` beneath it at the top of the panel when a notification is presented above, and `j`
   with a down-pointing mark beneath it level with the bottom of the selected notification, or just
-  below the `k` hint when both are shown and the notification is too short to hold both, when an
-  older one is presented; a hint shall be absent whenever the corresponding move
+  below the `k` hint when both are shown and the notification is too short to hold both, when one is
+  presented below; a hint shall be absent whenever the corresponding move
   ([RIM-12](#selection-and-actions)) would leave the selection where it is.
 
 ## Demo mode
