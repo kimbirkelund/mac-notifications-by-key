@@ -45,12 +45,14 @@ Shared domain vocabulary used across all features.
   `arrivesOn` arrives once both have passed; one with both `leavesAfter` and `leavesOn` leaves at
   whichever comes first. It may also give a `takes` delay, the seconds after an entry that removes
   it is performed before it leaves; the entry itself returns at once. An action is either a bare
-  name, which removes the notification when performed, or an object with a `name`, a `closes` flag
-  and a `field` flag (default false). Performing a `field` action opens an editable reply field on
-  the notification, exposed through AX as a text field, and keeps the notification; Return in the
-  field removes the notification, after any `takes` delay, whatever `closes` says, and Escape drops
-  the field and keeps the notification. A notification with a non-empty `members` array (each member
-  a notification of the same shape, newest first) is a collapsed stack presented under its own `app`
+  name, which removes the notification when performed, or an object with a `name`, a `closes` flag,
+  a `field` flag (default false) and a `fails` flag (default false). Performing a `field` action
+  opens an editable reply field on the notification, exposed through AX as a text field, and keeps
+  the notification; Return in the field removes the notification, after any `takes` delay, whatever
+  `closes` says, and Escape drops the field and keeps the notification. Performing a `fails` action
+  makes the demo application report the action to the Accessibility API as failed; the action's
+  effect follows shortly after. A notification with a non-empty `members` array (each member a
+  notification of the same shape, newest first) is a collapsed stack presented under its own `app`
   and `title`: expanding it replaces it with its members, dismissing it removes it with its members,
   and it cannot be activated. Members cannot themselves have `members`, nor `arrivesAfter`,
   `leavesAfter`, `arrivesOn` or `leavesOn`; `arrivesAfter` and `leavesAfter` are non-negative

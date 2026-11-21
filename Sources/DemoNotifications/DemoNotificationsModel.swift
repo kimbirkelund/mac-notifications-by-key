@@ -18,12 +18,17 @@ public struct DemoPresentedNotification: Equatable, Sendable {
     public var item: NotificationItem
     public var hiddenMembers: Int
     public var showsField: Bool
+    public var failingActions: Set<String>
 
-    public init(id: Int, item: NotificationItem, hiddenMembers: Int, showsField: Bool = false) {
+    public init(
+        id: Int, item: NotificationItem, hiddenMembers: Int, showsField: Bool = false,
+        failingActions: Set<String> = []
+    ) {
         self.id = id
         self.item = item
         self.hiddenMembers = hiddenMembers
         self.showsField = showsField
+        self.failingActions = failingActions
     }
 }
 
@@ -357,7 +362,8 @@ public final class DemoNotificationsModel: @unchecked Sendable {
             DemoPresentedNotification(
                 id: entry.id, item: entry.notification.item(index: index),
                 hiddenMembers: entry.notification.members.count,
-                showsField: entry.showsField)
+                showsField: entry.showsField,
+                failingActions: Set(entry.notification.actions.filter(\.fails).map(\.name)))
         }
     }
 

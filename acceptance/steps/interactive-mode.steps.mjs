@@ -252,6 +252,25 @@ Then('the demo reply field is focused', STEP, async function () {
   assert.ok(focused, 'expected a focused text field in the demo window')
 })
 
+Then('interactive mode printed {string}', STEP, async function (line) {
+  const printed = await this.pollUntil(
+    () => this.interactive.stderr.split('\n').includes(line),
+    SETTLE_MS
+  )
+  assert.ok(
+    printed,
+    `expected interactive mode to print ${JSON.stringify(line)}; stderr: ${this.interactive.stderr}`
+  )
+})
+
+Then('interactive mode printed no {string}', STEP, async function (text) {
+  await this.pollUntil(() => false, 1000)
+  assert.ok(
+    !this.interactive.stderr.includes(text),
+    `expected no ${JSON.stringify(text)} on stderr; stderr: ${this.interactive.stderr}`
+  )
+})
+
 When('I press Return in the demo reply field', STEP, async function () {
   await this.pressDemoKey('Return')
 })

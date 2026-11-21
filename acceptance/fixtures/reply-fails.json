@@ -1,0 +1,18 @@
+{
+  "notifications": [
+    {
+      "app": "Slack",
+      "title": "Standup",
+      "subtitle": null,
+      "body": "Notes are up",
+      "actions": [{ "name": "Reply", "closes": false, "field": true, "fails": true }]
+    },
+    {
+      "app": "Messages",
+      "title": "Ping",
+      "subtitle": null,
+      "body": "Got a minute?",
+      "actions": [{ "name": "Reply", "closes": false, "field": true, "fails": true }]
+    }
+  ]
+}
