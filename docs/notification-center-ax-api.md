@@ -158,6 +158,10 @@ An action that takes text, such as `Reply`, makes a text field appear in the pan
 closes. Setting `kAXFocusedAttribute` on it puts the keyboard cursor in the field, provided
 Notification Center is the active application.
 
+On macOS 27.2, `Reply` on a Slack notification returns the generic failure `kAXErrorFailure`
+(-25200) within about 50 ms, although the field appears shortly after. `Expand`, `Close` and
+`Activate` succeed. Only that combination is treated as performed.
+
 Search for the button at any depth rather than along the exact path above. A panel mid-close can
 still read as open for a moment, so let the reading settle before acting on it.
 

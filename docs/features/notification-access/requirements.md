@@ -50,6 +50,9 @@ for `C-*`/`X-*`.
 - **RNA-8 (unwanted) — Unknown action name.** If the user runs `action <n> <name>` where
   notification `n` does not expose `<name>`, then the system shall report the error (listing the
   available action names) and exit non-zero, performing no action.
+- **RNA-15 (unwanted) — Reply reports a generic failure on Slack.** If Notification Center reports a
+  generic failure for `Reply` on a notification from Slack, then the system shall treat the action
+  as performed.
 - **RNA-13 (unwanted) — Clearing stalls.** If notifications remain after the system has tried to
   dismiss them for a bounded number of rounds, then it shall report how many remain on stderr and
   exit non-zero.
