@@ -795,19 +795,20 @@ export class NbkWorld extends World {
     return (await osascript(demoReplyFieldFocusedScript(pid), 'JavaScript')) === 'true'
   }
 
-  async activateFinderUntilNotFrontmost(pid) {
+  async activateFinderAndAwaitActivation() {
     const script = `
 ObjC.import('AppKit')
-const finder = Application('Finder')
-let seen = false
-for (let attempt = 0; attempt < 5 && !seen; attempt++) {
-  finder.activate()
-  for (let i = 0; i < 100 && !seen; i++) {
-    seen = $.NSWorkspace.sharedWorkspace.frontmostApplication.processIdentifier !== ${pid}
-    if (!seen) $.NSRunLoop.currentRunLoop.runUntilDate($.NSDate.dateWithTimeIntervalSinceNow(0.005))
-  }
+let activated = false
+const observer = $.NSWorkspace.sharedWorkspace.notificationCenter.addObserverForNameObjectQueueUsingBlock(
+  $.NSWorkspaceDidActivateApplicationNotification, $(), $(), (note) => {
+    const app = note.userInfo.objectForKey($.NSWorkspaceApplicationKey)
+    if (ObjC.unwrap(app.bundleIdentifier) === 'com.apple.finder') activated = true
+  })
+Application('Finder').activate()
+for (let i = 0; i < 600 && !activated; i++) {
+  $.NSRunLoop.currentRunLoop.runUntilDate($.NSDate.dateWithTimeIntervalSinceNow(0.005))
 }
-seen`
+activated`
     return (await osascript(script, 'JavaScript')) === 'true'
   }
 

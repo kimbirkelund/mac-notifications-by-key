@@ -28,10 +28,12 @@ for `C-*`/`X-*`.
   give it focus rather than drawing a second overlay; the new invocation shall exit `0` and the
   already-running instance shall continue to own the mode.
 
-- **RIM-25 (event) — Focus lost is reclaimed.** When an application other than the overlay becomes
-  the active application while interactive mode is active and the Notification Center panel shows no
-  text field, the system shall make the overlay the active application holding keyboard focus again,
-  keeping the mode, the panel and the selection unchanged.
+- **RIM-25 (event) — Focus lost is reclaimed.** When the overlay stops receiving keyboard input for
+  any reason — another application becoming the active application, or Notification Center taking
+  keyboard focus — while interactive mode is active and the Notification Center panel shows no text
+  field, the system shall make the overlay the active application receiving keyboard input again,
+  keeping the mode, the panel and the selection unchanged. The overlay is active again only once it
+  receives keyboard input.
 
 - **RIM-26 (unwanted) — Reclaiming focus fails.** If making the overlay the active application
   ([RIM-25](#mode-signal)) does not take effect, then the system shall retry until it succeeds or
@@ -41,8 +43,17 @@ for `C-*`/`X-*`.
   `AXTextField` or `AXTextArea` inside the Notification Center panel — becomes visible while
   interactive mode is active, the system shall make Notification Center the active application with
   keyboard focus in that field, and shall not reclaim focus ([RIM-25](#mode-signal)) while the field
-  stays visible. When the field is no longer visible, the system shall reclaim focus as
-  [RIM-25](#mode-signal) describes.
+  stays visible. A field dismissed with Escape counts as no longer visible. When the field is gone,
+  the system shall reclaim focus as [RIM-25](#mode-signal) describes.
+
+- **RIM-33 (state) — Notification Center keeps keyboard input.** While interactive mode is active,
+  Notification Center holds keyboard input, the panel shows no text field, no action is being
+  performed and no reopen is in progress, the system shall close the Notification Center panel and
+  reopen it as [RIM-31](#notification-center-panel) describes, so that the overlay receives keyboard
+  input again. This closing is the mode's own: it shall not end the mode. Rationale: on macOS 27.2 a
+  click inside the open panel leaves Notification Center holding keyboard input while the overlay's
+  application stays active, and making the overlay active again does not take the input back until
+  the panel closes.
 
 ## Notification Center panel
 
@@ -57,7 +68,8 @@ for `C-*`/`X-*`.
   empty one: the panel closing shall not by itself end the mode, and
   [RIM-16](#selection-and-actions) applies only to a panel that is open and presents no
   notification. The reopen counts as done only when the panel is still open one second after it was
-  reopened.
+  reopened. After the system reopens the panel, and while the panel shows no text field, the overlay
+  shall receive keyboard input again ([RIM-25](#mode-signal)).
 
 - **RIM-32 (unwanted) — The panel cannot be reopened.** If the Notification Center panel is not open
   one second after the system reopened it ([RIM-31](#notification-center-panel)), then the system
@@ -204,16 +216,17 @@ for `C-*`/`X-*`.
   it ([RIM-6](#ending-the-mode)), and open and close no Notification Center panel; everything else
   shall behave as without `--demo`. The demo application is started separately with a
   [demo file](../../definitions.md); it starts with its list closed unless told to start it open,
-  and exposes a menu bar item that opens and closes the list. While open, the list shows the file's
-  notifications in the demo application's own window, exposes them to the Accessibility API the way
-  Notification Center does, and applies entries according to whether the file says each entry closes
-  its notification. Where the file schedules a notification's arrival or departure, the demo
-  application shall present it only from its arrival until its departure, and where the file says an
-  entry on a notification takes some seconds, the notification shall leave only after that delay.
-  The demo application can also present a reply field: where the file says an entry opens one, the
-  entry shows a text field in the list without closing its notification, so [RIM-27](#mode-signal)
-  can be exercised in demo mode. The demo application can also be told to close its list on its own,
-  and to refuse to open it again, so [RIM-31](#notification-center-panel) and
+  and exposes a menu bar item that opens and closes the list; the demo application takes keyboard
+  focus whenever its list is opened that way. While open, the list shows the file's notifications in
+  the demo application's own window, exposes them to the Accessibility API the way Notification
+  Center does, and applies entries according to whether the file says each entry closes its
+  notification. Where the file schedules a notification's arrival or departure, the demo application
+  shall present it only from its arrival until its departure, and where the file says an entry on a
+  notification takes some seconds, the notification shall leave only after that delay. The demo
+  application can also present a reply field: where the file says an entry opens one, the entry
+  shows a text field in the list without closing its notification, so [RIM-27](#mode-signal) can be
+  exercised in demo mode. The demo application can also be told to close its list on its own, and to
+  refuse to open it again, so [RIM-31](#notification-center-panel) and
   [RIM-32](#notification-center-panel) can be exercised in demo mode.
 
 ## Safe failure
@@ -233,9 +246,6 @@ for `C-*`/`X-*`.
 
 ## Open seeds (not yet specified)
 
-- **Escape inside a reply field.** Notification Center consumes Escape to close the field, after
-  which [RIM-25](#mode-signal) reclaims focus; whether a further Escape must end the mode is not
-  specified.
 - **Collapsing a stack.** [RIM-18](#selection-and-actions) expands a stack from the overlay;
   collapsing it again is not specified.
 - **Launch on unlock.** Entering the mode when the machine is unlocked is part of the daemon seed in

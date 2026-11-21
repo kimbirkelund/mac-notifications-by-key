@@ -9,17 +9,24 @@ enum FocusPolicy {
         case none
         case reclaim
         case yieldToTextField
+        case recyclePanel
     }
 
     static func decide(
         activation: Activation?,
         textFieldVisible: Bool,
-        previousTextFieldVisible: Bool
+        previousTextFieldVisible: Bool,
+        overlayLostFocus: Bool = false,
+        panelReopenCompleted: Bool = false,
+        keyboardFocusAtNotificationCenter: Bool = false,
+        dispatching: Bool = false,
+        reopening: Bool = false
     ) -> Decision {
         if textFieldVisible {
             return previousTextFieldVisible ? .none : .yieldToTextField
         }
-        if previousTextFieldVisible { return .reclaim }
+        if keyboardFocusAtNotificationCenter, !dispatching, !reopening { return .recyclePanel }
+        if previousTextFieldVisible || overlayLostFocus || panelReopenCompleted { return .reclaim }
         switch activation {
         case nil, .overlay: return .none
         case .notificationCenter, .other: return .reclaim

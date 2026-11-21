@@ -265,6 +265,20 @@ public struct DefaultNotificationCenterAX: NotificationCenterAccess {
         }
     }
 
+    public func keyboardFocusedApplicationPID() -> pid_t? {
+        guard isTrusted else { return nil }
+        var value: CFTypeRef?
+        guard
+            AXUIElementCopyAttributeValue(
+                AXUIElementCreateSystemWide(), kAXFocusedApplicationAttribute as CFString, &value)
+                == .success,
+            let value, CFGetTypeID(value) == AXUIElementGetTypeID()
+        else { return nil }
+        var pid: pid_t = 0
+        guard AXUIElementGetPid(value as! AXUIElement, &pid) == .success else { return nil }
+        return pid
+    }
+
     public func panelShowsTextField() -> Bool {
         guard isTrusted, let pid = notificationCenterPID() else { return false }
         return !textFields(pid).isEmpty

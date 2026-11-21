@@ -21,6 +21,10 @@ private final class UnusedAccess: NotificationCenterAccess {
         touched = true
         return nil
     }
+    func keyboardFocusedApplicationPID() -> pid_t? {
+        touched = true
+        return nil
+    }
     func read(wait: TimeInterval) throws -> [NotificationItem] {
         touched = true
         return []
@@ -95,6 +99,7 @@ private final class RecordingAccess: NotificationCenterAccess, @unchecked Sendab
     var isTrusted: Bool { true }
     var isPanelOpen: Bool { true }
     func notificationCenterPID() -> pid_t? { nil }
+    func keyboardFocusedApplicationPID() -> pid_t? { nil }
     func read(wait: TimeInterval) throws -> [NotificationItem] { presented.map(\.item) }
     func readPresented() throws -> [PresentedNotification] {
         let gate = lock.withLock { () -> DispatchSemaphore? in

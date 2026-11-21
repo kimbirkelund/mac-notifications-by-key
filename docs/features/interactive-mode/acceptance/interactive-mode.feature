@@ -74,6 +74,9 @@ Feature: Interactive mode
     And interactive mode is still running
     And exactly one action panel is present
     And the overlay shows no label
+    And the overlay is the frontmost application
+    When I press "j"
+    Then the notification at position 2 is selected
 
   # Validates RIM-32: a list that will not reopen ends the mode with its own message.
   @demo
@@ -389,6 +392,21 @@ Feature: Interactive mode
     When I press Return in the demo reply field
     Then the notification titled "Ping" is no longer presented
     And the overlay is the frontmost application
+    And interactive mode is still running
+
+  # Validates RIM-25, RIM-27: Escape drops the reply field and the overlay gets keyboard input back.
+  @demo
+  Scenario: Escape in a reply field returns focus to the overlay
+    Given interactive mode is running with demo file "reply.json"
+    And the overlay is the frontmost application
+    When I press "r"
+    Then the demo application is the frontmost application
+    And the demo reply field is focused
+    When I press Escape in the demo reply field
+    Then the overlay is the frontmost application
+    And the notification titled "Ping" is still presented
+    When I press "j"
+    Then the notification at position 2 is selected
     And interactive mode is still running
 
   # Validates RIM-28: with no demo application running, --demo is refused before any window
