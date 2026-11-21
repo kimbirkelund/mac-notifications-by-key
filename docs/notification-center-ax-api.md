@@ -112,6 +112,15 @@ following are verified there:
   confirmed)_. Unlike the `AXPress` above, which leaves the frontmost application unchanged, a click
   on the clock is reported to leave Notification Center holding keyboard input, so an application
   that expects to keep receiving keystrokes would need to take focus back after the panel opens.
+- **A click inside the open panel takes keyboard input without changing the active application**
+  _(macOS 27.2, confirmed live 2026-11-21)_. After the click, keystrokes go to Notification Center,
+  yet the clicking application stays the active application with its window still key, so neither
+  application-activation nor window-key notifications report the loss. The system-wide element's
+  `kAXFocusedApplicationAttribute` does: it names Notification Center's process. Activating the
+  application again, including deactivating and then reactivating it, does not take the keys back
+  while the panel stays open. Closing the panel returns them. nbk therefore reads the focused
+  application while interactive mode runs and, when it is Notification Center and no text field is
+  shown, closes and reopens the panel.
 - **A closed panel is not an empty panel.** An open panel with no notifications keeps its window and
   its "Edit Widgets" button
   ([Telling whether the panel is open](#telling-whether-the-panel-is-open)); a closed one has
@@ -197,6 +206,8 @@ put in on-screen order, top to bottom, and surfaced to the CLI as index `0..n`.
 | Call                            | Purpose                                      |
 | ------------------------------- | -------------------------------------------- |
 | `AXUIElementCreateApplication`  | root app element from the pid                |
+| `AXUIElementCreateSystemWide`   | system-wide element, for keyboard focus      |
+| `AXUIElementGetPid`             | pid of the keyboard-focused application      |
 | `AXUIElementCopyAttributeValue` | read any attribute                           |
 | `AXUIElementCopyActionNames`    | list an element's actions                    |
 | `AXUIElementPerformAction`      | fire an action (`AXPress`, `Close`, …)       |
@@ -204,16 +215,17 @@ put in on-screen order, top to bottom, and surfaced to the CLI as index `0..n`.
 
 ### Attributes read
 
-| Attribute                 | On element         | Meaning                                                 |
-| ------------------------- | ------------------ | ------------------------------------------------------- |
-| `kAXWindowsAttribute`     | app                | top-level windows                                       |
-| `kAXChildrenAttribute`    | any                | child elements                                          |
-| `kAXRoleAttribute`        | any                | e.g. `AXGroup`, `AXStaticText`                          |
-| `kAXIdentifierAttribute`  | static text        | `"title"` / `"subtitle"` / `"body"`                     |
-| `kAXValueAttribute`       | static text        | the actual text content                                 |
-| `kAXDescriptionAttribute` | notification group | `"App, Title, Subtitle, Body"` — first field = app name |
-| `kAXFocusedAttribute`     | notification group | set to focus before Close                               |
-| `kAXFocusedAttribute`     | panel text field   | set to put the keyboard cursor in the field             |
+| Attribute                        | On element         | Meaning                                                 |
+| -------------------------------- | ------------------ | ------------------------------------------------------- |
+| `kAXWindowsAttribute`            | app                | top-level windows                                       |
+| `kAXChildrenAttribute`           | any                | child elements                                          |
+| `kAXRoleAttribute`               | any                | e.g. `AXGroup`, `AXStaticText`                          |
+| `kAXIdentifierAttribute`         | static text        | `"title"` / `"subtitle"` / `"body"`                     |
+| `kAXValueAttribute`              | static text        | the actual text content                                 |
+| `kAXDescriptionAttribute`        | notification group | `"App, Title, Subtitle, Body"` — first field = app name |
+| `kAXFocusedAttribute`            | notification group | set to focus before Close                               |
+| `kAXFocusedAttribute`            | panel text field   | set to put the keyboard cursor in the field             |
+| `kAXFocusedApplicationAttribute` | system-wide        | the application receiving keyboard input                |
 
 ### Roles matched
 
@@ -376,10 +388,11 @@ foundation for any "custom UI that mirrors Notification Center live" work.
 ## 9. Quick reference — used vs. available
 
 **Used by `nbk` today:** `AXIsProcessTrusted`, `AXUIElementCreateApplication`,
-`AXUIElementCopyAttributeValue`, `AXUIElementCopyActionNames`, `AXUIElementPerformAction`,
-`AXUIElementSetAttributeValue`; attributes `Windows`, `Children`, `Role`, `Identifier`, `Value`,
-`Description`, `Focused`, `Subrole`, `Position`, `Size` (a notification's on-screen frame, which can
-be list-sized, so its static-text children's `Position`/`Size` are read too to place it); roles
+`AXUIElementCreateSystemWide`, `AXUIElementGetPid`, `AXUIElementCopyAttributeValue`,
+`AXUIElementCopyActionNames`, `AXUIElementPerformAction`, `AXUIElementSetAttributeValue`; attributes
+`Windows`, `Children`, `Role`, `Identifier`, `Value`, `Description`, `Focused`, `FocusedApplication`
+(system-wide), `Subrole`, `Position`, `Size` (a notification's on-screen frame, which can be
+list-sized, so its static-text children's `Position`/`Size` are read too to place it); roles
 `AXGroup`, `AXStaticText`, `AXButton` (the panel's "Edit Widgets" button, to tell the panel from a
 banner); actions `AXPress` (also expands a collapsed stack), `Close`, `Clear All`, `Show`,
 `Show Details`; the menu bar clock extra for opening and closing the panel (§1).

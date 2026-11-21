@@ -153,9 +153,11 @@ final class Session {
                 previousTextFieldVisible: textFieldVisible))
     }
 
-    private func textFieldPolled(_ visible: Bool) {
+    private func textFieldPolled(_ visible: Bool, keyboardFocusAtNotificationCenter: Bool) {
         let decision = FocusPolicy.decide(
-            activation: nil, textFieldVisible: visible, previousTextFieldVisible: textFieldVisible)
+            activation: nil, textFieldVisible: visible, previousTextFieldVisible: textFieldVisible,
+            keyboardFocusAtNotificationCenter: keyboardFocusAtNotificationCenter,
+            dispatching: dispatching, reopening: reopening)
         textFieldVisible = visible
         apply(decision)
     }
@@ -170,6 +172,8 @@ final class Session {
         case .yieldToTextField:
             reclaimGeneration += 1
             yieldToTextField()
+        case .recyclePanel:
+            reopenPanel(closingFirst: true)
         }
     }
 
@@ -395,9 +399,15 @@ final class Session {
             let presented = try? access.readPresented()
             let panelOpen = access.isPanelOpen
             let textField = access.panelShowsTextField()
+            let keyboardPID = access.keyboardFocusedApplicationPID()
+            let notificationCenterPID = access.notificationCenterPID()
+            let keyboardAtNotificationCenter =
+                keyboardPID != nil && keyboardPID != getpid()
+                && keyboardPID == notificationCenterPID
             DispatchQueue.main.async {
                 MainActor.assumeIsolated {
-                    self.textFieldPolled(textField)
+                    self.textFieldPolled(
+                        textField, keyboardFocusAtNotificationCenter: keyboardAtNotificationCenter)
                     guard generation == self.dispatchGeneration else { return apply(self, nil) }
                     apply(self, presented.flatMap { self.judged($0, panelOpen: panelOpen) })
                 }
@@ -418,11 +428,12 @@ final class Session {
         }
     }
 
-    private func reopenPanel() {
+    private func reopenPanel(closingFirst: Bool = false) {
         guard !reopening, !tearingDown, !ending else { return }
         reopening = true
         nonisolated(unsafe) let access = access
         panelQueue.async {
+            if closingFirst { try? access.setPanelOpen(false) }
             let started = Date()
             let opened = (try? access.setPanelOpen(true)) != nil
             let remaining = started.addingTimeInterval(Self.reopenConfirmation).timeIntervalSinceNow

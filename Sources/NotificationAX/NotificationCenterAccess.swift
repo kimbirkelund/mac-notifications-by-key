@@ -11,6 +11,8 @@ public protocol NotificationCenterAccess {
     var isTrusted: Bool { get }
     var isPanelOpen: Bool { get }
     func notificationCenterPID() -> pid_t?
+    /// The process that receives keyboard input, as Accessibility reports it.
+    func keyboardFocusedApplicationPID() -> pid_t?
     func read(wait: TimeInterval) throws -> [NotificationItem]
     /// Top to bottom on screen, in the same order and indices as `read(wait:)`.
     func readPresented() throws -> [PresentedNotification]

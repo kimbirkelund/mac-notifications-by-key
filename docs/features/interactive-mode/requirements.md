@@ -46,6 +46,15 @@ for `C-*`/`X-*`.
   stays visible. A field dismissed with Escape counts as no longer visible. When the field is gone,
   the system shall reclaim focus as [RIM-25](#mode-signal) describes.
 
+- **RIM-33 (state) — Notification Center keeps keyboard input.** While interactive mode is active,
+  Notification Center holds keyboard input, the panel shows no text field, no action is being
+  performed and no reopen is in progress, the system shall close the Notification Center panel and
+  reopen it as [RIM-31](#notification-center-panel) describes, so that the overlay receives keyboard
+  input again. This closing is the mode's own: it shall not end the mode. Rationale: on macOS 27.2 a
+  click inside the open panel leaves Notification Center holding keyboard input while the overlay's
+  application stays active, and making the overlay active again does not take the input back until
+  the panel closes.
+
 ## Notification Center panel
 
 - **RIM-5 (event) — Open the panel on entering the mode.** When the user runs `interactive`, the
