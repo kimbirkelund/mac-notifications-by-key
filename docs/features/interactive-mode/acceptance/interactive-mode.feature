@@ -409,6 +409,25 @@ Feature: Interactive mode
     Then the notification at position 2 is selected
     And interactive mode is still running
 
+  # Validates RNA-15: Notification Center's generic failure for Reply on a Slack notification is not
+  # reported.
+  @demo
+  Scenario: A Reply that Notification Center reports as failed on Slack is not reported
+    Given interactive mode is running with demo file "reply-fails.json"
+    When I press "r"
+    Then the demo reply field is focused
+    And interactive mode printed no "Performing action"
+    And interactive mode is still running
+
+  # Validates X-1, RIM-21: the same failure for Reply on any other app is reported.
+  @demo
+  Scenario: A Reply that Notification Center reports as failed on another app is reported
+    Given interactive mode is running with demo file "reply-fails.json"
+    When I press "j"
+    And I press "r"
+    Then interactive mode printed 'nbk: Performing action "Reply" failed.'
+    And interactive mode is still running
+
   # Validates RIM-28: with no demo application running, --demo is refused before any window
   # appears.
   @demo

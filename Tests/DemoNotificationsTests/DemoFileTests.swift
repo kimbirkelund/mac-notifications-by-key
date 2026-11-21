@@ -43,6 +43,14 @@ import Testing
                 == [DemoAction(name: "Reply", closes: false, field: true)])
     }
 
+    @Test func objectActionHonoursFailsTrue() throws {
+        let file = try decode(
+            #"{"notifications":[{"actions":[{"name":"Reply","fails":true},"Archive"]}]}"#)
+        #expect(
+            file.notifications[0].actions
+                == [DemoAction(name: "Reply", fails: true), DemoAction(name: "Archive")])
+    }
+
     @Test func activateClosesDefaultsToTrue() throws {
         let file = try decode(#"{"notifications":[{"title":"t"}]}"#)
         #expect(file.notifications[0].activateCloses)

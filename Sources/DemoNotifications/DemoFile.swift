@@ -6,14 +6,16 @@ public struct DemoAction: Equatable, Sendable, Codable {
     public var closes: Bool
 
     public var field: Bool
+    public var fails: Bool
 
-    public init(name: String, closes: Bool = true, field: Bool = false) {
+    public init(name: String, closes: Bool = true, field: Bool = false, fails: Bool = false) {
         self.name = name
         self.closes = closes
         self.field = field
+        self.fails = fails
     }
 
-    private enum CodingKeys: String, CodingKey { case name, closes, field }
+    private enum CodingKeys: String, CodingKey { case name, closes, field, fails }
 
     public init(from decoder: Decoder) throws {
         if let name = try? decoder.singleValueContainer().decode(String.self) {
@@ -24,7 +26,8 @@ public struct DemoAction: Equatable, Sendable, Codable {
         self.init(
             name: try c.decode(String.self, forKey: .name),
             closes: try c.decodeIfPresent(Bool.self, forKey: .closes) ?? true,
-            field: try c.decodeIfPresent(Bool.self, forKey: .field) ?? false)
+            field: try c.decodeIfPresent(Bool.self, forKey: .field) ?? false,
+            fails: try c.decodeIfPresent(Bool.self, forKey: .fails) ?? false)
     }
 }
 

@@ -23,6 +23,7 @@ enum NotificationAction: Sendable {
 
 final class NotificationView: NSView, NSTextFieldDelegate {
     private static let padding: CGFloat = 10
+    private static let failingEffectDelay: TimeInterval = 0.2
 
     private let notification: DemoPresentedNotification
     private let onAction: (NotificationAction) -> Void
@@ -118,8 +119,18 @@ final class NotificationView: NSView, NSTextFieldDelegate {
         let system: NotificationAction = item.isCollapsedStack ? .clearAll : .close
         return ([system] + item.actions.map(NotificationAction.named)).map { action in
             NSAccessibilityCustomAction(name: action.name) { [weak self] in
-                self?.onAction(action)
-                return true
+                guard case .named(let name) = action,
+                    self?.notification.failingActions.contains(name) == true
+                else {
+                    self?.onAction(action)
+                    return true
+                }
+                DispatchQueue.main.asyncAfter(deadline: .now() + Self.failingEffectDelay) {
+                    self?.onAction(action)
+                }
+                // AppKit ignores a false return here; the raised exception surfaces kAXErrorFailure.
+                NSException(name: .genericException, reason: "action failed").raise()
+                return false
             }
         }
     }

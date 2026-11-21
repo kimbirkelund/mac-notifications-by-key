@@ -50,6 +50,8 @@ only attended.
 | Focus taken by another application is reclaimed (demo)                                    | RIM-25, RIM-21         | ✅                                                                                          |
 | A reply field in the panel takes focus until it is gone (demo)                            | RIM-27, RIM-21         | ✅                                                                                          |
 | Escape in a reply field returns focus to the overlay (demo)                               | RIM-25, RIM-27, RIM-21 | ✅                                                                                          |
+| A Reply reported as failed on Slack is not reported (demo)                                | RNA-15, RIM-21         | ✅                                                                                          |
+| A Reply reported as failed on another app is reported (demo)                              | X-1, RIM-21            | ✅                                                                                          |
 | Notification Center keeping keyboard input recycles the panel                             | RIM-33                 | not automated — needs a real click inside Notification Center; confirmed by hand 2026-11-21 |
 | Missing Accessibility trust is refused                                                    | RIM-9                  | ✅ `@operator` — attended; last run 2026-09-27                                              |
 
@@ -123,8 +125,8 @@ is open always comes from the AX check described in the AX reference.
   mode with the panel already open.
 - **RIM-16's "keys are ignored during the farewell"** — the farewell is too brief to probe reliably
   with real key events. Belongs in the unit tier, against the key handling.
-- **RIM-30 (Activate fails)** — the demo cannot make a press fail. Belongs in the unit tier, against
-  the key handling.
+- **RIM-30 (Activate fails)** — the demo can make a named action fail but not an `Activate` press.
+  Belongs in the unit tier, against the key handling.
 - **Tint color and exact opacity** — pixel properties. `RIM-2` is asserted only as "not opaque"; the
   rest is appearance detail, accepted as visually verified.
 

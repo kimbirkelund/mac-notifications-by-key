@@ -379,7 +379,12 @@ public struct DefaultNotificationCenterAX: NotificationCenterAccess {
                 available: raws.map(ActionName.display(fromAXAction:)).filter { $0 != "AXPress" }
             )
         }
-        if AXUIElementPerformAction(element, raw as CFString) != .success {
+        let app = ActionOutcome.dependsOnApp(action: displayName) ? appName(of: element) : nil
+        let result = AXUIElementPerformAction(element, raw as CFString)
+        if result != .success,
+            !ActionOutcome.isPerformed(
+                action: displayName, app: app, axError: result.rawValue)
+        {
             throw NbkError.actionFailed(name: displayName)
         }
     }
